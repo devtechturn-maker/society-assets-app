@@ -195,13 +195,14 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
               <View style={styles.newUserBox}>
                 <Text style={styles.newUserLabel}>New society?</Text>
                 <Text style={styles.newUserHint}>
-                  Choose a subscription plan and register your society, then sign in here.
+                  New society? View plans to register. Already registered? After login, open Subscription in the
+                  menu to upgrade or add members.
                 </Text>
                 <Pressable
                   style={({ pressed }) => [styles.plansBtn, pressed && styles.plansBtnPressed]}
                   onPress={onViewPlans}
                 >
-                  <Text style={styles.plansBtnText}>View plans & subscribe</Text>
+                  <Text style={styles.plansBtnText}>View plans (new society)</Text>
                 </Pressable>
               </View>
             </View>

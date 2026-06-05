@@ -15,11 +15,52 @@ export interface SocietySubscriptionStatus {
   planCode?: string;
   price?: number;
   billingCycle?: string;
+  memberLimit?: number;
+  additionalMemberPrice?: number;
+  additionalMemberSlots?: number;
+  currentMemberCount?: number;
+  effectiveMemberLimit?: number;
+  unlimitedMembers?: boolean;
+  membersRemaining?: number;
+  daysUsed?: number;
+  daysRemaining?: number;
   validUntil?: string | null;
   paidAt?: string | null;
 }
 
+export interface PlanPriceBreakdown {
+  basePrice: number;
+  includedMemberLimit: number;
+  additionalMemberSlots: number;
+  additionalMemberPrice: number;
+  additionalMembersTotal: number;
+  fullPeriodTotal: number;
+}
+
+export interface UpgradeQuote {
+  currentPlanName: string;
+  newPlanName: string;
+  amountDue: number;
+  billingCycle?: string;
+  creditFromCurrentPlan?: number;
+  chargeForNewPlan?: number;
+  daysUsed?: number;
+  daysRemaining?: number;
+  unusedTimeRatio?: number;
+  targetAdditionalMemberSlots?: number;
+  newPriceBreakdown?: PlanPriceBreakdown;
+  minimumChargeApplied?: boolean;
+}
+
+export interface AdditionalMembersQuote {
+  additionalMembers: number;
+  pricePerMember: number;
+  amountDue: number;
+  newEffectiveLimit: number;
+}
+
 export interface PublicSubscriptionPlan {
+  additionalMemberPrice?: number;
   id: string;
   code: string;
   name: string;
@@ -218,4 +259,44 @@ export interface ReportEmailResult {
   sentCount: number;
   reportCount: number;
   recipients: string[];
+}
+
+export interface ChatMessage {
+  id: string;
+  body: string;
+  sentAt: string;
+  readAt: string | null;
+  senderUserId: string;
+  senderName: string;
+  senderRole: string;
+  senderFlat?: string;
+  mine: boolean;
+}
+
+export interface ChatGroupSummary {
+  conversationId: string;
+  groupName: string;
+  societyName?: string;
+  lastMessagePreview?: string | null;
+  lastMessageAt?: string | null;
+  unreadCount: number;
+  memberCount: number;
+}
+
+export interface ChatThread {
+  conversationId: string | null;
+  groupName?: string;
+  societyName?: string;
+  peerName: string;
+  unreadCount: number;
+  firstUnreadMessageId?: string | null;
+  hasMoreOlder?: boolean;
+  memberCount?: number;
+  messages: ChatMessage[];
+}
+
+export interface ChatThreadQuery {
+  limit?: number;
+  before?: string;
+  after?: string;
 }

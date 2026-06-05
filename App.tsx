@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, LogBox, Platform, StyleSheet, View } from 'react-native';
 import * as ExpoSplashScreen from 'expo-splash-screen';
 import { SecureScreenGuard } from './src/components/SecureScreenGuard';
 import { FirstLoginPasswordScreen } from './src/screens/FirstLoginPasswordScreen';
@@ -15,8 +15,19 @@ import { AppAlertProvider } from './src/context/AppAlertContext';
 import { ScreenCaptureProvider } from './src/context/ScreenCaptureContext';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import type { LoginData, SocietySubscriptionStatus } from './src/types/api';
+import {
+  configurePushNotifications,
+  isRemotePushAvailable,
+} from './src/services/pushNotifications';
 
 ExpoSplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+if (__DEV__) {
+  LogBox.ignoreLogs([
+    '`expo-notifications` functionality is not fully supported in Expo Go',
+    'VirtualizedList: You have a large list that is slow to update',
+  ]);
+}
 
 /** Bumps on every Metro full reload so splash state resets (not on Fast Refresh). */
 let appLaunchGeneration = 0;
@@ -34,6 +45,12 @@ function AppRoot() {
 
   const finishSplash = useCallback(() => {
     setShowSplash(false);
+  }, []);
+
+  useEffect(() => {
+    if (isRemotePushAvailable()) {
+      configurePushNotifications();
+    }
   }, []);
 
   useEffect(() => {

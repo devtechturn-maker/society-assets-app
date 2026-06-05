@@ -25,6 +25,15 @@ import {
   moduleGlyph,
 } from '../constants/fallbackModules';
 import { useTheme } from '../theme/ThemeContext';
+import { ChatNotificationBanner } from '../components/ChatNotificationBanner';
+import {
+  addNotificationReceivedListener,
+  addNotificationResponseListener,
+  registerPushNotificationsWithBackend,
+  resolveInitialNotificationGroupId,
+  unregisterPushNotificationsFromBackend,
+  type ChatPushNotification,
+} from '../services/pushNotifications';
 import { ModuleRouter } from './modules/ModuleRouter';
 
 type Props = {
@@ -42,7 +51,7 @@ const STAFF_PRIMARY_TABS: { path: string; label: string; glyph: string }[] = [
 const MEMBER_PRIMARY_TABS: { path: string; label: string; glyph: string }[] = [
   { path: 'dashboard', label: 'Home', glyph: '⌂' },
   { path: 'maintenance', label: 'Maint.', glyph: '☰' },
-  { path: 'support', label: 'Help', glyph: '?' },
+  { path: 'chat', label: 'Groups', glyph: '💬' },
 ];
 
 function societyInitials(name: string): string {
@@ -61,6 +70,8 @@ export function SocietyShell({ user, onLogout }: Props) {
   const [activePath, setActivePath] = useState('dashboard');
   const [societyName, setSocietyName] = useState('Society');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [initialChatGroupId, setInitialChatGroupId] = useState<string | null>(null);
+  const [bannerNotification, setBannerNotification] = useState<ChatPushNotification | null>(null);
   const primaryTabs = memberPortal ? MEMBER_PRIMARY_TABS : STAFF_PRIMARY_TABS;
 
   const loadMeta = useCallback(async () => {
@@ -95,6 +106,35 @@ export function SocietyShell({ user, onLogout }: Props) {
     loadMeta();
   }, [loadMeta]);
 
+  const openChatFromNotification = useCallback((groupId?: string) => {
+    setActivePath('chat');
+    if (groupId) {
+      setInitialChatGroupId(groupId);
+    }
+  }, []);
+
+  useEffect(() => {
+    registerPushNotificationsWithBackend();
+
+    void resolveInitialNotificationGroupId().then((groupId) => {
+      if (groupId) {
+        openChatFromNotification(groupId);
+      }
+    });
+
+    const openSubscription = addNotificationResponseListener((groupId) => {
+      setBannerNotification(null);
+      openChatFromNotification(groupId);
+    });
+    const receivedSubscription = addNotificationReceivedListener((notification) => {
+      setBannerNotification(notification);
+    });
+    return () => {
+      openSubscription.remove();
+      receivedSubscription.remove();
+    };
+  }, [user.userId, openChatFromNotification]);
+
   const activeTitle = useMemo(
     () => modules.find((m) => m.routePath === activePath)?.title ?? 'Dashboard',
     [modules, activePath]
@@ -102,6 +142,7 @@ export function SocietyShell({ user, onLogout }: Props) {
 
   async function logout() {
     setDrawerOpen(false);
+    await unregisterPushNotificationsFromBackend();
     await clearSession();
     onLogout();
   }
@@ -115,23 +156,50 @@ export function SocietyShell({ user, onLogout }: Props) {
     <View style={[styles.root, { backgroundColor: theme.pageBg }]}>
       <StatusBar style={theme.statusBar} />
 
+      <ChatNotificationBanner
+        notification={bannerNotification}
+        onPress={(item) => {
+          setBannerNotification(null);
+          openChatFromNotification(item.groupId);
+        }}
+        onDismiss={() => setBannerNotification(null)}
+      />
+
       <LinearGradient colors={[...theme.headerGradient]} style={styles.hero}>
         <View style={styles.heroRow}>
-          <View style={styles.avatar}>
+          <View
+            style={[
+              styles.avatar,
+              { borderColor: theme.accentGold, backgroundColor: theme.accentSoft },
+            ]}
+          >
             <Text style={styles.avatarText}>{societyInitials(societyName)}</Text>
           </View>
           <View style={styles.heroText}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{memberPortal ? 'Member Portal' : 'Society Command'}</Text>
+            <View style={[styles.badge, { backgroundColor: theme.accentSoft }]}>
+              <Text style={[styles.badgeText, { color: theme.accentGold }]}>
+                {memberPortal ? 'Member Portal' : 'Society Command'}
+              </Text>
             </View>
             <Text style={styles.societyName} numberOfLines={2}>
               {societyName}
             </Text>
-            <Text style={styles.moduleTitle}>{activeTitle}</Text>
+            <Text style={[styles.moduleTitle, { color: theme.accentGold }]}>{activeTitle}</Text>
           </View>
-          <Pressable style={styles.iconBtn} onPress={toggleMode} accessibilityLabel="Toggle theme">
-            <Text style={styles.iconBtnText}>{mode === 'dark' ? '☀️' : '🌙'}</Text>
-          </Pressable>
+          <View style={styles.heroActions}>
+            <Pressable style={styles.iconBtn} onPress={toggleMode} accessibilityLabel="Toggle theme">
+              <Text style={styles.iconBtnText}>{mode === 'dark' ? '☀️' : '🌙'}</Text>
+            </Pressable>
+            {memberPortal ? (
+              <Pressable
+                style={styles.iconBtn}
+                onPress={logout}
+                accessibilityLabel="Log out"
+              >
+                <Text style={styles.logoutHeaderLabel}>Out</Text>
+              </Pressable>
+            ) : null}
+          </View>
         </View>
         <Text style={styles.kicker}>
           {memberPortal ? 'Resident access' : 'Financial Command'} · {user.role}
@@ -139,7 +207,14 @@ export function SocietyShell({ user, onLogout }: Props) {
       </LinearGradient>
 
       <View style={styles.content}>
-        <ModuleRouter routePath={activePath} memberPortal={memberPortal} />
+        <ModuleRouter
+          routePath={activePath}
+          memberPortal={memberPortal}
+          userId={user.userId}
+          userRole={user.role}
+          initialChatGroupId={initialChatGroupId}
+          onChatGroupConsumed={() => setInitialChatGroupId(null)}
+        />
       </View>
 
       <View style={[styles.bottomBar, { backgroundColor: theme.bottomBarBg, borderTopColor: theme.bottomBarBorder }]}>
@@ -156,21 +231,23 @@ export function SocietyShell({ user, onLogout }: Props) {
             </Pressable>
           );
         })}
-        {!memberPortal ? (
-          <Pressable style={styles.tab} onPress={() => setDrawerOpen(true)}>
-            <Text style={[styles.tabGlyph, drawerOpen ? { color: theme.accentGold } : { color: theme.textMuted }]}>
-              ☰
-            </Text>
-            <Text style={[styles.tabLabel, { color: theme.textMuted }]}>More</Text>
-          </Pressable>
-        ) : null}
+        <Pressable style={styles.tab} onPress={() => setDrawerOpen(true)}>
+          <Text style={[styles.tabGlyph, drawerOpen ? { color: theme.accentGold } : { color: theme.textMuted }]}>
+            ☰
+          </Text>
+          <Text style={[styles.tabLabel, { color: theme.textMuted }]}>
+            {memberPortal ? 'Menu' : 'More'}
+          </Text>
+        </Pressable>
       </View>
 
       <Modal visible={drawerOpen} animationType="slide" transparent onRequestClose={() => setDrawerOpen(false)}>
         <View style={styles.drawerBackdrop}>
           <Pressable style={styles.drawerDismiss} onPress={() => setDrawerOpen(false)} />
           <View style={[styles.drawer, { backgroundColor: theme.cardBg }]}>
-            <Text style={[styles.drawerTitle, { color: theme.text }]}>All modules</Text>
+            <Text style={[styles.drawerTitle, { color: theme.text }]}>
+              {memberPortal ? 'Menu' : 'All modules'}
+            </Text>
             <ScrollView showsVerticalScrollIndicator={false}>
               {modules.map((m) => {
                 const active = m.routePath === activePath;
@@ -219,9 +296,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: 'rgba(212, 160, 23, 0.25)',
     borderWidth: 2,
-    borderColor: '#d4a017',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -229,14 +304,12 @@ const styles = StyleSheet.create({
   heroText: { flex: 1 },
   badge: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(212, 160, 23, 0.2)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
     marginBottom: 6,
   },
   badgeText: {
-    color: '#fbbf24',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 1.2,
@@ -249,7 +322,6 @@ const styles = StyleSheet.create({
     lineHeight: 26,
   },
   moduleTitle: {
-    color: '#a7f3d0',
     fontSize: 14,
     fontWeight: '600',
     marginTop: 4,
@@ -261,6 +333,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
+  heroActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   iconBtn: {
     width: 44,
     height: 44,
@@ -270,6 +347,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconBtnText: { fontSize: 20 },
+  logoutHeaderLabel: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
   content: { flex: 1 },
   bottomBar: {
     flexDirection: 'row',

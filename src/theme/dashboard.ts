@@ -1,7 +1,7 @@
 import { colors } from './colors';
 
 export const dashboard = {
-  pageBg: '#eef2f7',
+  pageBg: '#f8f4fa',
   sidebarBg: colors.navy800,
   sidebarGradient: [colors.navy800, colors.navy900] as const,
   activeNavBg: 'rgba(16, 185, 129, 0.2)',

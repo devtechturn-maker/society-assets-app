@@ -20,7 +20,7 @@ const extra = Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined
 
 const resolved = firstNonEmpty(process.env.EXPO_PUBLIC_API_URL, extra?.apiBaseUrl);
 
-/** Default: Android emulator → host machine (Spring on localhost:8080). */
+/** Development branch — Android emulator → host machine (Spring on localhost:8080). */
 const FALLBACK = 'http://10.0.2.2:8080';
 
 export const API_BASE_URL = resolved ?? FALLBACK;

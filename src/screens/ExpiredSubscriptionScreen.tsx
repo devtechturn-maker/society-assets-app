@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   boxMeta: { fontSize: 12, color: '#64748b', marginTop: 4 },
   primary: {
     marginTop: 24,
-    backgroundColor: '#0f2744',
+    backgroundColor: '#70088c',
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',

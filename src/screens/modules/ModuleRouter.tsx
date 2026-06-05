@@ -10,14 +10,24 @@ import { OtherIncomeModule } from './OtherIncomeModule';
 import { ReportsModule } from './ReportsModule';
 import { SettingsModule } from './SettingsModule';
 import { SupportModule } from './SupportModule';
+import { ChatModule } from './ChatModule';
 import { AppearanceModule } from './AppearanceModule';
+import { SubscriptionModule } from './SubscriptionModule';
 
 export function ModuleRouter({
   routePath,
   memberPortal = false,
+  userId,
+  userRole,
+  initialChatGroupId,
+  onChatGroupConsumed,
 }: {
   routePath: string;
   memberPortal?: boolean;
+  userId?: string;
+  userRole?: string;
+  initialChatGroupId?: string | null;
+  onChatGroupConsumed?: () => void;
 }): ReactNode {
   if (memberPortal) {
     switch (routePath) {
@@ -25,6 +35,15 @@ export function ModuleRouter({
         return <MemberDashboardModule />;
       case 'maintenance':
         return <MemberMaintenanceModule />;
+      case 'chat':
+        return (
+          <ChatModule
+            memberPortal
+            userId={userId}
+            initialGroupId={initialChatGroupId}
+            onInitialGroupConsumed={onChatGroupConsumed}
+          />
+        );
       case 'support':
         return <SupportModule />;
       default:
@@ -49,10 +68,21 @@ export function ModuleRouter({
       return <ReportsModule />;
     case 'settings':
       return <SettingsModule />;
+    case 'chat':
+      return (
+        <ChatModule
+          userId={userId}
+          canManageGroups={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
+          initialGroupId={initialChatGroupId}
+          onInitialGroupConsumed={onChatGroupConsumed}
+        />
+      );
     case 'support':
       return <SupportModule />;
     case 'appearance':
       return <AppearanceModule />;
+    case 'subscription':
+      return <SubscriptionModule />;
     default:
       return <SupportModule />;
   }

@@ -20,11 +20,17 @@ import type {
   SocietyMember,
   SocietySubscriptionStatus,
   PublicSubscriptionPlan,
+  UpgradeQuote,
+  AdditionalMembersQuote,
   UpdateMemberPayload,
   ReportEmailPayload,
   ReportEmailResult,
   SocietyOverview,
   MemberOverview,
+  ChatThread,
+  ChatThreadQuery,
+  ChatMessage,
+  ChatGroupSummary,
 } from '../types/api';
 import { encryptPasswordForLogin } from '../crypto/rsaEncrypt';
 
@@ -136,6 +142,28 @@ export const fetchMembers = () => getData<SocietyMember[]>('/society/members');
 
 export const fetchSubscriptionStatus = () =>
   getData<SocietySubscriptionStatus>('/society/subscription/status');
+
+export const fetchSocietySubscriptionPlans = () =>
+  getData<PublicSubscriptionPlan[]>('/society/subscription/plans');
+
+export async function quoteSubscriptionUpgrade(
+  planId: string,
+  targetAdditionalMemberSlots?: number
+): Promise<UpgradeQuote> {
+  const { data } = await client.post<ApiResponse<UpgradeQuote>>('/society/subscription/upgrade/quote', {
+    planId,
+    targetAdditionalMemberSlots: targetAdditionalMemberSlots ?? null,
+  });
+  return data.data;
+}
+
+export async function quoteAdditionalMembers(count: number): Promise<AdditionalMembersQuote> {
+  const { data } = await client.post<ApiResponse<AdditionalMembersQuote>>(
+    '/society/subscription/additional-members/quote',
+    { count }
+  );
+  return data.data;
+}
 
 export interface AddMemberPayload {
   name: string;
@@ -327,6 +355,72 @@ export async function sendReportsEmail(payload: ReportEmailPayload): Promise<Rep
     payload
   );
   return data.data;
+}
+
+export function fetchChatGroups(memberPortal: boolean): Promise<ChatGroupSummary[]> {
+  const url = memberPortal ? '/member/chat/groups' : '/society/chat/groups';
+  return getData<ChatGroupSummary[]>(url);
+}
+
+export const CHAT_MESSAGE_PAGE_SIZE = 25;
+
+export function fetchGroupChatThread(
+  memberPortal: boolean,
+  groupId: string,
+  query: ChatThreadQuery = {}
+): Promise<ChatThread> {
+  const params = new URLSearchParams();
+  if (query.limit != null) params.set('limit', String(query.limit));
+  if (query.before) params.set('before', query.before);
+  if (query.after) params.set('after', query.after);
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  const url = memberPortal
+    ? `/member/chat/groups/${groupId}${suffix}`
+    : `/society/chat/groups/${groupId}${suffix}`;
+  return getData<ChatThread>(url);
+}
+
+export async function createChatGroup(name: string, memberIds: string[]): Promise<ChatGroupSummary> {
+  const { data } = await client.post<ApiResponse<ChatGroupSummary>>('/society/chat/groups', {
+    name,
+    memberIds,
+  });
+  return data.data;
+}
+
+export async function sendGroupChatMessage(
+  memberPortal: boolean,
+  groupId: string,
+  body: string
+): Promise<ChatMessage> {
+  const url = memberPortal
+    ? `/member/chat/groups/${groupId}/messages`
+    : `/society/chat/groups/${groupId}/messages`;
+  const { data } = await client.post<ApiResponse<ChatMessage>>(url, { body });
+  return data.data;
+}
+
+export async function markGroupChatRead(memberPortal: boolean, groupId: string): Promise<void> {
+  const url = memberPortal
+    ? `/member/chat/groups/${groupId}/read`
+    : `/society/chat/groups/${groupId}/read`;
+  await client.post<ApiResponse<unknown>>(url);
+}
+
+export async function registerDevicePushToken(
+  expoPushToken: string,
+  platform: string
+): Promise<void> {
+  await client.post<ApiResponse<unknown>>('/devices/push-token', {
+    expoPushToken,
+    platform,
+  });
+}
+
+export async function unregisterDevicePushToken(expoPushToken?: string): Promise<void> {
+  await client.delete<ApiResponse<unknown>>('/devices/push-token', {
+    data: expoPushToken ? { expoPushToken } : {},
+  });
 }
 
 export { API_BASE_URL };

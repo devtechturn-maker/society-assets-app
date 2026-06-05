@@ -7,38 +7,59 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash-logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#143766"
+      "backgroundColor": "#70088c"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.devtechturn.societyassets",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#143766"
+        "backgroundColor": "#70088c"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-dev-client",
       "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#70088c",
+          "defaultChannel": "chat",
+          "sounds": []
+        }
+      ],
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#143766",
-          "image": "./assets/icon.png",
-          "imageWidth": 120
+          "backgroundColor": "#70088c",
+          "image": "./assets/splash-logo.png",
+          "imageWidth": 300
         }
       ]
     ],
     "extra": {
-      "apiBaseUrl": ""
-    }
+      "apiBaseUrl": "",
+      "eas": {
+        "projectId": "74744562-179c-4936-922f-b0b8c027965b"
+      }
+    },
+    "owner": "devtechturn"
   }
 }

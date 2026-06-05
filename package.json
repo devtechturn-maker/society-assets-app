@@ -4,21 +4,28 @@
   "main": "index.ts",
   "scripts": {
     "theme:sync": "node ../shared/theme/emit-scss.mjs",
-    "prestart": "npm run theme:sync",
-    "start": "expo start",
-    "start:clear": "expo start --clear",
-    "start:tunnel": "expo start --tunnel",
-    "start:lan": "expo start --lan",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "sync:icon": "node scripts/sync-app-icon.mjs",
+    "prestart": "npm run theme:sync && npm run sync:icon",
+    "start": "expo start --dev-client",
+    "start:go": "expo start --go",
+    "start:clear": "expo start --dev-client --clear",
+    "start:tunnel": "expo start --dev-client --tunnel",
+    "start:lan": "expo start --dev-client --lan",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "build:ios:dev": "eas build --profile development --platform ios",
+    "build:android:dev": "eas build --profile development --platform android",
     "web": "expo start --web"
   },
   "dependencies": {
     "axios": "^1.15.2",
-    "expo": "~54.0.33",
+    "expo": "~54.0.35",
     "expo-constants": "~18.0.13",
+    "expo-dev-client": "^56.0.18",
+    "expo-device": "~8.0.10",
     "expo-document-picker": "~14.0.8",
     "expo-linear-gradient": "~15.0.8",
+    "expo-notifications": "~0.32.17",
     "expo-screen-capture": "~8.0.9",
     "expo-secure-store": "~15.0.8",
     "expo-splash-screen": "~31.0.13",
@@ -26,11 +33,12 @@
     "node-forge": "^1.4.0",
     "react": "19.1.0",
     "react-native": "0.81.5",
-    "react-native-get-random-values": "^2.0.0"
+    "react-native-get-random-values": "~1.11.0"
   },
   "devDependencies": {
     "@types/node-forge": "^1.3.14",
     "@types/react": "~19.1.0",
+    "sharp": "^0.34.5",
     "typescript": "~5.9.2"
   },
   "private": true

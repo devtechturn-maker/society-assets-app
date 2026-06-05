@@ -23,37 +23,37 @@ export const light = {
   headerGradient: [palette.navy['700'], palette.navy['800'], palette.navy['900']] as const,
   inputBorder: palette.slate['150'],
   shadow: tokens.light.shadow,
-  navActiveBg: 'rgba(16, 185, 129, 0.2)',
-  navActiveText: '#047857',
+  navActiveBg: 'rgba(112, 8, 140, 0.18)',
+  navActiveText: palette.navy['700'],
   navText: palette.slate['300'],
-  accentSoft: 'rgba(16, 185, 129, 0.15)',
-  chipActiveBg: 'rgba(16, 185, 129, 0.12)',
-  chipActiveBorder: '#10b981',
+  accentSoft: 'rgba(112, 8, 140, 0.14)',
+  chipActiveBg: 'rgba(112, 8, 140, 0.12)',
+  chipActiveBorder: palette.navy['700'],
 } as const;
 
 export const dark = {
   pageBg: tokens.dark.pageBg,
   surface: tokens.dark.surface,
   splashBg: tokens.dark.splashBg,
-  cardBg: '#151f33',
-  cardBorder: '#2a3a55',
+  cardBg: '#26102f',
+  cardBorder: '#3d1a4d',
   text: palette.slate['100'],
   textMuted: palette.slate['400'],
   textSoft: palette.slate['300'],
   textOnDark: palette.slate['100'],
   textOnDarkMuted: palette.slate['400'],
   textOnDarkSoft: palette.slate['300'],
-  accent: '#3b82f6',
-  accentGold: palette.gold['500'],
-  headerGradient: ['#1e3a5f', '#152238', '#0b1220'] as const,
+  accent: palette.gold['500'],
+  accentGold: palette.gold['400'],
+  headerGradient: [palette.navy['700'], palette.navy['800'], palette.navy['900']] as const,
   inputBorder: '#334155',
   shadow: palette.black,
-  navActiveBg: 'rgba(59, 130, 246, 0.25)',
-  navActiveText: '#93c5fd',
+  navActiveBg: 'rgba(160, 75, 189, 0.22)',
+  navActiveText: palette.gold['400'],
   navText: palette.slate['400'],
-  accentSoft: 'rgba(59, 130, 246, 0.2)',
-  chipActiveBg: 'rgba(59, 130, 246, 0.2)',
-  chipActiveBorder: '#3b82f6',
+  accentSoft: 'rgba(112, 8, 140, 0.2)',
+  chipActiveBg: 'rgba(112, 8, 140, 0.2)',
+  chipActiveBorder: palette.navy['700'],
 } as const;
 
 export const colors = {
@@ -85,7 +85,7 @@ export const brand = {
   navyLight: palette.navy['700'],
   gold: palette.gold['500'],
   goldBright: palette.gold['400'],
-  goldMuted: 'rgba(212, 160, 23, 0.22)',
+  goldMuted: palette.accentMuted,
   textOnDark: palette.white,
   textMuted: palette.slate['300'],
   textSoft: palette.slate['400'],
@@ -93,5 +93,5 @@ export const brand = {
 } as const;
 
 export function goldMutedAlpha(alpha = 0.22): string {
-  return `rgba(212, 160, 23, ${alpha})`;
+  return `rgba(112, 8, 140, ${alpha})`;
 }
