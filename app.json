@@ -27,7 +27,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "usesCleartextTraffic": true,
+      "usesCleartextTraffic": false,
       "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
@@ -55,7 +55,8 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "",
+      "apiBaseUrl": "https://YOUR_BACKEND_API_URL",
+      "webPortalUrl": "https://YOUR_WEB_PORTAL_URL",
       "eas": {
         "projectId": "74744562-179c-4936-922f-b0b8c027965b"
       }

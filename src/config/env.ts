@@ -20,8 +20,8 @@ const extra = Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined
 
 const resolved = firstNonEmpty(process.env.EXPO_PUBLIC_API_URL, extra?.apiBaseUrl);
 
-/** Development branch — Android emulator → host machine (Spring on localhost:8080). */
-const FALLBACK = 'http://10.0.2.2:8080';
+/** Production branch — set EXPO_PUBLIC_API_URL or app.json extra.apiBaseUrl before release builds. */
+const FALLBACK = 'https://YOUR_BACKEND_API_URL';
 
 export const API_BASE_URL = resolved ?? FALLBACK;
 
@@ -30,8 +30,8 @@ const webResolved = firstNonEmpty(
   (Constants.expoConfig?.extra as { webPortalUrl?: string } | undefined)?.webPortalUrl
 );
 
-/** Public website for subscription plans (use PC LAN IP on physical device). */
-export const WEB_PORTAL_URL = webResolved ?? 'http://localhost:4200';
+/** Public website for subscription plans. */
+export const WEB_PORTAL_URL = webResolved ?? 'https://YOUR_WEB_PORTAL_URL';
 
 if (__DEV__) {
   console.log('[SocietyAssets] API_BASE_URL =', API_BASE_URL);
