@@ -55,7 +55,7 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "https://YOUR_BACKEND_API_URL",
+      "apiBaseUrl": "https://society-assets-backend.onrender.com",
       "webPortalUrl": "https://YOUR_WEB_PORTAL_URL",
       "eas": {
         "projectId": "74744562-179c-4936-922f-b0b8c027965b"

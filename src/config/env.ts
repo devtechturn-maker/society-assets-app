@@ -21,7 +21,7 @@ const extra = Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined
 const resolved = firstNonEmpty(process.env.EXPO_PUBLIC_API_URL, extra?.apiBaseUrl);
 
 /** Production branch — set EXPO_PUBLIC_API_URL or app.json extra.apiBaseUrl before release builds. */
-const FALLBACK = 'https://YOUR_BACKEND_API_URL';
+const FALLBACK = 'https://society-assets-backend.onrender.com';
 
 export const API_BASE_URL = resolved ?? FALLBACK;
 
