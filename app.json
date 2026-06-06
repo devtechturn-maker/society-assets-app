@@ -64,8 +64,8 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "",
-      "webPortalUrl": "",
+      "apiBaseUrl": "https://society-assets-backend.onrender.com",
+      "webPortalUrl": "https://society-assets-frontend.vercel.app",
       "eas": {
         "projectId": "74744562-179c-4936-922f-b0b8c027965b"
       }
