@@ -1,39 +1,43 @@
-{
-  "cli": {
-    "version": ">= 16.0.0",
-    "appVersionSource": "local"
-  },
-  "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
-      },
-      "ios": {
-        "simulator": false
-      }
-    },
-    "development-simulator": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
-      },
-      "ios": {
-        "simulator": true
-      }
-    },
-    "preview": {
-      "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
-      }
-    },
-    "production": {
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
-      }
-    }
-  }
-}
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com",
+        "EXPO_PUBLIC_WEB_URL": "https://society-assets-frontend.vercel.app"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "development-simulator": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com",
+        "EXPO_PUBLIC_WEB_URL": "https://society-assets-frontend.vercel.app"
+      },
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com",
+        "EXPO_PUBLIC_WEB_URL": "https://society-assets-frontend.vercel.app"
+      }
+    },
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com",
+        "EXPO_PUBLIC_WEB_URL": "https://society-assets-frontend.vercel.app"
+      }
+    }
+  }
+}

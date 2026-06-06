@@ -13,8 +13,9 @@
     "start:lan": "expo start --dev-client --lan",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "build:ios:dev": "eas build --profile development --platform ios",
-    "build:android:dev": "eas build --profile development --platform android",
+    "build:ios:dev": "node scripts/ensure-development-branch.mjs && eas build --profile development --platform ios",
+    "build:android:dev": "node scripts/ensure-development-branch.mjs && eas build --profile development --platform android",
+    "build:ios:sim": "node scripts/ensure-development-branch.mjs && eas build --profile development-simulator --platform ios",
     "web": "expo start --web"
   },
   "dependencies": {
