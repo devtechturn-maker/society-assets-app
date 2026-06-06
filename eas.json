@@ -7,10 +7,6 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com",
-        "EXPO_PUBLIC_WEB_URL": "https://society-assets-frontend.vercel.app"
-      },
       "ios": {
         "simulator": false
       }
@@ -18,26 +14,13 @@
     "development-simulator": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com",
-        "EXPO_PUBLIC_WEB_URL": "https://society-assets-frontend.vercel.app"
-      },
       "ios": {
         "simulator": true
       }
     },
     "preview": {
-      "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com",
-        "EXPO_PUBLIC_WEB_URL": "https://society-assets-frontend.vercel.app"
-      }
+      "distribution": "internal"
     },
-    "production": {
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com",
-        "EXPO_PUBLIC_WEB_URL": "https://society-assets-frontend.vercel.app"
-      }
-    }
+    "production": {}
   }
 }
