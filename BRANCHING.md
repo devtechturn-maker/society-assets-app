@@ -11,10 +11,18 @@
 
 ```bash
 git checkout local
+cp .env.example .env   # first time only
 npx expo start -c
 ```
 
-Uses `.env` → local Spring Boot on your PC.
+| Device | Set in `.env` |
+|--------|----------------|
+| Physical phone | `http://192.168.1.35:8080` |
+| Android emulator | `http://10.0.2.2:8080` |
+| iOS Simulator | `http://localhost:8080` |
+
+`.env` is gitignored — it never merges to `development`.  
+`src/config/env.ts`, `eas.json`, and `app.json` are protected by `.gitattributes` on `development`.
 
 ## Create a device build (must use `development` branch)
 

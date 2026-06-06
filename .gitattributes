@@ -1,0 +1,5 @@
+# When merging local → development, keep development's hosted config (Render / Vercel).
+src/config/env.ts merge=ours
+eas.json merge=ours
+app.json merge=ours
+.env.example merge=ours
