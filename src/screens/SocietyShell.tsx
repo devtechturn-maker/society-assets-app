@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Modal,
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,11 +11,17 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { clearSession } from '../services/storage';
 import {
+  canSwitchAppView,
+  isMemberPortalView,
+  resolveInitialAppViewContext,
+  setAppViewContext,
+  type AppViewContext,
+} from '../services/appContext';
+import {
   fetchMemberModules,
   fetchMemberOverview,
   fetchOverview,
   fetchSocietyModules,
-  isMemberRole,
 } from '../services/api';
 import type { LoginData, NavModule } from '../types/api';
 import { APPEARANCE_MODULE } from '../constants/appearanceModule';
@@ -41,19 +47,6 @@ type Props = {
   onLogout: () => void;
 };
 
-const STAFF_PRIMARY_TABS: { path: string; label: string; glyph: string }[] = [
-  { path: 'dashboard', label: 'Home', glyph: '⌂' },
-  { path: 'maintenance', label: 'Maint.', glyph: '☰' },
-  { path: 'expenses', label: 'Expenses', glyph: '▤' },
-  { path: 'reports', label: 'Reports', glyph: '📊' },
-];
-
-const MEMBER_PRIMARY_TABS: { path: string; label: string; glyph: string }[] = [
-  { path: 'dashboard', label: 'Home', glyph: '⌂' },
-  { path: 'maintenance', label: 'Maint.', glyph: '☰' },
-  { path: 'chat', label: 'Groups', glyph: '💬' },
-];
-
 function societyInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return 'SA';
@@ -61,18 +54,38 @@ function societyInitials(name: string): string {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
+function tabLabel(title: string): string {
+  const trimmed = title.trim();
+  if (trimmed.length <= 11) return trimmed;
+  return `${trimmed.slice(0, 10)}…`;
+}
+
 export function SocietyShell({ user, onLogout }: Props) {
   const { theme, toggleMode, mode } = useTheme();
-  const memberPortal = isMemberRole(user.role);
+  const [appContext, setAppContextState] = useState<AppViewContext>('CHAIRMAN');
+  const [contextReady, setContextReady] = useState(false);
+  const canSwitchView = canSwitchAppView(user);
+  const memberPortal = isMemberPortalView(user, appContext);
   const [modules, setModules] = useState<NavModule[]>(
     memberPortal ? [...FALLBACK_MEMBER_MODULES] : [...FALLBACK_SOCIETY_MODULES, APPEARANCE_MODULE]
   );
   const [activePath, setActivePath] = useState('dashboard');
   const [societyName, setSocietyName] = useState('Society');
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [initialChatGroupId, setInitialChatGroupId] = useState<string | null>(null);
   const [bannerNotification, setBannerNotification] = useState<ChatPushNotification | null>(null);
-  const primaryTabs = memberPortal ? MEMBER_PRIMARY_TABS : STAFF_PRIMARY_TABS;
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveInitialAppViewContext(user).then((context) => {
+      if (!cancelled) {
+        setAppContextState(context);
+        setContextReady(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user.userId]);
 
   const loadMeta = useCallback(async () => {
     try {
@@ -103,8 +116,18 @@ export function SocietyShell({ user, onLogout }: Props) {
   }, [memberPortal]);
 
   useEffect(() => {
+    if (!contextReady) {
+      return;
+    }
     loadMeta();
-  }, [loadMeta]);
+  }, [loadMeta, contextReady]);
+
+  useEffect(() => {
+    setModules(
+      memberPortal ? [...FALLBACK_MEMBER_MODULES] : [...FALLBACK_SOCIETY_MODULES, APPEARANCE_MODULE]
+    );
+    setActivePath('dashboard');
+  }, [memberPortal]);
 
   const openChatFromNotification = useCallback((groupId?: string) => {
     setActivePath('chat');
@@ -141,15 +164,32 @@ export function SocietyShell({ user, onLogout }: Props) {
   );
 
   async function logout() {
-    setDrawerOpen(false);
     await unregisterPushNotificationsFromBackend();
     await clearSession();
     onLogout();
   }
 
-  function selectModule(path: string) {
-    setActivePath(path);
-    setDrawerOpen(false);
+  async function switchAppView() {
+    if (!canSwitchView) {
+      return;
+    }
+    const next: AppViewContext = memberPortal ? 'CHAIRMAN' : 'MEMBER';
+    await setAppViewContext(next);
+    setAppContextState(next);
+  }
+
+  const portalBadge = memberPortal ? 'Member Portal' : 'Society Command';
+  const portalKicker = memberPortal
+    ? `Flat ${user.memberProfile?.flatNumber ?? '—'} · Resident access`
+    : `Financial Command · ${user.role}`;
+  const switchLabel = memberPortal ? 'Chairman' : 'Member';
+
+  if (!contextReady) {
+    return (
+      <View style={[styles.root, styles.boot, { backgroundColor: theme.pageBg }]}>
+        <ActivityIndicator size="large" color={theme.accent} />
+      </View>
+    );
   }
 
   return (
@@ -177,9 +217,7 @@ export function SocietyShell({ user, onLogout }: Props) {
           </View>
           <View style={styles.heroText}>
             <View style={[styles.badge, { backgroundColor: theme.accentSoft }]}>
-              <Text style={[styles.badgeText, { color: theme.accentGold }]}>
-                {memberPortal ? 'Member Portal' : 'Society Command'}
-              </Text>
+              <Text style={[styles.badgeText, { color: theme.accentGold }]}>{portalBadge}</Text>
             </View>
             <Text style={styles.societyName} numberOfLines={2}>
               {societyName}
@@ -190,20 +228,21 @@ export function SocietyShell({ user, onLogout }: Props) {
             <Pressable style={styles.iconBtn} onPress={toggleMode} accessibilityLabel="Toggle theme">
               <Text style={styles.iconBtnText}>{mode === 'dark' ? '☀️' : '🌙'}</Text>
             </Pressable>
-            {memberPortal ? (
+            {canSwitchView ? (
               <Pressable
-                style={styles.iconBtn}
-                onPress={logout}
-                accessibilityLabel="Log out"
+                style={[styles.switchHeaderBtn, { borderColor: theme.accentGold, backgroundColor: theme.accentSoft }]}
+                onPress={switchAppView}
+                accessibilityLabel={memberPortal ? 'Switch to chairman view' : 'Switch to member view'}
               >
-                <Text style={styles.logoutHeaderLabel}>Out</Text>
+                <Text style={[styles.switchHeaderLabel, { color: theme.accentGold }]}>{switchLabel}</Text>
               </Pressable>
             ) : null}
+            <Pressable style={styles.iconBtn} onPress={logout} accessibilityLabel="Log out">
+              <Text style={styles.logoutHeaderLabel}>Out</Text>
+            </Pressable>
           </View>
         </View>
-        <Text style={styles.kicker}>
-          {memberPortal ? 'Resident access' : 'Financial Command'} · {user.role}
-        </Text>
+        <Text style={styles.kicker}>{portalKicker}</Text>
       </LinearGradient>
 
       <View style={styles.content}>
@@ -217,69 +256,47 @@ export function SocietyShell({ user, onLogout }: Props) {
         />
       </View>
 
-      <View style={[styles.bottomBar, { backgroundColor: theme.bottomBarBg, borderTopColor: theme.bottomBarBorder }]}>
-        {primaryTabs.map((tab) => {
-          const active = activePath === tab.path;
-          return (
-            <Pressable key={tab.path} style={styles.tab} onPress={() => selectModule(tab.path)}>
-              <Text style={[styles.tabGlyph, active ? { color: theme.accentGold } : { color: theme.textMuted }]}>
-                {tab.glyph}
-              </Text>
-              <Text style={[styles.tabLabel, active ? { color: theme.accentGold, fontWeight: '700' } : { color: theme.textMuted }]}>
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-        <Pressable style={styles.tab} onPress={() => setDrawerOpen(true)}>
-          <Text style={[styles.tabGlyph, drawerOpen ? { color: theme.accentGold } : { color: theme.textMuted }]}>
-            ☰
-          </Text>
-          <Text style={[styles.tabLabel, { color: theme.textMuted }]}>
-            {memberPortal ? 'Menu' : 'More'}
-          </Text>
-        </Pressable>
+      <View
+        style={[styles.bottomBar, { backgroundColor: theme.bottomBarBg, borderTopColor: theme.bottomBarBorder }]}
+      >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.bottomScrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {modules.map((m) => {
+            const active = activePath === m.routePath;
+            return (
+              <Pressable
+                key={m.code}
+                style={[styles.tab, active ? { backgroundColor: theme.accentSoft } : null]}
+                onPress={() => setActivePath(m.routePath)}
+              >
+                <Text style={[styles.tabGlyph, active ? { color: theme.accentGold } : { color: theme.textMuted }]}>
+                  {moduleGlyph(m.icon)}
+                </Text>
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    active ? { color: theme.accentGold, fontWeight: '700' } : { color: theme.textMuted },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {tabLabel(m.title)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
-
-      <Modal visible={drawerOpen} animationType="slide" transparent onRequestClose={() => setDrawerOpen(false)}>
-        <View style={styles.drawerBackdrop}>
-          <Pressable style={styles.drawerDismiss} onPress={() => setDrawerOpen(false)} />
-          <View style={[styles.drawer, { backgroundColor: theme.cardBg }]}>
-            <Text style={[styles.drawerTitle, { color: theme.text }]}>
-              {memberPortal ? 'Menu' : 'All modules'}
-            </Text>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {modules.map((m) => {
-                const active = m.routePath === activePath;
-                return (
-                  <Pressable
-                    key={m.code}
-                    style={[
-                      styles.drawerItem,
-                      active ? { backgroundColor: theme.accentSoft } : null,
-                    ]}
-                    onPress={() => selectModule(m.routePath)}
-                  >
-                    <Text style={styles.drawerGlyph}>{moduleGlyph(m.icon)}</Text>
-                    <Text style={[styles.drawerLabel, { color: active ? theme.accentGold : theme.text }]}>
-                      {m.title}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <Pressable style={[styles.logoutBtn, { backgroundColor: theme.danger }]} onPress={logout}>
-              <Text style={styles.logoutText}>Logout</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  boot: { alignItems: 'center', justifyContent: 'center' },
   hero: {
     paddingTop: 52,
     paddingHorizontal: 16,
@@ -336,17 +353,34 @@ const styles = StyleSheet.create({
   heroActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+    flexShrink: 0,
   },
   iconBtn: {
-    width: 44,
+    minWidth: 44,
     height: 44,
+    paddingHorizontal: 8,
     borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconBtnText: { fontSize: 20 },
+  switchHeaderBtn: {
+    minWidth: 44,
+    height: 44,
+    paddingHorizontal: 10,
+    borderRadius: 22,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  switchHeaderLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
   logoutHeaderLabel: {
     color: '#fff',
     fontSize: 11,
@@ -356,56 +390,26 @@ const styles = StyleSheet.create({
   },
   content: { flex: 1 },
   bottomBar: {
-    flexDirection: 'row',
     borderTopWidth: 1,
     paddingBottom: 8,
     paddingTop: 6,
   },
+  bottomScrollContent: {
+    paddingHorizontal: 8,
+    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
   tab: {
-    flex: 1,
+    minWidth: 72,
+    maxWidth: 96,
     alignItems: 'center',
-    paddingVertical: 4,
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 10,
     gap: 2,
   },
   tabGlyph: { fontSize: 18 },
-  tabLabel: { fontSize: 10 },
-  drawerBackdrop: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
-  drawerDismiss: { flex: 1 },
-  drawer: {
-    width: '85%',
-    maxWidth: 320,
-    paddingTop: 52,
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
-  },
-  drawerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  drawerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    marginBottom: 4,
-  },
-  drawerGlyph: { fontSize: 18, width: 24, textAlign: 'center' },
-  drawerLabel: { fontSize: 15, fontWeight: '600' },
-  logoutBtn: {
-    marginTop: 12,
-    height: 46,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoutText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  tabLabel: { fontSize: 10, textAlign: 'center' },
 });

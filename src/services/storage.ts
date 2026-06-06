@@ -21,6 +21,8 @@ export async function clearSession(): Promise<void> {
   } catch {
     /* key may be absent */
   }
+  const { clearAppViewContext } = await import('./appContext');
+  await clearAppViewContext();
 }
 
 export async function getToken(): Promise<string | null> {
