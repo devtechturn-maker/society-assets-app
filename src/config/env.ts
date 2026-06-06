@@ -1,9 +1,9 @@
 /**
  * Point this at your Spring Boot API.
- * - Android emulator: http://10.0.2.2:8080 (maps to host machine localhost)
- * - Physical phone (Expo Go / iPhone): http://YOUR_PC_LAN_IP:8080 (same Wi‑Fi as PC)
+ * - EAS dev builds / devices: https://society-assets-backend.onrender.com (app.json + eas.json)
+ * - Local Spring on PC: set EXPO_PUBLIC_API_URL in .env (e.g. http://10.0.2.2:8080 or LAN IP)
  *
- * Resolution order: EXPO_PUBLIC_API_URL (.env) → app.json expo.extra.apiBaseUrl → emulator default.
+ * Resolution order: EXPO_PUBLIC_API_URL (.env) → app.json expo.extra.apiBaseUrl → Render fallback.
  */
 import Constants from 'expo-constants';
 
@@ -20,7 +20,7 @@ const extra = Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined
 
 const resolved = firstNonEmpty(process.env.EXPO_PUBLIC_API_URL, extra?.apiBaseUrl);
 
-/** Production branch — set EXPO_PUBLIC_API_URL or app.json extra.apiBaseUrl before release builds. */
+/** Production branch — hosted backend on Render. */
 const FALLBACK = 'https://society-assets-backend.onrender.com';
 
 export const API_BASE_URL = resolved ?? FALLBACK;
@@ -31,7 +31,7 @@ const webResolved = firstNonEmpty(
 );
 
 /** Public website for subscription plans. */
-export const WEB_PORTAL_URL = webResolved ?? 'https://YOUR_WEB_PORTAL_URL';
+export const WEB_PORTAL_URL = webResolved ?? 'https://society-assets-frontend.vercel.app';
 
 if (__DEV__) {
   console.log('[SocietyAssets] API_BASE_URL =', API_BASE_URL);

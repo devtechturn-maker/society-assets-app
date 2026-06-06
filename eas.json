@@ -7,13 +7,33 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
+      },
       "ios": {
         "simulator": false
       }
     },
-    "preview": {
-      "distribution": "internal"
+    "development-simulator": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
+      },
+      "ios": {
+        "simulator": true
+      }
     },
-    "production": {}
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
+      }
+    },
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
+      }
+    }
   }
 }

@@ -17,17 +17,18 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "package": "com.devtechturn.societyassets",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#70088c"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "usesCleartextTraffic": false,
       "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
@@ -35,6 +36,14 @@
     },
     "plugins": [
       "expo-dev-client",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
       "expo-secure-store",
       [
         "expo-notifications",
@@ -56,7 +65,7 @@
     ],
     "extra": {
       "apiBaseUrl": "https://society-assets-backend.onrender.com",
-      "webPortalUrl": "https://YOUR_WEB_PORTAL_URL",
+      "webPortalUrl": "https://society-assets-frontend.vercel.app",
       "eas": {
         "projectId": "74744562-179c-4936-922f-b0b8c027965b"
       }
