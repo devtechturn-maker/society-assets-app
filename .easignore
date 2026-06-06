@@ -1,0 +1,3 @@
+# Keep local LAN overrides out of EAS uploads — builds use app.json / eas.json env instead.
+.env
+.env*.local
