@@ -1,34 +1,37 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
+  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { API_BASE_URL } from '../config/env';
 import { useAppAlert } from '../context/AppAlertContext';
+import { LoginCityscape } from '../components/LoginCityscape';
 import { login } from '../services/api';
+import { initializeAppViewContext } from '../services/appContext';
 import { saveSession } from '../services/storage';
 import { colors } from '../theme/colors';
 import type { LoginData } from '../types/api';
+
+const LOGO = require('../../assets/primary-logo.png');
+const LOGO_ASPECT = 1536 / 1024;
 
 type Props = {
   onLoggedIn: (user: LoginData) => void;
   onViewPlans: () => void;
 };
-
-const BRAND_POINTS = [
-  'Encryption-grade credential handling',
-  'Audit-ready activity trail and reports',
-  'Chairman-controlled multi-society access',
-] as const;
 
 function loginErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
@@ -58,8 +61,24 @@ function loginErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Login failed';
 }
 
+function useLoginLogoSize(screenWidth: number, screenHeight: number) {
+  return useMemo(() => {
+    const maxLogoHeight = Math.min(screenHeight * 0.38, 255);
+    const maxLogoWidth = screenWidth - 48;
+    let logoWidth = Math.min(maxLogoWidth, 220);
+    let logoHeight = logoWidth * LOGO_ASPECT;
+    if (logoHeight > maxLogoHeight) {
+      logoHeight = maxLogoHeight;
+      logoWidth = logoHeight / LOGO_ASPECT;
+    }
+    return { logoWidth, logoHeight };
+  }, [screenWidth, screenHeight]);
+}
+
 export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
   const { alert } = useAppAlert();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { logoWidth, logoHeight } = useLoginLogoSize(screenWidth, screenHeight);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -75,6 +94,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
     setLoading(true);
     try {
       const data = await login(email, password);
+      await initializeAppViewContext(data);
       await saveSession(data);
       onLoggedIn(data);
     } catch (e: unknown) {
@@ -92,123 +112,114 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          bounces={false}
+      <LinearGradient
+        colors={[colors.navy700, colors.navy800, colors.navy900]}
+        locations={[0, 0.45, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+      <LoginCityscape />
+
+      <SafeAreaView style={styles.safe}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         >
-          <LinearGradient
-            colors={[colors.navy700, colors.navy800, colors.navy900]}
-            locations={[0, 0.58, 1]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.brandPanel}
-          >
-            <Text style={styles.brandKicker}>SOCIETY ASSETS</Text>
-            <Text style={styles.brandTitle}>Institutional-grade society finance governance.</Text>
-            <Text style={styles.brandSubtitle}>
-              Secure maintenance collection, expense transparency, and audit-ready reporting in one
-              platform.
-            </Text>
-            <View style={styles.brandPoints}>
-              {BRAND_POINTS.map((point) => (
-                <View key={point} style={styles.brandPointRow}>
-                  <View style={styles.bulletRing}>
-                    <View style={styles.bulletDot} />
-                  </View>
-                  <Text style={styles.brandPointText}>{point}</Text>
-                </View>
-              ))}
-            </View>
-          </LinearGradient>
-
-          <View style={styles.formPanel}>
-            <View style={styles.authCard}>
-              <Text style={styles.cardTitle}>Member Portal</Text>
-              <Text style={styles.cardSubtitle}>Authenticate to access your society operations.</Text>
-
-              <Text style={styles.label}>Email Address</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="chairman@societyassets.com"
-                placeholderTextColor="#94a3b8"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                autoCorrect={false}
-                value={email}
-                onChangeText={(v) => {
-                  setEmail(v);
-                  if (inlineError) setInlineError(null);
-                }}
+          <View style={styles.page}>
+            <View style={styles.contentBlock}>
+              <Image
+                source={LOGO}
+                style={{ width: logoWidth, height: logoHeight, marginBottom: 18 }}
+                resizeMode="contain"
+                accessibilityLabel="Society Assets"
               />
 
-              <Text style={[styles.label, styles.labelSpaced]}>Password</Text>
-              <View style={styles.passwordWrap}>
+              <View style={styles.authCard}>
+              <View style={styles.cardBody}>
+                <Text style={styles.cardTitle}>Login</Text>
+                <Text style={styles.cardSubtitle}>Authenticate to access your society operations.</Text>
+
+                <Text style={styles.label}>Email Address</Text>
                 <TextInput
-                  style={styles.passwordInput}
-                  placeholder="Enter your password"
+                  style={styles.input}
+                  placeholder="chairman@societyassets.com"
                   placeholderTextColor="#94a3b8"
-                  secureTextEntry={!showPassword}
-                  value={password}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  autoCorrect={false}
+                  value={email}
                   onChangeText={(v) => {
-                    setPassword(v);
+                    setEmail(v);
                     if (inlineError) setInlineError(null);
                   }}
                 />
+
+                <Text style={[styles.label, styles.labelSpaced]}>Password</Text>
+                <View style={styles.passwordWrap}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="Enter your password"
+                    placeholderTextColor="#94a3b8"
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={(v) => {
+                      setPassword(v);
+                      if (inlineError) setInlineError(null);
+                    }}
+                  />
+                  <Pressable
+                    style={styles.passwordToggle}
+                    onPress={() => setShowPassword((v) => !v)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={colors.navy800}
+                    />
+                  </Pressable>
+                </View>
+
+                {inlineError ? (
+                  <Text style={styles.error} numberOfLines={3}>
+                    {inlineError}
+                  </Text>
+                ) : null}
+
                 <Pressable
-                  style={styles.passwordToggle}
-                  onPress={() => setShowPassword((v) => !v)}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  <Text style={styles.passwordToggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
-                </Pressable>
-              </View>
-
-              {inlineError ? <Text style={styles.error}>{inlineError}</Text> : null}
-
-              <Pressable
-                style={[styles.buttonPressable, loading ? styles.buttonDisabled : null]}
-                onPress={handleSubmit}
-                disabled={loading === true}
-              >
-                <LinearGradient
-                  colors={[colors.navy900, colors.navy800]}
-                  start={{ x: 0, y: 0.5 }}
-                  end={{ x: 1, y: 0.5 }}
-                  style={styles.button}
+                  style={[styles.buttonPressable, loading ? styles.buttonDisabled : null]}
+                  onPress={handleSubmit}
+                  disabled={loading === true}
                 >
                   {loading ? (
-                    <Text style={styles.buttonText}>Securing session...</Text>
+                    <View style={styles.button}>
+                      <ActivityIndicator color={colors.white} />
+                    </View>
                   ) : (
-                    <Text style={styles.buttonText}>Secure Login</Text>
+                    <View style={styles.button}>
+                      <Text style={styles.buttonText}>Secure Login</Text>
+                    </View>
                   )}
-                </LinearGradient>
-              </Pressable>
+                </Pressable>
 
-              <View style={styles.newUserBox}>
-                <Text style={styles.newUserLabel}>New society?</Text>
-                <Text style={styles.newUserHint}>
-                  New society? View plans to register. Already registered? After login, open Subscription in the
-                  menu to upgrade or add members.
+                <Text style={styles.footerNote} numberOfLines={2}>
+                  Society registration is available after subscription checkout.
                 </Text>
+
                 <Pressable
-                  style={({ pressed }) => [styles.plansBtn, pressed && styles.plansBtnPressed]}
+                  style={({ pressed }) => [styles.plansLink, pressed && styles.plansLinkPressed]}
                   onPress={onViewPlans}
                 >
-                  <Text style={styles.plansBtnText}>View plans (new society)</Text>
+                  <Text style={styles.plansLinkText}>View plans & register →</Text>
                 </Pressable>
+              </View>
               </View>
             </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </View>
   );
 }
@@ -216,214 +227,147 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.pageBg,
+    backgroundColor: colors.navy900,
+  },
+  safe: {
+    flex: 1,
   },
   flex: { flex: 1 },
-  scroll: {
-    flexGrow: 1,
-  },
-  brandPanel: {
-    paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'ios' ? 56 : 40,
-    paddingBottom: 32,
-  },
-  brandKicker: {
-    marginBottom: 16,
-    fontSize: 13,
-    letterSpacing: 2.2,
-    fontWeight: '700',
-    color: colors.gold600,
-  },
-  brandTitle: {
-    fontSize: 30,
-    lineHeight: 34,
-    fontWeight: '700',
-    color: colors.white,
-    letterSpacing: -0.3,
-  },
-  brandSubtitle: {
-    marginTop: 20,
-    marginBottom: 24,
-    fontSize: 17,
-    lineHeight: 26,
-    color: colors.textOnDarkMuted,
-  },
-  brandPoints: {
-    gap: 14,
-  },
-  brandPointRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  bulletRing: {
-    width: 17,
-    height: 17,
-    borderRadius: 999,
-    backgroundColor: 'rgba(212, 160, 23, 0.22)',
-    alignItems: 'center',
+  page: {
+    flex: 1,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
     justifyContent: 'center',
   },
-  bulletDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 999,
-    backgroundColor: colors.gold500,
-  },
-  brandPointText: {
-    flex: 1,
-    fontSize: 15,
-    color: colors.textOnDarkSoft,
-    lineHeight: 22,
-  },
-  formPanel: {
-    flex: 1,
-    backgroundColor: colors.white,
-    paddingHorizontal: 16,
-    paddingTop: 24,
-    paddingBottom: 32,
+  contentBlock: {
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
+    alignItems: 'center',
   },
   authCard: {
+    width: '100%',
     backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 22,
+    borderRadius: 18,
+    overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: '#0f172a',
+        shadowColor: '#020617',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.08,
-        shadowRadius: 20,
+        shadowOpacity: 0.18,
+        shadowRadius: 16,
       },
       android: {
-        elevation: 4,
+        elevation: 6,
       },
     }),
   },
+  cardBody: {
+    paddingHorizontal: 18,
+    paddingTop: 20,
+    paddingBottom: 18,
+  },
   cardTitle: {
-    fontSize: 30,
+    fontSize: 22,
     fontWeight: '700',
-    color: colors.heading,
+    color: colors.navy900,
     letterSpacing: -0.2,
   },
   cardSubtitle: {
-    marginTop: 8,
-    marginBottom: 24,
-    fontSize: 15,
-    color: colors.label,
-    lineHeight: 22,
+    marginTop: 4,
+    marginBottom: 14,
+    fontSize: 13,
+    color: colors.muted,
+    lineHeight: 18,
   },
   label: {
-    fontSize: 12,
-    color: colors.label,
-    letterSpacing: 1.4,
+    fontSize: 10,
+    color: colors.navy800,
+    letterSpacing: 1.1,
     fontWeight: '700',
     textTransform: 'uppercase',
-    marginBottom: 6,
+    marginBottom: 5,
   },
   labelSpaced: {
-    marginTop: 4,
+    marginTop: 10,
   },
   input: {
-    height: 48,
+    height: 46,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 2,
+    borderRadius: 6,
     paddingHorizontal: 12,
     fontSize: 14,
     color: colors.heading,
-    backgroundColor: colors.white,
-    marginBottom: 10,
+    backgroundColor: '#f8fafc',
   },
   passwordWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
+    height: 46,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 2,
-    backgroundColor: colors.white,
-    marginBottom: 10,
+    borderRadius: 6,
+    backgroundColor: '#f8fafc',
   },
   passwordInput: {
     flex: 1,
-    height: 48,
+    height: 46,
     paddingHorizontal: 12,
     fontSize: 14,
     color: colors.heading,
   },
   passwordToggle: {
     paddingHorizontal: 12,
-    height: 48,
+    height: 46,
     justifyContent: 'center',
-  },
-  passwordToggleText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.navy800,
+    alignItems: 'center',
   },
   error: {
     color: colors.error,
-    fontSize: 13,
-    marginBottom: 8,
-    lineHeight: 18,
+    fontSize: 12,
+    marginTop: 6,
+    lineHeight: 16,
   },
   buttonPressable: {
-    marginTop: 14,
-    borderRadius: 2,
+    marginTop: 16,
+    borderRadius: 6,
     overflow: 'hidden',
   },
   button: {
     height: 46,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#70088c',
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.85,
   },
   buttonText: {
     color: colors.white,
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 1.1,
-    textTransform: 'uppercase',
-  },
-  newUserBox: {
-    marginTop: 20,
-    paddingTop: 18,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-  },
-  newUserLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: colors.label,
-  },
-  newUserHint: {
-    marginTop: 6,
     fontSize: 13,
-    color: colors.muted,
-    lineHeight: 19,
-  },
-  plansBtn: {
-    marginTop: 12,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.gold500,
-    backgroundColor: 'rgba(212, 160, 23, 0.08)',
-  },
-  plansBtnPressed: {
-    opacity: 0.9,
-  },
-  plansBtnText: {
-    color: colors.navy800,
-    fontSize: 15,
     fontWeight: '700',
+    letterSpacing: 1.3,
+    textTransform: 'uppercase',
+  },
+  footerNote: {
+    marginTop: 10,
+    fontSize: 11,
+    lineHeight: 15,
+    color: colors.muted,
+    textAlign: 'center',
+  },
+  plansLink: {
+    marginTop: 6,
+    alignSelf: 'center',
+    paddingVertical: 2,
+  },
+  plansLinkPressed: {
+    opacity: 0.75,
+  },
+  plansLinkText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#70088c',
   },
 });

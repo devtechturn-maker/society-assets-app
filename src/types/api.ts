@@ -78,6 +78,13 @@ export interface LoginData {
   firstLogin: boolean;
   userId: string;
   subscription?: SocietySubscriptionStatus;
+  memberProfile?: {
+    memberId: string;
+    flatNumber: string;
+    name: string;
+    email: string;
+  };
+  canSwitchToMemberView?: boolean;
 }
 
 export interface NavModule {
