@@ -2,6 +2,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config/env';
 import { clearSession, getToken } from './storage';
 import { notifySessionInvalid } from './session';
+import { notifyMaintenanceSettingsRequired } from './maintenanceSettingsGate';
 import type {
   ApiResponse,
   ExpenseCategoryReportRow,
@@ -62,6 +63,16 @@ client.interceptors.response.use(
       if (!url.includes('/auth/login')) {
         await clearSession();
         notifySessionInvalid();
+      }
+    }
+    if (axios.isAxiosError(error) && error.response?.status === 403) {
+      const url = error.config?.url ?? '';
+      const body = error.response.data as { error?: string } | undefined;
+      if (
+        body?.error === 'MAINTENANCE_SETTINGS_REQUIRED' &&
+        !url.includes('/society/settings/maintenance')
+      ) {
+        notifyMaintenanceSettingsRequired();
       }
     }
     return Promise.reject(error);

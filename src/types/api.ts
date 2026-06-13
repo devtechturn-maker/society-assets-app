@@ -160,6 +160,7 @@ export interface MaintenanceSettings {
   maintenancePenaltyGraceDay: number;
   maintenancePenaltyAmount: number;
   allowCustomMemberMaintenance: boolean;
+  configured: boolean;
 }
 
 export interface ReportSummary {

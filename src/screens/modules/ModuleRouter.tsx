@@ -21,6 +21,7 @@ export function ModuleRouter({
   userRole,
   initialChatGroupId,
   onChatGroupConsumed,
+  onMaintenanceConfigured,
 }: {
   routePath: string;
   memberPortal?: boolean;
@@ -28,6 +29,7 @@ export function ModuleRouter({
   userRole?: string;
   initialChatGroupId?: string | null;
   onChatGroupConsumed?: () => void;
+  onMaintenanceConfigured?: () => void;
 }): ReactNode {
   if (memberPortal) {
     switch (routePath) {
@@ -67,7 +69,7 @@ export function ModuleRouter({
     case 'reports':
       return <ReportsModule />;
     case 'settings':
-      return <SettingsModule />;
+      return <SettingsModule onMaintenanceConfigured={onMaintenanceConfigured} />;
     case 'chat':
       return (
         <ChatModule

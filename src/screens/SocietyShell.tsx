@@ -20,6 +20,7 @@ import {
 import {
   fetchMemberModules,
   fetchMemberOverview,
+  fetchMaintenanceSettings,
   fetchOverview,
   fetchSocietyModules,
 } from '../services/api';
@@ -41,6 +42,8 @@ import {
   type ChatPushNotification,
 } from '../services/pushNotifications';
 import { ModuleRouter } from './modules/ModuleRouter';
+import { useAppAlert } from '../context/AppAlertContext';
+import { setMaintenanceSettingsRequiredHandler } from '../services/maintenanceSettingsGate';
 
 type Props = {
   user: LoginData;
@@ -62,8 +65,10 @@ function tabLabel(title: string): string {
 
 export function SocietyShell({ user, onLogout }: Props) {
   const { theme, toggleMode, mode } = useTheme();
+  const { alert } = useAppAlert();
   const [appContext, setAppContextState] = useState<AppViewContext>('CHAIRMAN');
   const [contextReady, setContextReady] = useState(false);
+  const [maintenanceConfigured, setMaintenanceConfigured] = useState(true);
   const canSwitchView = canSwitchAppView(user);
   const memberPortal = isMemberPortalView(user, appContext);
   const [modules, setModules] = useState<NavModule[]>(
@@ -121,6 +126,42 @@ export function SocietyShell({ user, onLogout }: Props) {
     }
     loadMeta();
   }, [loadMeta, contextReady]);
+
+  useEffect(() => {
+    if (!contextReady || memberPortal) {
+      return;
+    }
+
+    const redirectToMaintenanceSetup = () => {
+      setActivePath('settings');
+      alert('Maintenance setup required', 'Please set your maintenance settings first.', { variant: 'warning' });
+    };
+
+    setMaintenanceSettingsRequiredHandler(redirectToMaintenanceSetup);
+    fetchMaintenanceSettings()
+      .then((settings) => {
+        const configured = settings.configured === true;
+        setMaintenanceConfigured(configured);
+        if (!configured) {
+          redirectToMaintenanceSetup();
+        }
+      })
+      .catch(() => undefined);
+
+    return () => setMaintenanceSettingsRequiredHandler(null);
+  }, [contextReady, memberPortal, alert]);
+
+  const selectModule = useCallback(
+    (routePath: string) => {
+      if (!memberPortal && !maintenanceConfigured && routePath !== 'settings') {
+        setActivePath('settings');
+        alert('Maintenance setup required', 'Please set your maintenance settings first.', { variant: 'warning' });
+        return;
+      }
+      setActivePath(routePath);
+    },
+    [memberPortal, maintenanceConfigured, alert]
+  );
 
   useEffect(() => {
     setModules(
@@ -253,6 +294,12 @@ export function SocietyShell({ user, onLogout }: Props) {
           userRole={user.role}
           initialChatGroupId={initialChatGroupId}
           onChatGroupConsumed={() => setInitialChatGroupId(null)}
+          onMaintenanceConfigured={() => {
+            setMaintenanceConfigured(true);
+            fetchMaintenanceSettings()
+              .then((settings) => setMaintenanceConfigured(settings.configured === true))
+              .catch(() => undefined);
+          }}
         />
       </View>
 
@@ -271,7 +318,7 @@ export function SocietyShell({ user, onLogout }: Props) {
               <Pressable
                 key={m.code}
                 style={[styles.tab, active ? { backgroundColor: theme.accentSoft } : null]}
-                onPress={() => setActivePath(m.routePath)}
+                onPress={() => selectModule(m.routePath)}
               >
                 <Text style={[styles.tabGlyph, active ? { color: theme.accentGold } : { color: theme.textMuted }]}>
                   {moduleGlyph(m.icon)}

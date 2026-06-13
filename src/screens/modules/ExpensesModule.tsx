@@ -49,12 +49,12 @@ export function ExpensesModule() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} />}
       >
         <SectionCard
-          title="Member Pending Summary (Audit View)"
-          subtitle="Latest pending status by member for year-end audit"
+          title="Members With Pending Maintenance"
+          subtitle="Only members with an unpaid balance are listed"
         >
           {pending.loading ? <ListLoading /> : null}
           {pending.error ? <ListError message={pending.error} /> : null}
-          {pending.data?.length === 0 ? <ListEmpty message="No pending maintenance." /> : null}
+          {pending.data?.length === 0 ? <ListEmpty message="No members with pending maintenance." /> : null}
           {pending.data?.map((row) => (
             <View key={row.memberId} style={[styles.pendingCard, { borderTopColor: theme.divider }]}>
               <Text style={[styles.name, { color: theme.text }]}>{row.memberName}</Text>

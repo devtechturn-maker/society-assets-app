@@ -25,7 +25,7 @@ import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import type { MaintenanceSettings } from '../../types/api';
 
-export function SettingsModule() {
+export function SettingsModule({ onMaintenanceConfigured }: { onMaintenanceConfigured?: () => void }) {
   const { theme } = useTheme();
   const { alert, confirm } = useAppAlert();
   const { allowScreenCapture, setAllowScreenCapture } = useScreenCaptureSettings();
@@ -89,8 +89,11 @@ export function SettingsModule() {
 
     setSavingSettings(true);
     try {
-      await updateMaintenanceSettings(payload);
+      const saved = await updateMaintenanceSettings(payload);
       alert('Saved', 'Maintenance settings saved.', { variant: 'success' });
+      if (saved.configured === true) {
+        onMaintenanceConfigured?.();
+      }
       settingsLoad.refresh();
     } catch (e: unknown) {
       const msg = axios.isAxiosError(e)
@@ -183,6 +186,14 @@ export function SettingsModule() {
         title="Maintenance Rules & Penalty Settings"
         subtitle="Configure default maintenance, grace days, penalty and per-member override mode"
       >
+        {settingsLoad.data && settingsLoad.data.configured === false ? (
+          <View style={[styles.setupBanner, { backgroundColor: theme.accentSoft, borderColor: theme.accentGold }]}>
+            <Text style={[styles.setupBannerTitle, { color: theme.accentGold }]}>Maintenance setup required</Text>
+            <Text style={[styles.setupBannerText, { color: theme.textMuted }]}>
+              Save your maintenance rules below before using other modules.
+            </Text>
+          </View>
+        ) : null}
         {settingsLoad.loading ? <ListLoading /> : null}
         {settingsLoad.error ? <ListError message={settingsLoad.error} /> : null}
         {settingsLoad.data ? (
@@ -420,5 +431,22 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     marginTop: 12,
     paddingTop: 12,
+  },
+  setupBanner: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+  },
+  setupBannerTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  setupBannerText: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });
