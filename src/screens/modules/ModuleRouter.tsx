@@ -10,6 +10,7 @@ import { OtherIncomeModule } from './OtherIncomeModule';
 import { ReportsModule } from './ReportsModule';
 import { SettingsModule } from './SettingsModule';
 import { SupportModule } from './SupportModule';
+import { PollModule } from './PollModule';
 import { ChatModule } from './ChatModule';
 import { AppearanceModule } from './AppearanceModule';
 import { SubscriptionModule } from './SubscriptionModule';
@@ -21,6 +22,8 @@ export function ModuleRouter({
   userRole,
   initialChatGroupId,
   onChatGroupConsumed,
+  initialPollId,
+  onPollConsumed,
 }: {
   routePath: string;
   memberPortal?: boolean;
@@ -28,6 +31,8 @@ export function ModuleRouter({
   userRole?: string;
   initialChatGroupId?: string | null;
   onChatGroupConsumed?: () => void;
+  initialPollId?: string | null;
+  onPollConsumed?: () => void;
 }): ReactNode {
   if (memberPortal) {
     switch (routePath) {
@@ -42,6 +47,14 @@ export function ModuleRouter({
             userId={userId}
             initialGroupId={initialChatGroupId}
             onInitialGroupConsumed={onChatGroupConsumed}
+          />
+        );
+      case 'polls':
+        return (
+          <PollModule
+            memberPortal
+            initialPollId={initialPollId}
+            onInitialPollConsumed={onPollConsumed}
           />
         );
       case 'support':
@@ -75,6 +88,14 @@ export function ModuleRouter({
           canManageGroups={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
           initialGroupId={initialChatGroupId}
           onInitialGroupConsumed={onChatGroupConsumed}
+        />
+      );
+    case 'polls':
+      return (
+        <PollModule
+          canManagePolls={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
+          initialPollId={initialPollId}
+          onInitialPollConsumed={onPollConsumed}
         />
       );
     case 'support':

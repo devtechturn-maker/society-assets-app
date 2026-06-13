@@ -36,9 +36,9 @@ import {
   addNotificationReceivedListener,
   addNotificationResponseListener,
   registerPushNotificationsWithBackend,
-  resolveInitialNotificationGroupId,
+  resolveInitialNotificationTargets,
   unregisterPushNotificationsFromBackend,
-  type ChatPushNotification,
+  type AppPushNotification,
 } from '../services/pushNotifications';
 import { ModuleRouter } from './modules/ModuleRouter';
 
@@ -72,7 +72,8 @@ export function SocietyShell({ user, onLogout }: Props) {
   const [activePath, setActivePath] = useState('dashboard');
   const [societyName, setSocietyName] = useState('Society');
   const [initialChatGroupId, setInitialChatGroupId] = useState<string | null>(null);
-  const [bannerNotification, setBannerNotification] = useState<ChatPushNotification | null>(null);
+  const [initialPollId, setInitialPollId] = useState<string | null>(null);
+  const [bannerNotification, setBannerNotification] = useState<AppPushNotification | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,18 +137,35 @@ export function SocietyShell({ user, onLogout }: Props) {
     }
   }, []);
 
+  const openPollFromNotification = useCallback((pollId?: string) => {
+    setActivePath('polls');
+    if (pollId) {
+      setInitialPollId(pollId);
+    }
+  }, []);
+
   useEffect(() => {
     registerPushNotificationsWithBackend();
 
-    void resolveInitialNotificationGroupId().then((groupId) => {
+    void resolveInitialNotificationTargets().then(({ groupId, pollId }) => {
+      if (pollId) {
+        openPollFromNotification(pollId);
+        return;
+      }
       if (groupId) {
         openChatFromNotification(groupId);
       }
     });
 
-    const openSubscription = addNotificationResponseListener((groupId) => {
-      setBannerNotification(null);
-      openChatFromNotification(groupId);
+    const openSubscription = addNotificationResponseListener({
+      onOpenChat: (groupId) => {
+        setBannerNotification(null);
+        openChatFromNotification(groupId);
+      },
+      onOpenPoll: (pollId) => {
+        setBannerNotification(null);
+        openPollFromNotification(pollId);
+      },
     });
     const receivedSubscription = addNotificationReceivedListener((notification) => {
       setBannerNotification(notification);
@@ -156,7 +174,7 @@ export function SocietyShell({ user, onLogout }: Props) {
       openSubscription.remove();
       receivedSubscription.remove();
     };
-  }, [user.userId, openChatFromNotification]);
+  }, [user.userId, openChatFromNotification, openPollFromNotification]);
 
   const activeTitle = useMemo(
     () => modules.find((m) => m.routePath === activePath)?.title ?? 'Dashboard',
@@ -200,6 +218,10 @@ export function SocietyShell({ user, onLogout }: Props) {
         notification={bannerNotification}
         onPress={(item) => {
           setBannerNotification(null);
+          if (item.kind === 'poll') {
+            openPollFromNotification(item.pollId);
+            return;
+          }
           openChatFromNotification(item.groupId);
         }}
         onDismiss={() => setBannerNotification(null)}
@@ -253,6 +275,8 @@ export function SocietyShell({ user, onLogout }: Props) {
           userRole={user.role}
           initialChatGroupId={initialChatGroupId}
           onChatGroupConsumed={() => setInitialChatGroupId(null)}
+          initialPollId={initialPollId}
+          onPollConsumed={() => setInitialPollId(null)}
         />
       </View>
 

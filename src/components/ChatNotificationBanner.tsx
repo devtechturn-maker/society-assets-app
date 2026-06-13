@@ -10,15 +10,15 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme/ThemeContext';
-import type { ChatPushNotification } from '../services/pushNotifications';
+import type { AppPushNotification } from '../services/pushNotifications';
 
 const logoGlyph = require('../../assets/logo-glyph.png');
 
 const AUTO_DISMISS_MS = 5000;
 
 type Props = {
-  notification: ChatPushNotification | null;
-  onPress: (notification: ChatPushNotification) => void;
+  notification: AppPushNotification | null;
+  onPress: (notification: AppPushNotification) => void;
   onDismiss: () => void;
 };
 
@@ -63,6 +63,8 @@ export function ChatNotificationBanner({ notification, onPress, onDismiss }: Pro
   }
 
   const topInset = Platform.OS === 'ios' ? 52 : 12;
+  const title = notification.kind === 'poll' ? notification.question : notification.groupName;
+  const glyph = notification.kind === 'poll' ? '📊' : '💬';
 
   return (
     <Animated.View
@@ -110,14 +112,14 @@ export function ChatNotificationBanner({ notification, onPress, onDismiss }: Pro
             <Text style={[styles.time, { color: theme.textMuted }]}>now</Text>
           </View>
           <Text style={[styles.groupName, { color: theme.text }]} numberOfLines={1}>
-            {notification.groupName}
+            {title}
           </Text>
           <Text style={[styles.preview, { color: theme.textSoft }]} numberOfLines={2}>
             {notification.preview}
           </Text>
         </View>
         <View style={[styles.chatGlyph, { backgroundColor: theme.accentSoft }]}>
-          <Text style={[styles.chatGlyphText, { color: theme.accentGold }]}>💬</Text>
+          <Text style={[styles.chatGlyphText, { color: theme.accentGold }]}>{glyph}</Text>
         </View>
       </Pressable>
     </Animated.View>

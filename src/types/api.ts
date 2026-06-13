@@ -307,3 +307,33 @@ export interface ChatThreadQuery {
   before?: string;
   after?: string;
 }
+
+export interface PollOption {
+  optionId: string;
+  label: string;
+  sortOrder: number;
+  voteCount?: number;
+  percentage?: number;
+  voters?: { userId: string; name: string; votedAt: string }[];
+}
+
+export interface PollSummary {
+  pollId: string;
+  question: string;
+  status: 'ACTIVE' | 'CLOSED';
+  allMembers: boolean;
+  createdAt: string;
+  closedAt: string | null;
+  totalVotes: number;
+  participantCount: number;
+  hasVoted: boolean;
+  canVote: boolean;
+  showResults: boolean;
+  createdByName?: string;
+}
+
+export interface PollDetail extends PollSummary {
+  myVoteOptionId?: string;
+  options: PollOption[];
+  sharedToCount?: number;
+}
