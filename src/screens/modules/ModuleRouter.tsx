@@ -11,6 +11,7 @@ import { ReportsModule } from './ReportsModule';
 import { SettingsModule } from './SettingsModule';
 import { SupportModule } from './SupportModule';
 import { PollModule } from './PollModule';
+import { ComplaintModule } from './ComplaintModule';
 import { ChatModule } from './ChatModule';
 import { AppearanceModule } from './AppearanceModule';
 import { SubscriptionModule } from './SubscriptionModule';
@@ -24,6 +25,8 @@ export function ModuleRouter({
   onChatGroupConsumed,
   initialPollId,
   onPollConsumed,
+  initialComplaintId,
+  onComplaintConsumed,
 }: {
   routePath: string;
   memberPortal?: boolean;
@@ -33,6 +36,8 @@ export function ModuleRouter({
   onChatGroupConsumed?: () => void;
   initialPollId?: string | null;
   onPollConsumed?: () => void;
+  initialComplaintId?: string | null;
+  onComplaintConsumed?: () => void;
 }): ReactNode {
   if (memberPortal) {
     switch (routePath) {
@@ -55,6 +60,14 @@ export function ModuleRouter({
             memberPortal
             initialPollId={initialPollId}
             onInitialPollConsumed={onPollConsumed}
+          />
+        );
+      case 'complaints':
+        return (
+          <ComplaintModule
+            memberPortal
+            initialComplaintId={initialComplaintId}
+            onInitialComplaintConsumed={onComplaintConsumed}
           />
         );
       case 'support':
@@ -96,6 +109,14 @@ export function ModuleRouter({
           canManagePolls={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
           initialPollId={initialPollId}
           onInitialPollConsumed={onPollConsumed}
+        />
+      );
+    case 'complaints':
+      return (
+        <ComplaintModule
+          canManageComplaints={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
+          initialComplaintId={initialComplaintId}
+          onInitialComplaintConsumed={onComplaintConsumed}
         />
       );
     case 'support':

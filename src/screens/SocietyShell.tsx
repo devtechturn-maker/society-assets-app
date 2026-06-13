@@ -79,6 +79,7 @@ export function SocietyShell({ user, onLogout }: Props) {
   const [societyName, setSocietyName] = useState('Society');
   const [initialChatGroupId, setInitialChatGroupId] = useState<string | null>(null);
   const [initialPollId, setInitialPollId] = useState<string | null>(null);
+  const [initialComplaintId, setInitialComplaintId] = useState<string | null>(null);
   const [bannerNotification, setBannerNotification] = useState<AppPushNotification | null>(null);
   const inbox = useNotificationInbox(user.userId);
 
@@ -151,6 +152,13 @@ export function SocietyShell({ user, onLogout }: Props) {
     }
   }, []);
 
+  const openComplaintFromNotification = useCallback((complaintId?: string) => {
+    setActivePath('complaints');
+    if (complaintId) {
+      setInitialComplaintId(complaintId);
+    }
+  }, []);
+
   useEffect(() => {
     registerPushNotificationsWithBackend();
 
@@ -163,6 +171,10 @@ export function SocietyShell({ user, onLogout }: Props) {
       await inbox.markPushNotificationAsRead(parsed);
       if (parsed.kind === 'poll') {
         openPollFromNotification(parsed.pollId);
+        return;
+      }
+      if (parsed.kind === 'complaint') {
+        openComplaintFromNotification(parsed.complaintId);
         return;
       }
       openChatFromNotification(parsed.groupId);
@@ -179,6 +191,9 @@ export function SocietyShell({ user, onLogout }: Props) {
       onOpenPoll: (pollId) => {
         openPollFromNotification(pollId);
       },
+      onOpenComplaint: (complaintId) => {
+        openComplaintFromNotification(complaintId);
+      },
     });
     const receivedSubscription = addNotificationReceivedListener((notification) => {
       setBannerNotification(notification);
@@ -192,6 +207,7 @@ export function SocietyShell({ user, onLogout }: Props) {
     user.userId,
     openChatFromNotification,
     openPollFromNotification,
+    openComplaintFromNotification,
     inbox.markPushNotificationAsRead,
     inbox.refreshUnreadCount,
   ]);
@@ -243,6 +259,10 @@ export function SocietyShell({ user, onLogout }: Props) {
               openPollFromNotification(item.pollId);
               return;
             }
+            if (item.kind === 'complaint') {
+              openComplaintFromNotification(item.complaintId);
+              return;
+            }
             openChatFromNotification(item.groupId);
           });
         }}
@@ -264,6 +284,10 @@ export function SocietyShell({ user, onLogout }: Props) {
             if (!opened) return;
             if (opened.pollId || opened.type.startsWith('POLL')) {
               openPollFromNotification(opened.pollId);
+              return;
+            }
+            if (opened.complaintId || opened.type.startsWith('COMPLAINT')) {
+              openComplaintFromNotification(opened.complaintId);
               return;
             }
             if (opened.groupId || opened.type.startsWith('GROUP')) {
@@ -324,6 +348,8 @@ export function SocietyShell({ user, onLogout }: Props) {
           onChatGroupConsumed={() => setInitialChatGroupId(null)}
           initialPollId={initialPollId}
           onPollConsumed={() => setInitialPollId(null)}
+          initialComplaintId={initialComplaintId}
+          onComplaintConsumed={() => setInitialComplaintId(null)}
         />
       </View>
 

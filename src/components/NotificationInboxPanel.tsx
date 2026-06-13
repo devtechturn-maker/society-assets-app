@@ -41,6 +41,7 @@ function formatWhen(value: string): string {
 
 function notificationGlyph(type: string): string {
   if (type.startsWith('POLL')) return '📊';
+  if (type.startsWith('COMPLAINT')) return '⚠';
   if (type.startsWith('GROUP')) return '💬';
   return '🔔';
 }

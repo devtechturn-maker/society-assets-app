@@ -33,6 +33,8 @@ import type {
   ChatGroupSummary,
   PollDetail,
   PollSummary,
+  ComplaintDetail,
+  ComplaintSummary,
   AppNotification,
   NotificationPage,
 } from '../types/api';
@@ -470,6 +472,36 @@ export async function sharePollResults(
   return data.data;
 }
 
+export function fetchComplaints(memberPortal: boolean): Promise<ComplaintSummary[]> {
+  const url = memberPortal ? '/member/complaints' : '/society/complaints';
+  return getData<ComplaintSummary[]>(url);
+}
+
+export function fetchComplaintDetail(memberPortal: boolean, complaintId: string): Promise<ComplaintDetail> {
+  const url = memberPortal ? `/member/complaints/${complaintId}` : `/society/complaints/${complaintId}`;
+  return getData<ComplaintDetail>(url);
+}
+
+export async function createComplaint(payload: {
+  subject: string;
+  description: string;
+  category: string;
+}): Promise<ComplaintDetail> {
+  const { data } = await client.post<ApiResponse<ComplaintDetail>>('/member/complaints', payload);
+  return data.data;
+}
+
+export async function updateComplaint(
+  complaintId: string,
+  payload: { status: string; chairmanNote?: string }
+): Promise<ComplaintDetail> {
+  const { data } = await client.post<ApiResponse<ComplaintDetail>>(
+    `/society/complaints/${complaintId}/update`,
+    payload
+  );
+  return data.data;
+}
+
 export function fetchNotificationsPage(limit = 7, offset = 0): Promise<NotificationPage> {
   return getData<NotificationPage>(`/notifications?limit=${limit}&offset=${offset}`);
 }
@@ -490,6 +522,7 @@ export async function markNotificationRead(notificationId: string): Promise<AppN
 export async function markNotificationReadByTarget(params: {
   groupId?: string;
   pollId?: string;
+  complaintId?: string;
 }): Promise<AppNotification> {
   const { data } = await client.post<ApiResponse<AppNotification>>('/notifications/read-by-target', null, {
     params,

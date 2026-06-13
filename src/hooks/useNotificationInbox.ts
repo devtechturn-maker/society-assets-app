@@ -150,6 +150,7 @@ export function useNotificationInbox(userId: string) {
         const updated = await markNotificationReadByTarget({
           groupId: push.kind === 'chat' ? push.groupId : undefined,
           pollId: push.kind === 'poll' ? push.pollId : undefined,
+          complaintId: push.kind === 'complaint' ? push.complaintId : undefined,
         });
         applyRead(updated);
       } catch {
