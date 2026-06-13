@@ -338,3 +338,23 @@ export interface PollDetail extends PollSummary {
   options: PollOption[];
   sharedToCount?: number;
 }
+
+export interface AppNotification {
+  notificationId: string;
+  type: string;
+  title: string;
+  subtitle: string;
+  body: string;
+  groupId?: string;
+  pollId?: string;
+  societyId?: string;
+  read: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationPage {
+  items: AppNotification[];
+  hasMore: boolean;
+  nextOffset: number;
+}

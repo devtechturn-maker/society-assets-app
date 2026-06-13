@@ -34,6 +34,8 @@ import type {
   ChatGroupSummary,
   PollDetail,
   PollSummary,
+  AppNotification,
+  NotificationPage,
 } from '../types/api';
 import { encryptPasswordForLogin } from '../crypto/rsaEncrypt';
 
@@ -477,6 +479,40 @@ export async function sharePollResults(
     payload
   );
   return data.data;
+}
+
+export function fetchNotificationsPage(limit = 7, offset = 0): Promise<NotificationPage> {
+  return getData<NotificationPage>(`/notifications?limit=${limit}&offset=${offset}`);
+}
+
+export function fetchUnreadNotificationCount(): Promise<number> {
+  return getData<{ unreadCount: number }>('/notifications/unread-count').then(
+    (payload) => payload.unreadCount ?? 0
+  );
+}
+
+export async function markNotificationRead(notificationId: string): Promise<AppNotification> {
+  const { data } = await client.post<ApiResponse<AppNotification>>(
+    `/notifications/${notificationId}/read`
+  );
+  return data.data;
+}
+
+export async function markNotificationReadByTarget(params: {
+  groupId?: string;
+  pollId?: string;
+}): Promise<AppNotification> {
+  const { data } = await client.post<ApiResponse<AppNotification>>('/notifications/read-by-target', null, {
+    params,
+  });
+  return data.data;
+}
+
+export async function markAllNotificationsRead(): Promise<number> {
+  const { data } = await client.post<ApiResponse<{ markedRead: number; unreadCount: number }>>(
+    '/notifications/read-all'
+  );
+  return data.data?.unreadCount ?? 0;
 }
 
 export { API_BASE_URL };
