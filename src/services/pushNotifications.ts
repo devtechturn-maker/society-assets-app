@@ -6,12 +6,22 @@ import { isRunningInExpoGo } from 'expo';
 import { AppState, Platform } from 'react-native';
 import { registerDevicePushToken, unregisterDevicePushToken } from './api';
 
-export type ChatPushNotification = {
+export type AppPushNotification = {
+  kind: 'chat';
   groupId: string;
   groupName: string;
   preview: string;
   type: 'GROUP_CHAT' | 'GROUP_ADDED';
+} | {
+  kind: 'poll';
+  pollId: string;
+  question: string;
+  preview: string;
+  type: 'POLL_CREATED' | 'POLL_RESULTS';
 };
+
+/** @deprecated Use AppPushNotification */
+export type ChatPushNotification = Extract<AppPushNotification, { kind: 'chat' }>;
 
 let cachedExpoPushToken: string | null = null;
 let initialized = false;
@@ -40,6 +50,14 @@ async function ensureAndroidChannel(): Promise<void> {
   await Notifications.setNotificationChannelAsync('chat', {
     name: 'Society Assets · Group Chat',
     description: 'Chat messages and group updates',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#70088c',
+    sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync('polls', {
+    name: 'Society Assets · Polls',
+    description: 'New polls and poll result updates',
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: '#70088c',
@@ -174,7 +192,35 @@ type PushData = {
   groupId?: string;
   groupName?: string;
   senderName?: string;
+  pollId?: string;
+  question?: string;
 };
+
+function parseAppPushNotification(
+  content: Notifications.NotificationContent | null | undefined
+): AppPushNotification | null {
+  if (!content) return null;
+  const data = content.data as PushData;
+  if (data?.type === 'POLL_CREATED' || data?.type === 'POLL_RESULTS') {
+    const pollId = data.pollId ? String(data.pollId) : '';
+    if (!pollId) return null;
+    const question =
+      (data.question && String(data.question).trim()) ||
+      (content.subtitle && String(content.subtitle).trim()) ||
+      'Society Poll';
+    const preview =
+      (content.body && String(content.body).trim()) ||
+      (data.type === 'POLL_RESULTS' ? 'Poll results shared' : 'New poll');
+    return {
+      kind: 'poll',
+      pollId,
+      question,
+      preview,
+      type: data.type,
+    };
+  }
+  return parseChatPushNotification(content);
+}
 
 function parseChatPushNotification(
   content: Notifications.NotificationContent | null | undefined
@@ -198,6 +244,7 @@ function parseChatPushNotification(
     (data.type === 'GROUP_ADDED' ? 'You were added to this group' : 'New message');
 
   return {
+    kind: 'chat',
     groupId,
     groupName,
     preview,
@@ -211,47 +258,84 @@ function extractNotificationContent(
   return notification?.request?.content ?? null;
 }
 
+function extractPollId(
+  response: Notifications.NotificationResponse | null | undefined
+): string | undefined {
+  const parsed = parseAppPushNotification(extractNotificationContent(response?.notification));
+  return parsed?.kind === 'poll' ? parsed.pollId : undefined;
+}
+
 function extractChatGroupId(
   response: Notifications.NotificationResponse | null | undefined
 ): string | undefined {
-  return parseChatPushNotification(extractNotificationContent(response?.notification))?.groupId;
+  const parsed = parseAppPushNotification(extractNotificationContent(response?.notification));
+  return parsed?.kind === 'chat' ? parsed.groupId : undefined;
+}
+
+export function openNotificationResponse(
+  response: Notifications.NotificationResponse | null | undefined,
+  handlers: {
+    onOpenChat?: (groupId?: string) => void;
+    onOpenPoll?: (pollId?: string) => void;
+  }
+): boolean {
+  const pollId = extractPollId(response);
+  if (pollId) {
+    handlers.onOpenPoll?.(pollId);
+    return true;
+  }
+  const groupId = extractChatGroupId(response);
+  if (groupId) {
+    handlers.onOpenChat?.(groupId);
+    return true;
+  }
+  return false;
 }
 
 export function openChatFromNotificationResponse(
   response: Notifications.NotificationResponse | null | undefined,
   onOpenChat: (groupId?: string) => void
 ): boolean {
-  const groupId = extractChatGroupId(response);
-  if (!groupId) return false;
-  onOpenChat(groupId);
-  return true;
+  return openNotificationResponse(response, { onOpenChat });
+}
+
+export async function resolveInitialNotificationTargets(): Promise<{
+  groupId?: string;
+  pollId?: string;
+}> {
+  if (!isRemotePushAvailable()) return {};
+  const response = await Notifications.getLastNotificationResponseAsync();
+  return {
+    groupId: extractChatGroupId(response),
+    pollId: extractPollId(response),
+  };
 }
 
 export async function resolveInitialNotificationGroupId(): Promise<string | undefined> {
-  if (!isRemotePushAvailable()) return undefined;
-  const response = await Notifications.getLastNotificationResponseAsync();
-  return extractChatGroupId(response);
+  const targets = await resolveInitialNotificationTargets();
+  return targets.groupId;
 }
 
-export function addNotificationResponseListener(
-  onOpenChat: (groupId?: string) => void
-): Notifications.Subscription {
+export function addNotificationResponseListener(handlers: {
+  onOpenChat?: (groupId?: string) => void;
+  onOpenPoll?: (pollId?: string) => void;
+}): Notifications.Subscription {
   if (!isRemotePushAvailable()) {
     return { remove: () => undefined };
   }
   return Notifications.addNotificationResponseReceivedListener((response) => {
-    openChatFromNotificationResponse(response, onOpenChat);
+    openNotificationResponse(response, handlers);
   });
 }
 
 export function addNotificationReceivedListener(
-  onReceived: (notification: ChatPushNotification) => void
+  onReceived: (notification: AppPushNotification) => void
 ): Notifications.Subscription {
   if (!isRemotePushAvailable()) {
     return { remove: () => undefined };
   }
   return Notifications.addNotificationReceivedListener((notification) => {
-    const parsed = parseChatPushNotification(extractNotificationContent(notification));
+    const parsed = parseAppPushNotification(extractNotificationContent(notification));
     if (parsed) {
       onReceived(parsed);
     }

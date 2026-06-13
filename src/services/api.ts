@@ -32,6 +32,8 @@ import type {
   ChatThreadQuery,
   ChatMessage,
   ChatGroupSummary,
+  PollDetail,
+  PollSummary,
 } from '../types/api';
 import { encryptPasswordForLogin } from '../crypto/rsaEncrypt';
 
@@ -432,6 +434,49 @@ export async function unregisterDevicePushToken(expoPushToken?: string): Promise
   await client.delete<ApiResponse<unknown>>('/devices/push-token', {
     data: expoPushToken ? { expoPushToken } : {},
   });
+}
+
+export function fetchPolls(memberPortal: boolean): Promise<PollSummary[]> {
+  const url = memberPortal ? '/member/polls' : '/society/polls';
+  return getData<PollSummary[]>(url);
+}
+
+export function fetchPollDetail(memberPortal: boolean, pollId: string): Promise<PollDetail> {
+  const url = memberPortal ? `/member/polls/${pollId}` : `/society/polls/${pollId}`;
+  return getData<PollDetail>(url);
+}
+
+export async function createPoll(payload: {
+  question: string;
+  options: string[];
+  allMembers: boolean;
+  memberIds: string[];
+}): Promise<PollDetail> {
+  const { data } = await client.post<ApiResponse<PollDetail>>('/society/polls', payload);
+  return data.data;
+}
+
+export async function voteOnPoll(pollId: string, optionId: string): Promise<PollDetail> {
+  const { data } = await client.post<ApiResponse<PollDetail>>(`/member/polls/${pollId}/vote`, {
+    optionId,
+  });
+  return data.data;
+}
+
+export async function closePoll(pollId: string): Promise<PollDetail> {
+  const { data } = await client.post<ApiResponse<PollDetail>>(`/society/polls/${pollId}/close`, {});
+  return data.data;
+}
+
+export async function sharePollResults(
+  pollId: string,
+  payload: { allMembers: boolean; memberIds: string[] }
+): Promise<PollDetail> {
+  const { data } = await client.post<ApiResponse<PollDetail>>(
+    `/society/polls/${pollId}/share-results`,
+    payload
+  );
+  return data.data;
 }
 
 export { API_BASE_URL };
