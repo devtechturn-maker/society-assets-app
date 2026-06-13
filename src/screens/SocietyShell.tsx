@@ -33,13 +33,19 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import { ChatNotificationBanner } from '../components/ChatNotificationBanner';
 import {
+  NotificationBellButton,
+  NotificationInboxPanel,
+} from '../components/NotificationInboxPanel';
+import { useNotificationInbox } from '../hooks/useNotificationInbox';
+import {
   addNotificationReceivedListener,
   addNotificationResponseListener,
+  parseAppPushFromResponse,
   registerPushNotificationsWithBackend,
-  resolveInitialNotificationTargets,
   unregisterPushNotificationsFromBackend,
   type AppPushNotification,
 } from '../services/pushNotifications';
+import * as Notifications from 'expo-notifications';
 import { ModuleRouter } from './modules/ModuleRouter';
 
 type Props = {
@@ -74,6 +80,7 @@ export function SocietyShell({ user, onLogout }: Props) {
   const [initialChatGroupId, setInitialChatGroupId] = useState<string | null>(null);
   const [initialPollId, setInitialPollId] = useState<string | null>(null);
   const [bannerNotification, setBannerNotification] = useState<AppPushNotification | null>(null);
+  const inbox = useNotificationInbox(user.userId);
 
   useEffect(() => {
     let cancelled = false;
@@ -147,34 +154,47 @@ export function SocietyShell({ user, onLogout }: Props) {
   useEffect(() => {
     registerPushNotificationsWithBackend();
 
-    void resolveInitialNotificationTargets().then(({ groupId, pollId }) => {
-      if (pollId) {
-        openPollFromNotification(pollId);
+    void (async () => {
+      const response = await Notifications.getLastNotificationResponseAsync();
+      const parsed = parseAppPushFromResponse(response);
+      if (!parsed) {
         return;
       }
-      if (groupId) {
-        openChatFromNotification(groupId);
+      await inbox.markPushNotificationAsRead(parsed);
+      if (parsed.kind === 'poll') {
+        openPollFromNotification(parsed.pollId);
+        return;
       }
-    });
+      openChatFromNotification(parsed.groupId);
+    })();
 
     const openSubscription = addNotificationResponseListener({
-      onOpenChat: (groupId) => {
+      onOpen: (notification) => {
         setBannerNotification(null);
+        void inbox.markPushNotificationAsRead(notification);
+      },
+      onOpenChat: (groupId) => {
         openChatFromNotification(groupId);
       },
       onOpenPoll: (pollId) => {
-        setBannerNotification(null);
         openPollFromNotification(pollId);
       },
     });
     const receivedSubscription = addNotificationReceivedListener((notification) => {
       setBannerNotification(notification);
+      void inbox.refreshUnreadCount();
     });
     return () => {
       openSubscription.remove();
       receivedSubscription.remove();
     };
-  }, [user.userId, openChatFromNotification, openPollFromNotification]);
+  }, [
+    user.userId,
+    openChatFromNotification,
+    openPollFromNotification,
+    inbox.markPushNotificationAsRead,
+    inbox.refreshUnreadCount,
+  ]);
 
   const activeTitle = useMemo(
     () => modules.find((m) => m.routePath === activePath)?.title ?? 'Dashboard',
@@ -218,13 +238,39 @@ export function SocietyShell({ user, onLogout }: Props) {
         notification={bannerNotification}
         onPress={(item) => {
           setBannerNotification(null);
-          if (item.kind === 'poll') {
-            openPollFromNotification(item.pollId);
-            return;
-          }
-          openChatFromNotification(item.groupId);
+          void inbox.markPushNotificationAsRead(item).then(() => {
+            if (item.kind === 'poll') {
+              openPollFromNotification(item.pollId);
+              return;
+            }
+            openChatFromNotification(item.groupId);
+          });
         }}
         onDismiss={() => setBannerNotification(null)}
+      />
+
+      <NotificationInboxPanel
+        visible={inbox.panelOpen}
+        notifications={inbox.notifications}
+        unreadCount={inbox.unreadCount}
+        loading={inbox.loading}
+        loadingMore={inbox.loadingMore}
+        hasMore={inbox.hasMore}
+        onClose={inbox.closePanel}
+        onLoadMore={() => void inbox.loadMore()}
+        onMarkAllRead={() => void inbox.handleMarkAllRead()}
+        onPressNotification={(item) => {
+          void inbox.handleOpenNotification(item).then((opened) => {
+            if (!opened) return;
+            if (opened.pollId || opened.type.startsWith('POLL')) {
+              openPollFromNotification(opened.pollId);
+              return;
+            }
+            if (opened.groupId || opened.type.startsWith('GROUP')) {
+              openChatFromNotification(opened.groupId);
+            }
+          });
+        }}
       />
 
       <LinearGradient colors={[...theme.headerGradient]} style={styles.hero}>
@@ -247,6 +293,7 @@ export function SocietyShell({ user, onLogout }: Props) {
             <Text style={[styles.moduleTitle, { color: theme.accentGold }]}>{activeTitle}</Text>
           </View>
           <View style={styles.heroActions}>
+            <NotificationBellButton unreadCount={inbox.unreadCount} onPress={inbox.openPanel} />
             <Pressable style={styles.iconBtn} onPress={toggleMode} accessibilityLabel="Toggle theme">
               <Text style={styles.iconBtnText}>{mode === 'dark' ? '☀️' : '🌙'}</Text>
             </Pressable>

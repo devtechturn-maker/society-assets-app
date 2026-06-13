@@ -19,6 +19,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@stomp/stompjs": "^7.3.0",
     "axios": "^1.15.2",
     "expo": "~54.0.35",
     "expo-build-properties": "~1.0.10",

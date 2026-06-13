@@ -8,12 +8,14 @@ import { registerDevicePushToken, unregisterDevicePushToken } from './api';
 
 export type AppPushNotification = {
   kind: 'chat';
+  notificationId?: string;
   groupId: string;
   groupName: string;
   preview: string;
   type: 'GROUP_CHAT' | 'GROUP_ADDED';
 } | {
   kind: 'poll';
+  notificationId?: string;
   pollId: string;
   question: string;
   preview: string;
@@ -194,7 +196,16 @@ type PushData = {
   senderName?: string;
   pollId?: string;
   question?: string;
+  notificationId?: string;
 };
+
+function readNotificationId(data: PushData | undefined): string | undefined {
+  if (!data?.notificationId) {
+    return undefined;
+  }
+  const value = String(data.notificationId).trim();
+  return value || undefined;
+}
 
 function parseAppPushNotification(
   content: Notifications.NotificationContent | null | undefined
@@ -213,6 +224,7 @@ function parseAppPushNotification(
       (data.type === 'POLL_RESULTS' ? 'Poll results shared' : 'New poll');
     return {
       kind: 'poll',
+      notificationId: readNotificationId(data),
       pollId,
       question,
       preview,
@@ -245,6 +257,7 @@ function parseChatPushNotification(
 
   return {
     kind: 'chat',
+    notificationId: readNotificationId(data),
     groupId,
     groupName,
     preview,
@@ -272,24 +285,31 @@ function extractChatGroupId(
   return parsed?.kind === 'chat' ? parsed.groupId : undefined;
 }
 
+export function parseAppPushFromResponse(
+  response: Notifications.NotificationResponse | null | undefined
+): AppPushNotification | null {
+  return parseAppPushNotification(extractNotificationContent(response?.notification));
+}
+
 export function openNotificationResponse(
   response: Notifications.NotificationResponse | null | undefined,
   handlers: {
+    onOpen?: (notification: AppPushNotification) => void;
     onOpenChat?: (groupId?: string) => void;
     onOpenPoll?: (pollId?: string) => void;
   }
 ): boolean {
-  const pollId = extractPollId(response);
-  if (pollId) {
-    handlers.onOpenPoll?.(pollId);
+  const parsed = parseAppPushFromResponse(response);
+  if (!parsed) {
+    return false;
+  }
+  handlers.onOpen?.(parsed);
+  if (parsed.kind === 'poll') {
+    handlers.onOpenPoll?.(parsed.pollId);
     return true;
   }
-  const groupId = extractChatGroupId(response);
-  if (groupId) {
-    handlers.onOpenChat?.(groupId);
-    return true;
-  }
-  return false;
+  handlers.onOpenChat?.(parsed.groupId);
+  return true;
 }
 
 export function openChatFromNotificationResponse(
@@ -317,6 +337,7 @@ export async function resolveInitialNotificationGroupId(): Promise<string | unde
 }
 
 export function addNotificationResponseListener(handlers: {
+  onOpen?: (notification: AppPushNotification) => void;
   onOpenChat?: (groupId?: string) => void;
   onOpenPoll?: (pollId?: string) => void;
 }): Notifications.Subscription {
