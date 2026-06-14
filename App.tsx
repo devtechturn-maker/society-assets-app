@@ -3,6 +3,7 @@ import { ActivityIndicator, LogBox, Platform, StyleSheet, View } from 'react-nat
 import * as ExpoSplashScreen from 'expo-splash-screen';
 import { SecureScreenGuard } from './src/components/SecureScreenGuard';
 import { FirstLoginPasswordScreen } from './src/screens/FirstLoginPasswordScreen';
+import { ForgotPasswordScreen } from './src/screens/ForgotPasswordScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { PlansScreen } from './src/screens/PlansScreen';
 import { SocietyShell } from './src/screens/SocietyShell';
@@ -33,7 +34,7 @@ if (__DEV__) {
 let appLaunchGeneration = 0;
 appLaunchGeneration += 1;
 
-type GuestScreen = 'login' | 'plans';
+type GuestScreen = 'login' | 'plans' | 'forgot-password';
 
 function AppRoot() {
   const { theme } = useTheme();
@@ -161,13 +162,23 @@ function AppRoot() {
           }}
         />
       ) : user ? (
-        <SocietyShell user={user} onLogout={handleLogout} />
+        <SocietyShell
+          user={user}
+          onLogout={handleLogout}
+          onUserUpdated={setUser}
+        />
       ) : guestScreen === 'plans' ? (
         <PlansScreen onBack={() => setGuestScreen('login')} />
+      ) : guestScreen === 'forgot-password' ? (
+        <ForgotPasswordScreen
+          onBackToLogin={() => setGuestScreen('login')}
+          onPasswordReset={() => setGuestScreen('login')}
+        />
       ) : (
         <LoginScreen
           onLoggedIn={handleLoggedIn}
           onViewPlans={() => setGuestScreen('plans')}
+          onForgotPassword={() => setGuestScreen('forgot-password')}
         />
       )}
     </View>

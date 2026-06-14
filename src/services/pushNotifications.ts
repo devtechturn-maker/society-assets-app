@@ -19,7 +19,14 @@ export type AppPushNotification = {
   pollId: string;
   question: string;
   preview: string;
-  type: 'POLL_CREATED' | 'POLL_RESULTS';
+  type: 'POLL_CREATED' | 'POLL_RESULTS' | 'POLL_VOTED';
+} | {
+  kind: 'complaint';
+  notificationId?: string;
+  complaintId: string;
+  subject: string;
+  preview: string;
+  type: 'COMPLAINT_CREATED' | 'COMPLAINT_UPDATED';
 };
 
 /** @deprecated Use AppPushNotification */
@@ -60,6 +67,14 @@ async function ensureAndroidChannel(): Promise<void> {
   await Notifications.setNotificationChannelAsync('polls', {
     name: 'Society Assets · Polls',
     description: 'New polls and poll result updates',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#70088c',
+    sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync('complaints', {
+    name: 'Society Assets · Complaints',
+    description: 'Member complaints and status updates',
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: '#70088c',
@@ -196,6 +211,8 @@ type PushData = {
   senderName?: string;
   pollId?: string;
   question?: string;
+  complaintId?: string;
+  subject?: string;
   notificationId?: string;
 };
 
@@ -227,6 +244,25 @@ function parseAppPushNotification(
       notificationId: readNotificationId(data),
       pollId,
       question,
+      preview,
+      type: data.type,
+    };
+  }
+  if (data?.type === 'COMPLAINT_CREATED' || data?.type === 'COMPLAINT_UPDATED') {
+    const complaintId = data.complaintId ? String(data.complaintId) : '';
+    if (!complaintId) return null;
+    const subject =
+      (data.subject && String(data.subject).trim()) ||
+      (content.subtitle && String(content.subtitle).trim()) ||
+      'Complaint';
+    const preview =
+      (content.body && String(content.body).trim()) ||
+      (data.type === 'COMPLAINT_UPDATED' ? 'Complaint updated' : 'New complaint');
+    return {
+      kind: 'complaint',
+      notificationId: readNotificationId(data),
+      complaintId,
+      subject,
       preview,
       type: data.type,
     };
@@ -297,6 +333,7 @@ export function openNotificationResponse(
     onOpen?: (notification: AppPushNotification) => void;
     onOpenChat?: (groupId?: string) => void;
     onOpenPoll?: (pollId?: string) => void;
+    onOpenComplaint?: (complaintId?: string) => void;
   }
 ): boolean {
   const parsed = parseAppPushFromResponse(response);
@@ -306,6 +343,10 @@ export function openNotificationResponse(
   handlers.onOpen?.(parsed);
   if (parsed.kind === 'poll') {
     handlers.onOpenPoll?.(parsed.pollId);
+    return true;
+  }
+  if (parsed.kind === 'complaint') {
+    handlers.onOpenComplaint?.(parsed.complaintId);
     return true;
   }
   handlers.onOpenChat?.(parsed.groupId);
@@ -322,13 +363,15 @@ export function openChatFromNotificationResponse(
 export async function resolveInitialNotificationTargets(): Promise<{
   groupId?: string;
   pollId?: string;
+  complaintId?: string;
 }> {
   if (!isRemotePushAvailable()) return {};
   const response = await Notifications.getLastNotificationResponseAsync();
-  return {
-    groupId: extractChatGroupId(response),
-    pollId: extractPollId(response),
-  };
+  const parsed = parseAppPushFromResponse(response);
+  if (!parsed) return {};
+  if (parsed.kind === 'poll') return { pollId: parsed.pollId };
+  if (parsed.kind === 'complaint') return { complaintId: parsed.complaintId };
+  return { groupId: parsed.groupId };
 }
 
 export async function resolveInitialNotificationGroupId(): Promise<string | undefined> {
@@ -340,6 +383,7 @@ export function addNotificationResponseListener(handlers: {
   onOpen?: (notification: AppPushNotification) => void;
   onOpenChat?: (groupId?: string) => void;
   onOpenPoll?: (pollId?: string) => void;
+  onOpenComplaint?: (complaintId?: string) => void;
 }): Notifications.Subscription {
   if (!isRemotePushAvailable()) {
     return { remove: () => undefined };

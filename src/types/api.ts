@@ -85,6 +85,22 @@ export interface LoginData {
     email: string;
   };
   canSwitchToMemberView?: boolean;
+  emailVerified?: boolean;
+  firstName?: string;
+  lastName?: string;
+}
+
+export interface MemberProfile {
+  memberId: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string;
+  flatNumber: string;
+  phone: string;
+  emailVerified: boolean;
+  emailVerificationRequired: boolean;
+  societyName: string;
 }
 
 export interface NavModule {
@@ -339,14 +355,33 @@ export interface PollDetail extends PollSummary {
   sharedToCount?: number;
 }
 
+export interface ComplaintSummary {
+  complaintId: string;
+  subject: string;
+  category: string;
+  status: string;
+  createdAt: string;
+  resolvedAt: string | null;
+  memberName?: string;
+  flatNumber?: string;
+}
+
+export interface ComplaintDetail extends ComplaintSummary {
+  description: string;
+  chairmanNote?: string | null;
+  memberId?: string;
+}
+
 export interface AppNotification {
   notificationId: string;
   type: string;
   title: string;
   subtitle: string;
   body: string;
+  audienceRole?: 'CHAIRMAN' | 'MEMBER';
   groupId?: string;
   pollId?: string;
+  complaintId?: string;
   societyId?: string;
   read: boolean;
   readAt: string | null;

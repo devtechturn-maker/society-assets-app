@@ -39,7 +39,6 @@ export function AppearanceModule() {
           />
         </View>
       </SectionCard>
-
     </ScrollView>
   );
 }

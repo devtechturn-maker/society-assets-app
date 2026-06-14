@@ -12,6 +12,7 @@ import {
 import axios from 'axios';
 import { ListEmpty, ListError, ListLoading } from '../../components/dashboard/ListStates';
 import { SectionCard } from '../../components/dashboard/SectionCard';
+import { ChangePasswordFlow } from '../../components/ChangePasswordFlow';
 import {
   addContractType,
   deleteContractType,
@@ -161,6 +162,8 @@ export function SettingsModule({ onMaintenanceConfigured }: { onMaintenanceConfi
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} />}
       keyboardShouldPersistTaps="handled"
     >
+      <ChangePasswordFlow />
+
       <SectionCard
         title="Screenshots & screen recording"
         subtitle="Saved on this device only. Turn off to block screenshots and screen recording in the app."

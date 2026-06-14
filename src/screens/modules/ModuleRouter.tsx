@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { ContractsModule } from './ContractsModule';
 import { DashboardModule } from './DashboardModule';
 import { MemberDashboardModule } from './MemberDashboardModule';
+import { MemberProfileModule } from './MemberProfileModule';
 import { MemberMaintenanceModule } from './MemberMaintenanceModule';
 import { ExpensesModule } from './ExpensesModule';
 import { MaintenanceModule } from './MaintenanceModule';
@@ -11,6 +12,7 @@ import { ReportsModule } from './ReportsModule';
 import { SettingsModule } from './SettingsModule';
 import { SupportModule } from './SupportModule';
 import { PollModule } from './PollModule';
+import { ComplaintModule } from './ComplaintModule';
 import { ChatModule } from './ChatModule';
 import { AppearanceModule } from './AppearanceModule';
 import { SubscriptionModule } from './SubscriptionModule';
@@ -25,6 +27,10 @@ export function ModuleRouter({
   onMaintenanceConfigured,
   initialPollId,
   onPollConsumed,
+  initialComplaintId,
+  onComplaintConsumed,
+  onUserUpdated,
+  onNavigateProfile,
 }: {
   routePath: string;
   memberPortal?: boolean;
@@ -35,11 +41,15 @@ export function ModuleRouter({
   onMaintenanceConfigured?: () => void;
   initialPollId?: string | null;
   onPollConsumed?: () => void;
+  initialComplaintId?: string | null;
+  onComplaintConsumed?: () => void;
+  onUserUpdated?: (patch: Partial<import('../../types/api').LoginData>) => void;
+  onNavigateProfile?: () => void;
 }): ReactNode {
   if (memberPortal) {
     switch (routePath) {
       case 'dashboard':
-        return <MemberDashboardModule />;
+        return <MemberDashboardModule onOpenProfile={() => onNavigateProfile?.()} />;
       case 'maintenance':
         return <MemberMaintenanceModule />;
       case 'chat':
@@ -59,6 +69,16 @@ export function ModuleRouter({
             onInitialPollConsumed={onPollConsumed}
           />
         );
+      case 'complaints':
+        return (
+          <ComplaintModule
+            memberPortal
+            initialComplaintId={initialComplaintId}
+            onInitialComplaintConsumed={onComplaintConsumed}
+          />
+        );
+      case 'profile':
+        return <MemberProfileModule onUserUpdated={onUserUpdated} />;
       case 'support':
         return <SupportModule />;
       default:
@@ -98,6 +118,14 @@ export function ModuleRouter({
           canManagePolls={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
           initialPollId={initialPollId}
           onInitialPollConsumed={onPollConsumed}
+        />
+      );
+    case 'complaints':
+      return (
+        <ComplaintModule
+          canManageComplaints={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
+          initialComplaintId={initialComplaintId}
+          onInitialComplaintConsumed={onComplaintConsumed}
         />
       );
     case 'support':

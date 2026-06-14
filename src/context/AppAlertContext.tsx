@@ -41,6 +41,7 @@ type ConfirmOptions = {
 type AppAlertContextValue = {
   alert: (title: string, message?: string, options?: { variant?: AlertVariant }) => void;
   confirm: (options: ConfirmOptions) => void;
+  toast: (message: string, variant?: AlertVariant) => void;
 };
 
 const AppAlertContext = createContext<AppAlertContextValue | null>(null);
@@ -102,8 +103,16 @@ const VARIANT_META: Record<
 
 export function AppAlertProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AlertState | null>(null);
+  const [toastState, setToastState] = useState<{ message: string; variant: AlertVariant } | null>(null);
 
   const dismiss = useCallback(() => setState(null), []);
+
+  const toast = useCallback((message: string, variant: AlertVariant = 'info') => {
+    setToastState({ message, variant });
+    setTimeout(() => {
+      setToastState((current) => (current?.message === message ? null : current));
+    }, 3500);
+  }, []);
 
   const runButton = useCallback(
     async (btn: AlertButton) => {
@@ -145,11 +154,12 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const value = useMemo(() => ({ alert, confirm }), [alert, confirm]);
+  const value = useMemo(() => ({ alert, confirm, toast }), [alert, confirm, toast]);
 
   return (
     <AppAlertContext.Provider value={value}>
       {children}
+      {toastState ? <AppToast message={toastState.message} variant={toastState.variant} /> : null}
       {state ? (
         <Modal
           visible
@@ -162,6 +172,31 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
         </Modal>
       ) : null}
     </AppAlertContext.Provider>
+  );
+}
+
+function AppToast({ message, variant }: { message: string; variant: AlertVariant }) {
+  const { theme } = useTheme();
+  const meta = VARIANT_META[variant];
+  const accent = meta.accent(theme);
+
+  return (
+    <View pointerEvents="none" style={styles.toastWrap}>
+      <View
+        style={[
+          styles.toast,
+          {
+            backgroundColor: theme.cardBg,
+            borderColor: accent,
+            shadowColor: theme.shadow,
+          },
+        ]}
+      >
+        <Text style={[styles.toastText, { color: theme.text }]} numberOfLines={3}>
+          {message}
+        </Text>
+      </View>
+    </View>
   );
 }
 
@@ -343,5 +378,28 @@ const styles = StyleSheet.create({
   btnText: {
     fontSize: 15,
     fontWeight: '700',
+  },
+  toastWrap: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 48,
+    zIndex: 9999,
+    elevation: 20,
+  },
+  toast: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+  },
+  toastText: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

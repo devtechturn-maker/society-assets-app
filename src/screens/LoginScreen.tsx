@@ -31,6 +31,7 @@ const LOGO_ASPECT = 1536 / 1024;
 type Props = {
   onLoggedIn: (user: LoginData) => void;
   onViewPlans: () => void;
+  onForgotPassword: () => void;
 };
 
 function loginErrorMessage(error: unknown): string {
@@ -75,7 +76,7 @@ function useLoginLogoSize(screenWidth: number, screenHeight: number) {
   }, [screenWidth, screenHeight]);
 }
 
-export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
+export function LoginScreen({ onLoggedIn, onViewPlans, onForgotPassword }: Props) {
   const { alert } = useAppAlert();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { logoWidth, logoHeight } = useLoginLogoSize(screenWidth, screenHeight);
@@ -181,6 +182,13 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
                     />
                   </Pressable>
                 </View>
+
+                <Pressable
+                  style={({ pressed }) => [styles.forgotLink, pressed && styles.plansLinkPressed]}
+                  onPress={onForgotPassword}
+                >
+                  <Text style={styles.forgotLinkText}>Forgot password?</Text>
+                </Pressable>
 
                 {inlineError ? (
                   <Text style={styles.error} numberOfLines={3}>
@@ -366,6 +374,16 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   plansLinkText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#70088c',
+  },
+  forgotLink: {
+    alignSelf: 'flex-end',
+    marginTop: 6,
+    paddingVertical: 2,
+  },
+  forgotLinkText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#70088c',

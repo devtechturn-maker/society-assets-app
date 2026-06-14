@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { clearSession } from '../services/storage';
+import { Ionicons } from '@expo/vector-icons';
+import { clearSession, updateStoredUser } from '../services/storage';
 import {
   canSwitchAppView,
   isMemberPortalView,
@@ -23,12 +24,14 @@ import {
   fetchMaintenanceSettings,
   fetchOverview,
   fetchSocietyModules,
+  isMemberRole,
 } from '../services/api';
 import type { LoginData, NavModule } from '../types/api';
 import { APPEARANCE_MODULE } from '../constants/appearanceModule';
 import {
   FALLBACK_MEMBER_MODULES,
   FALLBACK_SOCIETY_MODULES,
+  mergeMemberPortalModules,
   moduleGlyph,
 } from '../constants/fallbackModules';
 import { useTheme } from '../theme/ThemeContext';
@@ -48,12 +51,16 @@ import {
 } from '../services/pushNotifications';
 import * as Notifications from 'expo-notifications';
 import { ModuleRouter } from './modules/ModuleRouter';
+import { pushTypeMatchesAudience, type NotificationAudience } from '../utils/notificationAudience';
+import { subscribeMemberProfileNavigation } from '../services/memberProfileNavigation';
 import { useAppAlert } from '../context/AppAlertContext';
+import { mergeLoginUserPatch, userDisplayName } from '../utils/userDisplayName';
 import { setMaintenanceSettingsRequiredHandler } from '../services/maintenanceSettingsGate';
 
 type Props = {
   user: LoginData;
   onLogout: () => void;
+  onUserUpdated?: (user: LoginData) => void;
 };
 
 function societyInitials(name: string): string {
@@ -69,14 +76,49 @@ function tabLabel(title: string): string {
   return `${trimmed.slice(0, 10)}…`;
 }
 
-export function SocietyShell({ user, onLogout }: Props) {
+function formatRole(role: string | undefined): string {
+  switch ((role ?? '').trim().toUpperCase()) {
+    case 'CHAIRMAN':
+      return 'Chairman';
+    case 'TREASURER':
+      return 'Treasurer';
+    case 'AUDITOR':
+      return 'Auditor';
+    case 'USER':
+      return 'Staff';
+    case 'MEMBER':
+      return 'Member';
+    default:
+      return role?.trim() || 'User';
+  }
+}
+
+export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
   const { theme, toggleMode, mode } = useTheme();
-  const { alert } = useAppAlert();
+  const { alert, toast } = useAppAlert();
+  const [sessionUser, setSessionUser] = useState(user);
   const [appContext, setAppContextState] = useState<AppViewContext>('CHAIRMAN');
   const [contextReady, setContextReady] = useState(false);
   const [maintenanceConfigured, setMaintenanceConfigured] = useState(true);
   const canSwitchView = canSwitchAppView(user);
-  const memberPortal = isMemberPortalView(user, appContext);
+  const memberPortal = isMemberPortalView(sessionUser, appContext);
+  const notificationAudience = useMemo((): NotificationAudience | null => {
+    if (canSwitchView) {
+      return appContext;
+    }
+    if (isMemberRole(user.role)) {
+      return 'MEMBER';
+    }
+    return null;
+  }, [canSwitchView, sessionUser.role, appContext]);
+
+  useEffect(() => {
+    setSessionUser(user);
+  }, [user]);
+
+  const handleUserUpdated = useCallback((patch: Partial<LoginData>) => {
+    setSessionUser((current) => mergeLoginUserPatch(current, patch));
+  }, []);
   const [modules, setModules] = useState<NavModule[]>(
     memberPortal ? [...FALLBACK_MEMBER_MODULES] : [...FALLBACK_SOCIETY_MODULES, APPEARANCE_MODULE]
   );
@@ -84,8 +126,9 @@ export function SocietyShell({ user, onLogout }: Props) {
   const [societyName, setSocietyName] = useState('Society');
   const [initialChatGroupId, setInitialChatGroupId] = useState<string | null>(null);
   const [initialPollId, setInitialPollId] = useState<string | null>(null);
+  const [initialComplaintId, setInitialComplaintId] = useState<string | null>(null);
   const [bannerNotification, setBannerNotification] = useState<AppPushNotification | null>(null);
-  const inbox = useNotificationInbox(user.userId);
+  const inbox = useNotificationInbox(user.userId, notificationAudience);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,11 +143,30 @@ export function SocietyShell({ user, onLogout }: Props) {
     };
   }, [user.userId]);
 
+  useEffect(() => {
+    if (!contextReady || !memberPortal) {
+      return;
+    }
+    if (isMemberRole(sessionUser.role) && sessionUser.emailVerified === false) {
+      setActivePath('profile');
+    }
+  }, [contextReady, memberPortal, sessionUser.role, sessionUser.emailVerified]);
+
+  useEffect(() => {
+    if (!memberPortal) {
+      return;
+    }
+    return subscribeMemberProfileNavigation(() => {
+      setActivePath('profile');
+      toast('Please verify your email first.', 'error');
+    });
+  }, [memberPortal, toast]);
+
   const loadMeta = useCallback(async () => {
     try {
       if (memberPortal) {
         const [mods, overview] = await Promise.all([fetchMemberModules(), fetchMemberOverview()]);
-        const merged = [...mods].sort((a, b) => a.sortOrder - b.sortOrder);
+        const merged = mergeMemberPortalModules(mods);
         if (merged.length > 0) setModules(merged);
         if (overview.societyName) setSocietyName(overview.societyName);
         return;
@@ -192,6 +254,13 @@ export function SocietyShell({ user, onLogout }: Props) {
     }
   }, []);
 
+  const openComplaintFromNotification = useCallback((complaintId?: string) => {
+    setActivePath('complaints');
+    if (complaintId) {
+      setInitialComplaintId(complaintId);
+    }
+  }, []);
+
   useEffect(() => {
     registerPushNotificationsWithBackend();
 
@@ -201,9 +270,19 @@ export function SocietyShell({ user, onLogout }: Props) {
       if (!parsed) {
         return;
       }
+      if (
+        notificationAudience &&
+        !pushTypeMatchesAudience(parsed.type, notificationAudience)
+      ) {
+        return;
+      }
       await inbox.markPushNotificationAsRead(parsed);
       if (parsed.kind === 'poll') {
         openPollFromNotification(parsed.pollId);
+        return;
+      }
+      if (parsed.kind === 'complaint') {
+        openComplaintFromNotification(parsed.complaintId);
         return;
       }
       openChatFromNotification(parsed.groupId);
@@ -220,8 +299,18 @@ export function SocietyShell({ user, onLogout }: Props) {
       onOpenPoll: (pollId) => {
         openPollFromNotification(pollId);
       },
+      onOpenComplaint: (complaintId) => {
+        openComplaintFromNotification(complaintId);
+      },
     });
     const receivedSubscription = addNotificationReceivedListener((notification) => {
+      if (
+        notificationAudience &&
+        !pushTypeMatchesAudience(notification.type, notificationAudience)
+      ) {
+        void inbox.refreshUnreadCount();
+        return;
+      }
       setBannerNotification(notification);
       void inbox.refreshUnreadCount();
     });
@@ -231,8 +320,10 @@ export function SocietyShell({ user, onLogout }: Props) {
     };
   }, [
     user.userId,
+    notificationAudience,
     openChatFromNotification,
     openPollFromNotification,
+    openComplaintFromNotification,
     inbox.markPushNotificationAsRead,
     inbox.refreshUnreadCount,
   ]);
@@ -248,20 +339,31 @@ export function SocietyShell({ user, onLogout }: Props) {
     onLogout();
   }
 
-  async function switchAppView() {
-    if (!canSwitchView) {
+  async function switchToOfficeView() {
+    if (!canSwitchView || !memberPortal) {
       return;
     }
-    const next: AppViewContext = memberPortal ? 'CHAIRMAN' : 'MEMBER';
-    await setAppViewContext(next);
-    setAppContextState(next);
+    await setAppViewContext('CHAIRMAN');
+    setAppContextState('CHAIRMAN');
   }
 
-  const portalBadge = memberPortal ? 'Member Portal' : 'Society Command';
+  async function switchToMemberView() {
+    if (!canSwitchView || memberPortal) {
+      return;
+    }
+    await setAppViewContext('MEMBER');
+    setAppContextState('MEMBER');
+  }
+
+  const displayName = userDisplayName(sessionUser);
+  const portalBadge = memberPortal ? 'Member View' : formatRole(sessionUser.role);
+  const headerTitle = memberPortal && displayName ? displayName : societyName;
+  const avatarLabel = memberPortal && displayName ? displayName : societyName;
   const portalKicker = memberPortal
-    ? `Flat ${user.memberProfile?.flatNumber ?? '—'} · Resident access`
-    : `Financial Command · ${user.role}`;
-  const switchLabel = memberPortal ? 'Chairman' : 'Member';
+    ? displayName
+      ? `${societyName} · Flat ${sessionUser.memberProfile?.flatNumber ?? '—'} · Resident access`
+      : `Flat ${sessionUser.memberProfile?.flatNumber ?? '—'} · Resident access`
+    : 'Financial Command';
 
   if (!contextReady) {
     return (
@@ -282,6 +384,10 @@ export function SocietyShell({ user, onLogout }: Props) {
           void inbox.markPushNotificationAsRead(item).then(() => {
             if (item.kind === 'poll') {
               openPollFromNotification(item.pollId);
+              return;
+            }
+            if (item.kind === 'complaint') {
+              openComplaintFromNotification(item.complaintId);
               return;
             }
             openChatFromNotification(item.groupId);
@@ -307,6 +413,10 @@ export function SocietyShell({ user, onLogout }: Props) {
               openPollFromNotification(opened.pollId);
               return;
             }
+            if (opened.complaintId || opened.type.startsWith('COMPLAINT')) {
+              openComplaintFromNotification(opened.complaintId);
+              return;
+            }
             if (opened.groupId || opened.type.startsWith('GROUP')) {
               openChatFromNotification(opened.groupId);
             }
@@ -322,14 +432,14 @@ export function SocietyShell({ user, onLogout }: Props) {
               { borderColor: theme.accentGold, backgroundColor: theme.accentSoft },
             ]}
           >
-            <Text style={styles.avatarText}>{societyInitials(societyName)}</Text>
+            <Text style={styles.avatarText}>{societyInitials(avatarLabel)}</Text>
           </View>
           <View style={styles.heroText}>
             <View style={[styles.badge, { backgroundColor: theme.accentSoft }]}>
               <Text style={[styles.badgeText, { color: theme.accentGold }]}>{portalBadge}</Text>
             </View>
             <Text style={styles.societyName} numberOfLines={2}>
-              {societyName}
+              {headerTitle}
             </Text>
             <Text style={[styles.moduleTitle, { color: theme.accentGold }]}>{activeTitle}</Text>
           </View>
@@ -338,29 +448,66 @@ export function SocietyShell({ user, onLogout }: Props) {
             <Pressable style={styles.iconBtn} onPress={toggleMode} accessibilityLabel="Toggle theme">
               <Text style={styles.iconBtnText}>{mode === 'dark' ? '☀️' : '🌙'}</Text>
             </Pressable>
-            {canSwitchView ? (
-              <Pressable
-                style={[styles.switchHeaderBtn, { borderColor: theme.accentGold, backgroundColor: theme.accentSoft }]}
-                onPress={switchAppView}
-                accessibilityLabel={memberPortal ? 'Switch to chairman view' : 'Switch to member view'}
-              >
-                <Text style={[styles.switchHeaderLabel, { color: theme.accentGold }]}>{switchLabel}</Text>
-              </Pressable>
-            ) : null}
             <Pressable style={styles.iconBtn} onPress={logout} accessibilityLabel="Log out">
-              <Text style={styles.logoutHeaderLabel}>Out</Text>
+              <Ionicons name="log-out-outline" size={22} color="#fff" />
             </Pressable>
           </View>
         </View>
         <Text style={styles.kicker}>{portalKicker}</Text>
+        {canSwitchView ? (
+          <View style={styles.roleSwitcher}>
+            <Pressable
+              style={[
+                styles.roleSegment,
+                !memberPortal ? styles.roleSegmentActive : null,
+                !memberPortal ? { borderColor: theme.accentGold, backgroundColor: theme.accentSoft } : null,
+              ]}
+              onPress={() => void switchToOfficeView()}
+              accessibilityLabel="Switch to office view"
+              accessibilityState={{ selected: !memberPortal }}
+            >
+              <Text
+                style={[
+                  styles.roleSegmentTitle,
+                  !memberPortal ? { color: theme.accentGold } : styles.roleSegmentTitleIdle,
+                ]}
+              >
+                Office
+              </Text>
+              <Text style={styles.roleSegmentHint}>{formatRole(sessionUser.role)}</Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.roleSegment,
+                memberPortal ? styles.roleSegmentActive : null,
+                memberPortal ? { borderColor: theme.accentGold, backgroundColor: theme.accentSoft } : null,
+              ]}
+              onPress={() => void switchToMemberView()}
+              accessibilityLabel="Switch to member view"
+              accessibilityState={{ selected: memberPortal }}
+            >
+              <Text
+                style={[
+                  styles.roleSegmentTitle,
+                  memberPortal ? { color: theme.accentGold } : styles.roleSegmentTitleIdle,
+                ]}
+              >
+                Member
+              </Text>
+              <Text style={styles.roleSegmentHint}>
+                {displayName || `Flat ${sessionUser.memberProfile?.flatNumber ?? '—'}`}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
       </LinearGradient>
 
       <View style={styles.content}>
         <ModuleRouter
           routePath={activePath}
           memberPortal={memberPortal}
-          userId={user.userId}
-          userRole={user.role}
+          userId={sessionUser.userId}
+          userRole={sessionUser.role}
           initialChatGroupId={initialChatGroupId}
           onChatGroupConsumed={() => setInitialChatGroupId(null)}
           onMaintenanceConfigured={() => {
@@ -371,6 +518,17 @@ export function SocietyShell({ user, onLogout }: Props) {
           }}
           initialPollId={initialPollId}
           onPollConsumed={() => setInitialPollId(null)}
+          initialComplaintId={initialComplaintId}
+          onComplaintConsumed={() => setInitialComplaintId(null)}
+          onUserUpdated={(patch) => {
+            handleUserUpdated(patch);
+            void updateStoredUser(patch).then((next) => {
+              if (next) {
+                onUserUpdated?.(next);
+              }
+            });
+          }}
+          onNavigateProfile={() => setActivePath('profile')}
         />
       </View>
 
@@ -408,6 +566,7 @@ export function SocietyShell({ user, onLogout }: Props) {
           })}
         </ScrollView>
       </View>
+
     </View>
   );
 }
@@ -484,27 +643,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconBtnText: { fontSize: 20 },
-  switchHeaderBtn: {
-    minWidth: 44,
-    height: 44,
-    paddingHorizontal: 10,
-    borderRadius: 22,
-    borderWidth: 1,
+  roleSwitcher: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+    padding: 4,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  roleSegment: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  switchHeaderLabel: {
-    fontSize: 11,
+  roleSegmentActive: {
+    borderWidth: 1,
+  },
+  roleSegmentTitle: {
+    fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 0.4,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
-  logoutHeaderLabel: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+  roleSegmentTitleIdle: {
+    color: '#cbd5e1',
+  },
+  roleSegmentHint: {
+    marginTop: 2,
+    fontSize: 10,
+    color: '#94a3b8',
+    textAlign: 'center',
   },
   content: { flex: 1 },
   bottomBar: {

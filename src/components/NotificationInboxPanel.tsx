@@ -1,14 +1,19 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import type { AppNotification } from '../types/api';
+
+type SectionKey = 'complaints' | 'chats' | 'polls';
+
+const SECTION_PREVIEW = 3;
 
 type Props = {
   visible: boolean;
@@ -40,8 +45,9 @@ function formatWhen(value: string): string {
 }
 
 function notificationGlyph(type: string): string {
-  if (type.startsWith('POLL')) return '📊';
+  if (type.startsWith('COMPLAINT')) return '⚠';
   if (type.startsWith('GROUP')) return '💬';
+  if (type.startsWith('POLL')) return '📊';
   return '🔔';
 }
 
@@ -51,6 +57,30 @@ function headline(item: AppNotification): string {
   }
   return item.title?.trim() || 'Notification';
 }
+
+function filterBySection(notifications: AppNotification[], section: SectionKey): AppNotification[] {
+  if (section === 'complaints') {
+    return notifications.filter((n) => n.type.startsWith('COMPLAINT'));
+  }
+  if (section === 'chats') {
+    return notifications.filter((n) => n.type.startsWith('GROUP'));
+  }
+  return notifications.filter((n) => n.type.startsWith('POLL'));
+}
+
+function sectionTitle(section: SectionKey): string {
+  if (section === 'complaints') return 'Complaints';
+  if (section === 'chats') return 'Chats';
+  return 'Polls';
+}
+
+function sectionEmptyCopy(section: SectionKey): string {
+  if (section === 'complaints') return 'No complaint notifications';
+  if (section === 'chats') return 'No chat notifications';
+  return 'No poll notifications';
+}
+
+const SECTIONS: SectionKey[] = ['complaints', 'chats', 'polls'];
 
 function NotificationRow({
   item,
@@ -103,6 +133,66 @@ function NotificationRow({
   );
 }
 
+type NotificationSectionProps = {
+  section: SectionKey;
+  items: AppNotification[];
+  visibleCount: number;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onPressNotification: (item: AppNotification) => void;
+  onShowMore: (section: SectionKey) => void;
+};
+
+function NotificationSection({
+  section,
+  items,
+  visibleCount,
+  hasMore,
+  loadingMore,
+  onPressNotification,
+  onShowMore,
+}: NotificationSectionProps) {
+  const { theme } = useTheme();
+  const unreadInSection = items.filter((item) => !item.read).length;
+  const visibleItems = items.slice(0, visibleCount);
+  const canShowMore = items.length > visibleCount || hasMore;
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>{sectionTitle(section)}</Text>
+        {unreadInSection > 0 ? (
+          <Text style={[styles.sectionUnread, { color: theme.accentGold }]}>
+            {unreadInSection} unread
+          </Text>
+        ) : null}
+      </View>
+
+      {items.length === 0 ? (
+        <Text style={[styles.sectionEmpty, { color: theme.textMuted }]}>{sectionEmptyCopy(section)}</Text>
+      ) : (
+        <>
+          {visibleItems.map((item) => (
+            <NotificationRow key={item.notificationId} item={item} onPress={onPressNotification} />
+          ))}
+          {canShowMore ? (
+            <Pressable
+              onPress={() => onShowMore(section)}
+              disabled={loadingMore}
+              style={({ pressed }) => [
+                styles.showMoreBtn,
+                { borderColor: theme.divider, opacity: pressed || loadingMore ? 0.7 : 1 },
+              ]}
+            >
+              <Text style={[styles.showMoreText, { color: theme.accentGold }]}>Show more</Text>
+            </Pressable>
+          ) : null}
+        </>
+      )}
+    </View>
+  );
+}
+
 export function NotificationInboxPanel({
   visible,
   notifications,
@@ -116,6 +206,56 @@ export function NotificationInboxPanel({
   onPressNotification,
 }: Props) {
   const { theme } = useTheme();
+  const [visibleCounts, setVisibleCounts] = useState<Record<SectionKey, number>>({
+    complaints: SECTION_PREVIEW,
+    chats: SECTION_PREVIEW,
+    polls: SECTION_PREVIEW,
+  });
+  const prevLoadingMoreRef = useRef(false);
+
+  const sectionItems = useMemo(
+    () => ({
+      complaints: filterBySection(notifications, 'complaints'),
+      chats: filterBySection(notifications, 'chats'),
+      polls: filterBySection(notifications, 'polls'),
+    }),
+    [notifications]
+  );
+
+  useEffect(() => {
+    if (visible) {
+      setVisibleCounts({
+        complaints: SECTION_PREVIEW,
+        chats: SECTION_PREVIEW,
+        polls: SECTION_PREVIEW,
+      });
+    }
+  }, [visible]);
+
+  useEffect(() => {
+    if (prevLoadingMoreRef.current && !loadingMore) {
+      setVisibleCounts((current) => ({
+        complaints: current.complaints + SECTION_PREVIEW,
+        chats: current.chats + SECTION_PREVIEW,
+        polls: current.polls + SECTION_PREVIEW,
+      }));
+    }
+    prevLoadingMoreRef.current = loadingMore;
+  }, [loadingMore]);
+
+  function showMore(section: SectionKey) {
+    const items = sectionItems[section];
+    if (visibleCounts[section] < items.length) {
+      setVisibleCounts((current) => ({
+        ...current,
+        [section]: current[section] + SECTION_PREVIEW,
+      }));
+      return;
+    }
+    if (hasMore && !loadingMore) {
+      onLoadMore();
+    }
+  }
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -161,32 +301,34 @@ export function NotificationInboxPanel({
               <Text style={styles.emptyGlyph}>🔔</Text>
               <Text style={[styles.emptyTitle, { color: theme.text }]}>No notifications yet</Text>
               <Text style={[styles.emptyCopy, { color: theme.textMuted }]}>
-                Chat messages, polls, and group updates will appear here.
+                Complaints, chats, and polls will appear here.
               </Text>
             </View>
           ) : (
-            <FlatList
-              data={notifications}
-              keyExtractor={(item) => item.notificationId}
-              contentContainerStyle={styles.listContent}
+            <ScrollView
+              style={styles.sectionsScroll}
+              contentContainerStyle={styles.sectionsContent}
               keyboardShouldPersistTaps="handled"
-              renderItem={({ item }) => (
-                <NotificationRow item={item} onPress={onPressNotification} />
-              )}
-              onEndReached={() => {
-                if (hasMore && !loadingMore) {
-                  onLoadMore();
-                }
-              }}
-              onEndReachedThreshold={0.35}
-              ListFooterComponent={
-                loadingMore ? (
-                  <View style={styles.footerLoader}>
-                    <ActivityIndicator color={theme.accent} />
-                  </View>
-                ) : null
-              }
-            />
+              showsVerticalScrollIndicator={false}
+            >
+              {SECTIONS.map((section) => (
+                <NotificationSection
+                  key={section}
+                  section={section}
+                  items={sectionItems[section]}
+                  visibleCount={visibleCounts[section]}
+                  hasMore={hasMore}
+                  loadingMore={loadingMore}
+                  onPressNotification={onPressNotification}
+                  onShowMore={showMore}
+                />
+              ))}
+              {loadingMore ? (
+                <View style={styles.footerLoader}>
+                  <ActivityIndicator color={theme.accent} />
+                </View>
+              ) : null}
+            </ScrollView>
           )}
 
           <Pressable
@@ -274,8 +416,46 @@ const styles = StyleSheet.create({
   emptyGlyph: { fontSize: 34 },
   emptyTitle: { fontSize: 17, fontWeight: '700' },
   emptyCopy: { fontSize: 13, textAlign: 'center', lineHeight: 19 },
-  listContent: { gap: 10, paddingBottom: 8 },
-  footerLoader: { paddingVertical: 16, alignItems: 'center' },
+  sectionsScroll: { flexGrow: 0 },
+  sectionsContent: { paddingBottom: 8 },
+  section: { marginBottom: 18 },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+  },
+  sectionUnread: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  sectionEmpty: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    paddingVertical: 4,
+  },
+  showMoreBtn: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginTop: 2,
+  },
+  showMoreText: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  footerLoader: { paddingVertical: 12, alignItems: 'center' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

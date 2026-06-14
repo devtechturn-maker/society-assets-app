@@ -28,16 +28,21 @@ import type {
   ReportEmailResult,
   SocietyOverview,
   MemberOverview,
+  MemberProfile,
   ChatThread,
   ChatThreadQuery,
   ChatMessage,
   ChatGroupSummary,
   PollDetail,
   PollSummary,
+  ComplaintDetail,
+  ComplaintSummary,
   AppNotification,
   NotificationPage,
 } from '../types/api';
+import type { NotificationAudience } from '../utils/notificationAudience';
 import { encryptPasswordForLogin } from '../crypto/rsaEncrypt';
+import { isEmailNotVerifiedError, requestMemberProfileNavigation } from './memberProfileNavigation';
 
 /** Identifies society mobile app to the API (long-lived JWT on login). */
 export const MOBILE_CLIENT_TYPE = 'MOBILE';
@@ -62,11 +67,15 @@ client.interceptors.request.use(async (config) => {
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      const url = error.config?.url ?? '';
-      if (!url.includes('/auth/login')) {
-        await clearSession();
-        notifySessionInvalid();
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        const url = error.config?.url ?? '';
+        if (!url.includes('/auth/login')) {
+          await clearSession();
+          notifySessionInvalid();
+        }
+      } else if (isEmailNotVerifiedError(error)) {
+        requestMemberProfileNavigation();
       }
     }
     if (axios.isAxiosError(error) && error.response?.status === 403) {
@@ -147,6 +156,75 @@ export async function changeFirstLoginPassword(newPassword: string): Promise<voi
     encryptedNewPassword,
   });
 }
+
+export async function requestPasswordResetOtp(email: string): Promise<{ message: string; expiresInMinutes: number }> {
+  const { data } = await axios.post<ApiResponse<{ message: string; expiresInMinutes: number }>>(
+    `${API_BASE_URL}/auth/forgot-password/request-otp`,
+    { email: email.trim().toLowerCase() },
+    { timeout: 30000 }
+  );
+  return data.data;
+}
+
+export async function verifyPasswordResetOtp(
+  email: string,
+  otp: string
+): Promise<{ message: string; resetToken: string }> {
+  const { data } = await axios.post<ApiResponse<{ message: string; resetToken: string }>>(
+    `${API_BASE_URL}/auth/forgot-password/verify-otp`,
+    { email: email.trim().toLowerCase(), otp: otp.trim() },
+    { timeout: 30000 }
+  );
+  return data.data;
+}
+
+export async function resetPasswordWithToken(
+  email: string,
+  resetToken: string,
+  newPassword: string
+): Promise<void> {
+  const encryptedNewPassword = encryptPasswordForLogin(newPassword);
+  await axios.post<ApiResponse<{ message: string }>>(
+    `${API_BASE_URL}/auth/forgot-password/reset`,
+    {
+      email: email.trim().toLowerCase(),
+      resetToken,
+      encryptedNewPassword,
+    },
+    { timeout: 30000 }
+  );
+}
+
+export async function confirmChangePassword(resetToken: string, newPassword: string): Promise<void> {
+  const encryptedNewPassword = encryptPasswordForLogin(newPassword);
+  await client.post<ApiResponse<{ message: string }>>('/auth/change-password/confirm', {
+    resetToken,
+    encryptedNewPassword,
+  });
+}
+
+export async function requestChangePasswordOtp(): Promise<{
+  message: string;
+  expiresInMinutes: number;
+  email: string;
+}> {
+  const { data } = await client.post<ApiResponse<{ message: string; expiresInMinutes: number; email: string }>>(
+    '/auth/change-password/request-otp',
+    {}
+  );
+  return data.data;
+}
+
+export async function verifyChangePasswordOtp(
+  otp: string
+): Promise<{ message: string; resetToken: string }> {
+  const { data } = await client.post<ApiResponse<{ message: string; resetToken: string }>>(
+    '/auth/change-password/verify-otp',
+    { otp: otp.trim() }
+  );
+  return data.data;
+}
+
 export const fetchRecentExpenses = () => getData<RecentExpense[]>('/society/dashboard/recent-expenses');
 export const fetchExpenseHistory = () => getData<RecentExpense[]>('/expenses');
 export const fetchMaintenanceHistory = () => getData<RecentExpense[]>('/expenses/maintenance');
@@ -481,12 +559,54 @@ export async function sharePollResults(
   return data.data;
 }
 
-export function fetchNotificationsPage(limit = 7, offset = 0): Promise<NotificationPage> {
-  return getData<NotificationPage>(`/notifications?limit=${limit}&offset=${offset}`);
+export function fetchComplaints(memberPortal: boolean): Promise<ComplaintSummary[]> {
+  const url = memberPortal ? '/member/complaints' : '/society/complaints';
+  return getData<ComplaintSummary[]>(url);
 }
 
-export function fetchUnreadNotificationCount(): Promise<number> {
-  return getData<{ unreadCount: number }>('/notifications/unread-count').then(
+export function fetchComplaintDetail(memberPortal: boolean, complaintId: string): Promise<ComplaintDetail> {
+  const url = memberPortal ? `/member/complaints/${complaintId}` : `/society/complaints/${complaintId}`;
+  return getData<ComplaintDetail>(url);
+}
+
+export async function createComplaint(payload: {
+  subject: string;
+  description: string;
+  category: string;
+}): Promise<ComplaintDetail> {
+  const { data } = await client.post<ApiResponse<ComplaintDetail>>('/member/complaints', payload);
+  return data.data;
+}
+
+export async function updateComplaint(
+  complaintId: string,
+  payload: { status: string; chairmanNote?: string }
+): Promise<ComplaintDetail> {
+  const { data } = await client.post<ApiResponse<ComplaintDetail>>(
+    `/society/complaints/${complaintId}/update`,
+    payload
+  );
+  return data.data;
+}
+
+function audienceQuery(audience?: NotificationAudience | null): string {
+  return audience ? `&audience=${encodeURIComponent(audience)}` : '';
+}
+
+export function fetchNotificationsPage(
+  limit = 21,
+  offset = 0,
+  audience?: NotificationAudience | null
+): Promise<NotificationPage> {
+  return getData<NotificationPage>(
+    `/notifications?limit=${limit}&offset=${offset}${audienceQuery(audience)}`
+  );
+}
+
+export function fetchUnreadNotificationCount(
+  audience?: NotificationAudience | null
+): Promise<number> {
+  return getData<{ unreadCount: number }>(`/notifications/unread-count${audience ? `?audience=${encodeURIComponent(audience)}` : ''}`).then(
     (payload) => payload.unreadCount ?? 0
   );
 }
@@ -501,6 +621,7 @@ export async function markNotificationRead(notificationId: string): Promise<AppN
 export async function markNotificationReadByTarget(params: {
   groupId?: string;
   pollId?: string;
+  complaintId?: string;
 }): Promise<AppNotification> {
   const { data } = await client.post<ApiResponse<AppNotification>>('/notifications/read-by-target', null, {
     params,
@@ -508,11 +629,46 @@ export async function markNotificationReadByTarget(params: {
   return data.data;
 }
 
-export async function markAllNotificationsRead(): Promise<number> {
+export async function markAllNotificationsRead(
+  audience?: NotificationAudience | null
+): Promise<number> {
   const { data } = await client.post<ApiResponse<{ markedRead: number; unreadCount: number }>>(
-    '/notifications/read-all'
+    `/notifications/read-all${audience ? `?audience=${encodeURIComponent(audience)}` : ''}`
   );
   return data.data?.unreadCount ?? 0;
 }
+
+export async function fetchMemberProfile(): Promise<MemberProfile> {
+  return getData<MemberProfile>('/member/profile');
+}
+
+export async function updateMemberProfile(payload: {
+  firstName: string;
+  lastName: string;
+}): Promise<MemberProfile> {
+  const { data } = await client.put<ApiResponse<MemberProfile>>('/member/profile', payload);
+  return data.data;
+}
+
+export async function requestMemberEmailVerificationOtp(): Promise<{
+  message: string;
+  email: string;
+  expiresInMinutes: number;
+}> {
+  const { data } = await client.post<
+    ApiResponse<{ message: string; email: string; expiresInMinutes: number }>
+  >('/member/profile/request-email-verification-otp');
+  return data.data;
+}
+
+export async function verifyMemberEmailOtp(otp: string): Promise<{ message: string; emailVerified: boolean }> {
+  const { data } = await client.post<ApiResponse<{ message: string; emailVerified: boolean }>>(
+    '/member/profile/verify-email-otp',
+    { otp }
+  );
+  return data.data;
+}
+
+export { isEmailNotVerifiedError };
 
 export { API_BASE_URL };
