@@ -361,6 +361,7 @@ export interface AppNotification {
   title: string;
   subtitle: string;
   body: string;
+  audienceRole?: 'CHAIRMAN' | 'MEMBER';
   groupId?: string;
   pollId?: string;
   complaintId?: string;

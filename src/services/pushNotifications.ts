@@ -19,7 +19,7 @@ export type AppPushNotification = {
   pollId: string;
   question: string;
   preview: string;
-  type: 'POLL_CREATED' | 'POLL_RESULTS';
+  type: 'POLL_CREATED' | 'POLL_RESULTS' | 'POLL_VOTED';
 } | {
   kind: 'complaint';
   notificationId?: string;

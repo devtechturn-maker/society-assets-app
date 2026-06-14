@@ -23,6 +23,7 @@ import {
   fetchMemberOverview,
   fetchOverview,
   fetchSocietyModules,
+  isMemberRole,
 } from '../services/api';
 import type { LoginData, NavModule } from '../types/api';
 import { APPEARANCE_MODULE } from '../constants/appearanceModule';
@@ -49,6 +50,7 @@ import {
 import * as Notifications from 'expo-notifications';
 import { ModuleRouter } from './modules/ModuleRouter';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
+import { pushTypeMatchesAudience, type NotificationAudience } from '../utils/notificationAudience';
 
 type Props = {
   user: LoginData;
@@ -91,6 +93,15 @@ export function SocietyShell({ user, onLogout }: Props) {
   const [contextReady, setContextReady] = useState(false);
   const canSwitchView = canSwitchAppView(user);
   const memberPortal = isMemberPortalView(user, appContext);
+  const notificationAudience = useMemo((): NotificationAudience | null => {
+    if (canSwitchView) {
+      return appContext;
+    }
+    if (isMemberRole(user.role)) {
+      return 'MEMBER';
+    }
+    return null;
+  }, [canSwitchView, user.role, appContext]);
   const [modules, setModules] = useState<NavModule[]>(
     memberPortal ? [...FALLBACK_MEMBER_MODULES] : [...FALLBACK_SOCIETY_MODULES, APPEARANCE_MODULE]
   );
@@ -101,7 +112,7 @@ export function SocietyShell({ user, onLogout }: Props) {
   const [initialComplaintId, setInitialComplaintId] = useState<string | null>(null);
   const [bannerNotification, setBannerNotification] = useState<AppPushNotification | null>(null);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
-  const inbox = useNotificationInbox(user.userId);
+  const inbox = useNotificationInbox(user.userId, notificationAudience);
 
   useEffect(() => {
     let cancelled = false;
@@ -188,6 +199,12 @@ export function SocietyShell({ user, onLogout }: Props) {
       if (!parsed) {
         return;
       }
+      if (
+        notificationAudience &&
+        !pushTypeMatchesAudience(parsed.type, notificationAudience)
+      ) {
+        return;
+      }
       await inbox.markPushNotificationAsRead(parsed);
       if (parsed.kind === 'poll') {
         openPollFromNotification(parsed.pollId);
@@ -216,6 +233,13 @@ export function SocietyShell({ user, onLogout }: Props) {
       },
     });
     const receivedSubscription = addNotificationReceivedListener((notification) => {
+      if (
+        notificationAudience &&
+        !pushTypeMatchesAudience(notification.type, notificationAudience)
+      ) {
+        void inbox.refreshUnreadCount();
+        return;
+      }
       setBannerNotification(notification);
       void inbox.refreshUnreadCount();
     });
@@ -225,6 +249,7 @@ export function SocietyShell({ user, onLogout }: Props) {
     };
   }, [
     user.userId,
+    notificationAudience,
     openChatFromNotification,
     openPollFromNotification,
     openComplaintFromNotification,

@@ -38,6 +38,7 @@ import type {
   AppNotification,
   NotificationPage,
 } from '../types/api';
+import type { NotificationAudience } from '../utils/notificationAudience';
 import { encryptPasswordForLogin } from '../crypto/rsaEncrypt';
 
 /** Identifies society mobile app to the API (long-lived JWT on login). */
@@ -571,12 +572,24 @@ export async function updateComplaint(
   return data.data;
 }
 
-export function fetchNotificationsPage(limit = 7, offset = 0): Promise<NotificationPage> {
-  return getData<NotificationPage>(`/notifications?limit=${limit}&offset=${offset}`);
+function audienceQuery(audience?: NotificationAudience | null): string {
+  return audience ? `&audience=${encodeURIComponent(audience)}` : '';
 }
 
-export function fetchUnreadNotificationCount(): Promise<number> {
-  return getData<{ unreadCount: number }>('/notifications/unread-count').then(
+export function fetchNotificationsPage(
+  limit = 21,
+  offset = 0,
+  audience?: NotificationAudience | null
+): Promise<NotificationPage> {
+  return getData<NotificationPage>(
+    `/notifications?limit=${limit}&offset=${offset}${audienceQuery(audience)}`
+  );
+}
+
+export function fetchUnreadNotificationCount(
+  audience?: NotificationAudience | null
+): Promise<number> {
+  return getData<{ unreadCount: number }>(`/notifications/unread-count${audience ? `?audience=${encodeURIComponent(audience)}` : ''}`).then(
     (payload) => payload.unreadCount ?? 0
   );
 }
@@ -599,9 +612,11 @@ export async function markNotificationReadByTarget(params: {
   return data.data;
 }
 
-export async function markAllNotificationsRead(): Promise<number> {
+export async function markAllNotificationsRead(
+  audience?: NotificationAudience | null
+): Promise<number> {
   const { data } = await client.post<ApiResponse<{ markedRead: number; unreadCount: number }>>(
-    '/notifications/read-all'
+    `/notifications/read-all${audience ? `?audience=${encodeURIComponent(audience)}` : ''}`
   );
   return data.data?.unreadCount ?? 0;
 }

@@ -12,8 +12,12 @@ import {
 } from '../services/notificationRealtime';
 import type { AppNotification } from '../types/api';
 import type { AppPushNotification } from '../services/pushNotifications';
+import {
+  notificationMatchesAudience,
+  type NotificationAudience,
+} from '../utils/notificationAudience';
 
-const PAGE_SIZE = 7;
+const PAGE_SIZE = 21;
 
 function mergeUnique(existing: AppNotification[], incoming: AppNotification[]): AppNotification[] {
   const seen = new Set(existing.map((row) => row.notificationId));
@@ -32,7 +36,7 @@ function applyReadState(rows: AppNotification[], updated: AppNotification): AppN
   return rows.map((row) => (row.notificationId === updated.notificationId ? updated : row));
 }
 
-export function useNotificationInbox(userId: string) {
+export function useNotificationInbox(userId: string, audience: NotificationAudience | null) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -41,14 +45,19 @@ export function useNotificationInbox(userId: string) {
   const [hasMore, setHasMore] = useState(false);
   const nextOffsetRef = useRef(0);
   const panelOpenRef = useRef(false);
+  const audienceRef = useRef(audience);
 
   useEffect(() => {
     panelOpenRef.current = panelOpen;
   }, [panelOpen]);
 
+  useEffect(() => {
+    audienceRef.current = audience;
+  }, [audience]);
+
   const refreshUnreadCount = useCallback(async () => {
     try {
-      const count = await fetchUnreadNotificationCount();
+      const count = await fetchUnreadNotificationCount(audienceRef.current);
       setUnreadCount(count);
     } catch {
       /* keep badge */
@@ -59,7 +68,7 @@ export function useNotificationInbox(userId: string) {
     setLoading(true);
     nextOffsetRef.current = 0;
     try {
-      const page = await fetchNotificationsPage(PAGE_SIZE, 0);
+      const page = await fetchNotificationsPage(PAGE_SIZE, 0, audienceRef.current);
       setNotifications(page.items);
       setHasMore(page.hasMore);
       nextOffsetRef.current = page.nextOffset;
@@ -78,7 +87,11 @@ export function useNotificationInbox(userId: string) {
     }
     setLoadingMore(true);
     try {
-      const page = await fetchNotificationsPage(PAGE_SIZE, nextOffsetRef.current);
+      const page = await fetchNotificationsPage(
+        PAGE_SIZE,
+        nextOffsetRef.current,
+        audienceRef.current
+      );
       setNotifications((current) => mergeUnique(current, page.items));
       setHasMore(page.hasMore);
       nextOffsetRef.current = page.nextOffset;
@@ -91,7 +104,13 @@ export function useNotificationInbox(userId: string) {
 
   useEffect(() => {
     void refreshUnreadCount();
-  }, [userId, refreshUnreadCount]);
+  }, [userId, audience, refreshUnreadCount]);
+
+  useEffect(() => {
+    if (panelOpen) {
+      void loadInitial();
+    }
+  }, [audience, panelOpen, loadInitial]);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,7 +119,12 @@ export function useNotificationInbox(userId: string) {
     void connectNotificationRealtime(userId, {
       onEvent: (event: NotificationRealtimeEvent) => {
         if (event.type === 'UNREAD_COUNT') {
-          setUnreadCount(event.unreadCount);
+          void refreshUnreadCount();
+          return;
+        }
+        const currentAudience = audienceRef.current;
+        if (currentAudience && !notificationMatchesAudience(event.notification, currentAudience)) {
+          void refreshUnreadCount();
           return;
         }
         setUnreadCount(event.unreadCount);
@@ -120,7 +144,7 @@ export function useNotificationInbox(userId: string) {
       cancelled = true;
       disconnect();
     };
-  }, [userId]);
+  }, [userId, refreshUnreadCount]);
 
   const openPanel = useCallback(() => {
     setPanelOpen(true);
@@ -162,7 +186,7 @@ export function useNotificationInbox(userId: string) {
 
   const handleMarkAllRead = useCallback(async () => {
     try {
-      const count = await markAllNotificationsRead();
+      const count = await markAllNotificationsRead(audienceRef.current);
       setUnreadCount(count);
       setNotifications((rows) =>
         rows.map((row) => ({
