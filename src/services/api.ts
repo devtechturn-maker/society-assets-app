@@ -138,6 +138,75 @@ export async function changeFirstLoginPassword(newPassword: string): Promise<voi
     encryptedNewPassword,
   });
 }
+
+export async function requestPasswordResetOtp(email: string): Promise<{ message: string; expiresInMinutes: number }> {
+  const { data } = await axios.post<ApiResponse<{ message: string; expiresInMinutes: number }>>(
+    `${API_BASE_URL}/auth/forgot-password/request-otp`,
+    { email: email.trim().toLowerCase() },
+    { timeout: 30000 }
+  );
+  return data.data;
+}
+
+export async function verifyPasswordResetOtp(
+  email: string,
+  otp: string
+): Promise<{ message: string; resetToken: string }> {
+  const { data } = await axios.post<ApiResponse<{ message: string; resetToken: string }>>(
+    `${API_BASE_URL}/auth/forgot-password/verify-otp`,
+    { email: email.trim().toLowerCase(), otp: otp.trim() },
+    { timeout: 30000 }
+  );
+  return data.data;
+}
+
+export async function resetPasswordWithToken(
+  email: string,
+  resetToken: string,
+  newPassword: string
+): Promise<void> {
+  const encryptedNewPassword = encryptPasswordForLogin(newPassword);
+  await axios.post<ApiResponse<{ message: string }>>(
+    `${API_BASE_URL}/auth/forgot-password/reset`,
+    {
+      email: email.trim().toLowerCase(),
+      resetToken,
+      encryptedNewPassword,
+    },
+    { timeout: 30000 }
+  );
+}
+
+export async function confirmChangePassword(resetToken: string, newPassword: string): Promise<void> {
+  const encryptedNewPassword = encryptPasswordForLogin(newPassword);
+  await client.post<ApiResponse<{ message: string }>>('/auth/change-password/confirm', {
+    resetToken,
+    encryptedNewPassword,
+  });
+}
+
+export async function requestChangePasswordOtp(): Promise<{
+  message: string;
+  expiresInMinutes: number;
+  email: string;
+}> {
+  const { data } = await client.post<ApiResponse<{ message: string; expiresInMinutes: number; email: string }>>(
+    '/auth/change-password/request-otp',
+    {}
+  );
+  return data.data;
+}
+
+export async function verifyChangePasswordOtp(
+  otp: string
+): Promise<{ message: string; resetToken: string }> {
+  const { data } = await client.post<ApiResponse<{ message: string; resetToken: string }>>(
+    '/auth/change-password/verify-otp',
+    { otp: otp.trim() }
+  );
+  return data.data;
+}
+
 export const fetchRecentExpenses = () => getData<RecentExpense[]>('/society/dashboard/recent-expenses');
 export const fetchExpenseHistory = () => getData<RecentExpense[]>('/expenses');
 export const fetchMaintenanceHistory = () => getData<RecentExpense[]>('/expenses/maintenance');

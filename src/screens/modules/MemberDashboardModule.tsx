@@ -2,6 +2,7 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native
 import { KpiGrid } from '../../components/dashboard/KpiGrid';
 import { ListError, ListLoading } from '../../components/dashboard/ListStates';
 import { SectionCard } from '../../components/dashboard/SectionCard';
+import { ChangePasswordFlow } from '../../components/ChangePasswordFlow';
 import { fetchMemberOverview } from '../../services/api';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
@@ -40,6 +41,8 @@ export function MemberDashboardModule() {
           />
         </>
       ) : null}
+
+      <ChangePasswordFlow />
     </ScrollView>
   );
 }

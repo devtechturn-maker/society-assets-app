@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { clearSession } from '../services/storage';
 import {
   canSwitchAppView,
@@ -47,6 +48,7 @@ import {
 } from '../services/pushNotifications';
 import * as Notifications from 'expo-notifications';
 import { ModuleRouter } from './modules/ModuleRouter';
+import { ChangePasswordModal } from '../components/ChangePasswordModal';
 
 type Props = {
   user: LoginData;
@@ -66,6 +68,23 @@ function tabLabel(title: string): string {
   return `${trimmed.slice(0, 10)}…`;
 }
 
+function formatRole(role: string | undefined): string {
+  switch ((role ?? '').trim().toUpperCase()) {
+    case 'CHAIRMAN':
+      return 'Chairman';
+    case 'TREASURER':
+      return 'Treasurer';
+    case 'AUDITOR':
+      return 'Auditor';
+    case 'USER':
+      return 'Staff';
+    case 'MEMBER':
+      return 'Member';
+    default:
+      return role?.trim() || 'User';
+  }
+}
+
 export function SocietyShell({ user, onLogout }: Props) {
   const { theme, toggleMode, mode } = useTheme();
   const [appContext, setAppContextState] = useState<AppViewContext>('CHAIRMAN');
@@ -81,6 +100,7 @@ export function SocietyShell({ user, onLogout }: Props) {
   const [initialPollId, setInitialPollId] = useState<string | null>(null);
   const [initialComplaintId, setInitialComplaintId] = useState<string | null>(null);
   const [bannerNotification, setBannerNotification] = useState<AppPushNotification | null>(null);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const inbox = useNotificationInbox(user.userId);
 
   useEffect(() => {
@@ -223,20 +243,26 @@ export function SocietyShell({ user, onLogout }: Props) {
     onLogout();
   }
 
-  async function switchAppView() {
-    if (!canSwitchView) {
+  async function switchToOfficeView() {
+    if (!canSwitchView || !memberPortal) {
       return;
     }
-    const next: AppViewContext = memberPortal ? 'CHAIRMAN' : 'MEMBER';
-    await setAppViewContext(next);
-    setAppContextState(next);
+    await setAppViewContext('CHAIRMAN');
+    setAppContextState('CHAIRMAN');
   }
 
-  const portalBadge = memberPortal ? 'Member Portal' : 'Society Command';
+  async function switchToMemberView() {
+    if (!canSwitchView || memberPortal) {
+      return;
+    }
+    await setAppViewContext('MEMBER');
+    setAppContextState('MEMBER');
+  }
+
+  const portalBadge = memberPortal ? 'Member View' : formatRole(user.role);
   const portalKicker = memberPortal
     ? `Flat ${user.memberProfile?.flatNumber ?? '—'} · Resident access`
-    : `Financial Command · ${user.role}`;
-  const switchLabel = memberPortal ? 'Chairman' : 'Member';
+    : 'Financial Command';
 
   if (!contextReady) {
     return (
@@ -321,21 +347,65 @@ export function SocietyShell({ user, onLogout }: Props) {
             <Pressable style={styles.iconBtn} onPress={toggleMode} accessibilityLabel="Toggle theme">
               <Text style={styles.iconBtnText}>{mode === 'dark' ? '☀️' : '🌙'}</Text>
             </Pressable>
-            {canSwitchView ? (
-              <Pressable
-                style={[styles.switchHeaderBtn, { borderColor: theme.accentGold, backgroundColor: theme.accentSoft }]}
-                onPress={switchAppView}
-                accessibilityLabel={memberPortal ? 'Switch to chairman view' : 'Switch to member view'}
-              >
-                <Text style={[styles.switchHeaderLabel, { color: theme.accentGold }]}>{switchLabel}</Text>
-              </Pressable>
-            ) : null}
+            <Pressable
+              style={styles.iconBtn}
+              onPress={() => setChangePasswordOpen(true)}
+              accessibilityLabel="Change password"
+            >
+              <Ionicons name="key-outline" size={20} color="#fff" />
+            </Pressable>
             <Pressable style={styles.iconBtn} onPress={logout} accessibilityLabel="Log out">
-              <Text style={styles.logoutHeaderLabel}>Out</Text>
+              <Ionicons name="log-out-outline" size={22} color="#fff" />
             </Pressable>
           </View>
         </View>
         <Text style={styles.kicker}>{portalKicker}</Text>
+        {canSwitchView ? (
+          <View style={styles.roleSwitcher}>
+            <Pressable
+              style={[
+                styles.roleSegment,
+                !memberPortal ? styles.roleSegmentActive : null,
+                !memberPortal ? { borderColor: theme.accentGold, backgroundColor: theme.accentSoft } : null,
+              ]}
+              onPress={() => void switchToOfficeView()}
+              accessibilityLabel="Switch to office view"
+              accessibilityState={{ selected: !memberPortal }}
+            >
+              <Text
+                style={[
+                  styles.roleSegmentTitle,
+                  !memberPortal ? { color: theme.accentGold } : styles.roleSegmentTitleIdle,
+                ]}
+              >
+                Office
+              </Text>
+              <Text style={styles.roleSegmentHint}>{formatRole(user.role)}</Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.roleSegment,
+                memberPortal ? styles.roleSegmentActive : null,
+                memberPortal ? { borderColor: theme.accentGold, backgroundColor: theme.accentSoft } : null,
+              ]}
+              onPress={() => void switchToMemberView()}
+              accessibilityLabel="Switch to member view"
+              accessibilityState={{ selected: memberPortal }}
+            >
+              <Text
+                style={[
+                  styles.roleSegmentTitle,
+                  memberPortal ? { color: theme.accentGold } : styles.roleSegmentTitleIdle,
+                ]}
+              >
+                Member
+              </Text>
+              <Text style={styles.roleSegmentHint}>
+                Flat {user.memberProfile?.flatNumber ?? '—'}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
       </LinearGradient>
 
       <View style={styles.content}>
@@ -387,6 +457,8 @@ export function SocietyShell({ user, onLogout }: Props) {
           })}
         </ScrollView>
       </View>
+
+      <ChangePasswordModal visible={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
     </View>
   );
 }
@@ -463,27 +535,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconBtnText: { fontSize: 20 },
-  switchHeaderBtn: {
-    minWidth: 44,
-    height: 44,
-    paddingHorizontal: 10,
-    borderRadius: 22,
-    borderWidth: 1,
+  roleSwitcher: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+    padding: 4,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  roleSegment: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  switchHeaderLabel: {
-    fontSize: 11,
+  roleSegmentActive: {
+    borderWidth: 1,
+  },
+  roleSegmentTitle: {
+    fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 0.4,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
-  logoutHeaderLabel: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+  roleSegmentTitleIdle: {
+    color: '#cbd5e1',
+  },
+  roleSegmentHint: {
+    marginTop: 2,
+    fontSize: 10,
+    color: '#94a3b8',
+    textAlign: 'center',
   },
   content: { flex: 1 },
   bottomBar: {
