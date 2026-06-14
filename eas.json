@@ -26,7 +26,6 @@
     },
     "preview": {
       "distribution": "store",
-      "channel": "preview",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
       },
@@ -36,7 +35,6 @@
     },
     "production": {
       "distribution": "store",
-      "channel": "production",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
       },
