@@ -1,52 +1,63 @@
 {
-
   "cli": {
-
     "version": ">= 16.0.0",
-
     "appVersionSource": "local"
-
   },
-
   "build": {
-
     "development": {
-
       "developmentClient": true,
-
       "distribution": "internal",
-
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
+      },
       "ios": {
-
         "simulator": false
-
       }
-
     },
-
     "development-simulator": {
-
       "developmentClient": true,
-
       "distribution": "internal",
-
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
+      },
       "ios": {
-
         "simulator": true
-
       }
-
     },
-
     "preview": {
-
-      "distribution": "internal"
-
+      "distribution": "store",
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
     },
-
-    "production": {}
-
+    "production": {
+      "distribution": "store",
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "preview": {
+      "ios": {},
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    },
+    "production": {
+      "ios": {},
+      "android": {
+        "track": "production"
+      }
+    }
   }
-
 }
-
