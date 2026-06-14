@@ -29,7 +29,13 @@ function apiErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-export function ChangePasswordFlow({ onComplete }: { onComplete?: () => void }) {
+export function ChangePasswordFlow({
+  onComplete,
+  embedded = false,
+}: {
+  onComplete?: () => void;
+  embedded?: boolean;
+}) {
   const { toast } = useAppAlert();
   const { theme } = useTheme();
   const [step, setStep] = useState<Step>('start');
@@ -142,8 +148,8 @@ export function ChangePasswordFlow({ onComplete }: { onComplete?: () => void }) 
     setInfoMessage(null);
   }
 
-  return (
-    <SectionCard title="Change password" subtitle="Verify your email, then set a new password">
+  const body = (
+    <>
       <Text style={[styles.lead, { color: theme.textMuted }]}>
         {step === 'start'
           ? 'We will send a one-time code to your registered email address.'
@@ -259,6 +265,16 @@ export function ChangePasswordFlow({ onComplete }: { onComplete?: () => void }) 
       ) : null}
 
       {inlineError ? <Text style={styles.error}>{inlineError}</Text> : null}
+    </>
+  );
+
+  if (embedded) {
+    return body;
+  }
+
+  return (
+    <SectionCard title="Change password" subtitle="Update your login password with email verification">
+      {body}
     </SectionCard>
   );
 }

@@ -2,13 +2,36 @@ import type { NavModule } from '../types/api';
 
 /** Used if /modules/society is unreachable. Order matches backend module seed. */
 /** Flat member app — read-only home, maintenance, support. */
+export const MEMBER_PROFILE_MODULE: NavModule = {
+  code: 'MEMBER_PROFILE',
+  title: 'Profile',
+  routePath: 'profile',
+  icon: 'pi pi-user',
+  sortOrder: 99,
+};
+
 export const FALLBACK_MEMBER_MODULES: NavModule[] = [
   { code: 'MEMBER_DASHBOARD', title: 'Home', routePath: 'dashboard', icon: 'pi pi-home', sortOrder: 1 },
   { code: 'MEMBER_MAINTENANCE', title: 'My Maintenance', routePath: 'maintenance', icon: 'pi pi-credit-card', sortOrder: 2 },
   { code: 'MEMBER_POLLS', title: 'Polls', routePath: 'polls', icon: 'pi pi-chart-pie', sortOrder: 3 },
   { code: 'MEMBER_COMPLAINTS', title: 'Complaints', routePath: 'complaints', icon: 'pi pi-exclamation-circle', sortOrder: 4 },
   { code: 'MEMBER_SUPPORT', title: 'Chat Groups', routePath: 'chat', icon: 'pi pi-comments', sortOrder: 5 },
+  MEMBER_PROFILE_MODULE,
 ];
+
+/** Ensures Profile tab is always available in member portal navigation. */
+export function mergeMemberPortalModules(modules: NavModule[]): NavModule[] {
+  const hasProfile = modules.some(
+    (m) => m.code === 'MEMBER_PROFILE' || m.routePath === 'profile'
+  );
+  if (hasProfile) {
+    return [...modules].sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+  const maxOrder = modules.reduce((max, m) => Math.max(max, m.sortOrder), 0);
+  return [...modules, { ...MEMBER_PROFILE_MODULE, sortOrder: maxOrder + 1 }].sort(
+    (a, b) => a.sortOrder - b.sortOrder
+  );
+}
 
 export const FALLBACK_SOCIETY_MODULES: NavModule[] = [
   { code: 'SOCIETY_DASHBOARD', title: 'Dashboard', routePath: 'dashboard', icon: 'pi pi-home', sortOrder: 1 },
@@ -38,6 +61,7 @@ export function moduleGlyph(icon: string): string {
   if (icon.includes('chart')) return '📊';
   if (icon.includes('cog')) return '⚙';
   if (icon.includes('comment')) return '💬';
+  if (icon.includes('user')) return '👤';
   if (icon.includes('question')) return '?';
   if (icon.includes('moon')) return '🌙';
   return '•';

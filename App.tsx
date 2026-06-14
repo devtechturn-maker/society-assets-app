@@ -162,7 +162,11 @@ function AppRoot() {
           }}
         />
       ) : user ? (
-        <SocietyShell user={user} onLogout={handleLogout} />
+        <SocietyShell
+          user={user}
+          onLogout={handleLogout}
+          onUserUpdated={setUser}
+        />
       ) : guestScreen === 'plans' ? (
         <PlansScreen onBack={() => setGuestScreen('login')} />
       ) : guestScreen === 'forgot-password' ? (

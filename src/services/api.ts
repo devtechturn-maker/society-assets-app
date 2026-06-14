@@ -27,6 +27,7 @@ import type {
   ReportEmailResult,
   SocietyOverview,
   MemberOverview,
+  MemberProfile,
   ChatThread,
   ChatThreadQuery,
   ChatMessage,
@@ -40,6 +41,7 @@ import type {
 } from '../types/api';
 import type { NotificationAudience } from '../utils/notificationAudience';
 import { encryptPasswordForLogin } from '../crypto/rsaEncrypt';
+import { isEmailNotVerifiedError, requestMemberProfileNavigation } from './memberProfileNavigation';
 
 /** Identifies society mobile app to the API (long-lived JWT on login). */
 export const MOBILE_CLIENT_TYPE = 'MOBILE';
@@ -64,11 +66,15 @@ client.interceptors.request.use(async (config) => {
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      const url = error.config?.url ?? '';
-      if (!url.includes('/auth/login')) {
-        await clearSession();
-        notifySessionInvalid();
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        const url = error.config?.url ?? '';
+        if (!url.includes('/auth/login')) {
+          await clearSession();
+          notifySessionInvalid();
+        }
+      } else if (isEmailNotVerifiedError(error)) {
+        requestMemberProfileNavigation();
       }
     }
     return Promise.reject(error);
@@ -620,5 +626,38 @@ export async function markAllNotificationsRead(
   );
   return data.data?.unreadCount ?? 0;
 }
+
+export async function fetchMemberProfile(): Promise<MemberProfile> {
+  return getData<MemberProfile>('/member/profile');
+}
+
+export async function updateMemberProfile(payload: {
+  firstName: string;
+  lastName: string;
+}): Promise<MemberProfile> {
+  const { data } = await client.put<ApiResponse<MemberProfile>>('/member/profile', payload);
+  return data.data;
+}
+
+export async function requestMemberEmailVerificationOtp(): Promise<{
+  message: string;
+  email: string;
+  expiresInMinutes: number;
+}> {
+  const { data } = await client.post<
+    ApiResponse<{ message: string; email: string; expiresInMinutes: number }>
+  >('/member/profile/request-email-verification-otp');
+  return data.data;
+}
+
+export async function verifyMemberEmailOtp(otp: string): Promise<{ message: string; emailVerified: boolean }> {
+  const { data } = await client.post<ApiResponse<{ message: string; emailVerified: boolean }>>(
+    '/member/profile/verify-email-otp',
+    { otp }
+  );
+  return data.data;
+}
+
+export { isEmailNotVerifiedError };
 
 export { API_BASE_URL };

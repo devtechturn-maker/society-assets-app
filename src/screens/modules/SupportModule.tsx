@@ -1,12 +1,9 @@
 import { ScrollView, StyleSheet, Text } from 'react-native';
-import { ChangePasswordFlow } from '../../components/ChangePasswordFlow';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 
 export function SupportModule() {
   return (
     <ScrollView contentContainerStyle={styles.scroll}>
-      <ChangePasswordFlow />
-
       <SectionCard title="Help & support">
         <Text style={styles.body}>
           For help with billing, contracts, or reports, contact your society chairman or use the web

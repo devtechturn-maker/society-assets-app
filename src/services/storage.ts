@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import type { LoginData } from '../types/api';
+import { mergeLoginUserPatch } from '../utils/userDisplayName';
 
 const TOKEN_KEY = 'gl_token';
 const USER_KEY = 'gl_user';
@@ -43,4 +44,14 @@ export async function getUser(): Promise<LoginData | null> {
   } catch {
     return null;
   }
+}
+
+export async function updateStoredUser(patch: Partial<LoginData>): Promise<LoginData | null> {
+  const current = await getUser();
+  if (!current) {
+    return null;
+  }
+  const next = mergeLoginUserPatch(current, patch);
+  await SecureStore.setItemAsync(USER_KEY, JSON.stringify(next));
+  return next;
 }

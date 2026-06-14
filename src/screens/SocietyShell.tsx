@@ -10,7 +10,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { clearSession } from '../services/storage';
+import { clearSession, updateStoredUser } from '../services/storage';
 import {
   canSwitchAppView,
   isMemberPortalView,
@@ -30,6 +30,7 @@ import { APPEARANCE_MODULE } from '../constants/appearanceModule';
 import {
   FALLBACK_MEMBER_MODULES,
   FALLBACK_SOCIETY_MODULES,
+  mergeMemberPortalModules,
   moduleGlyph,
 } from '../constants/fallbackModules';
 import { useTheme } from '../theme/ThemeContext';
@@ -49,12 +50,15 @@ import {
 } from '../services/pushNotifications';
 import * as Notifications from 'expo-notifications';
 import { ModuleRouter } from './modules/ModuleRouter';
-import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { pushTypeMatchesAudience, type NotificationAudience } from '../utils/notificationAudience';
+import { subscribeMemberProfileNavigation } from '../services/memberProfileNavigation';
+import { useAppAlert } from '../context/AppAlertContext';
+import { mergeLoginUserPatch, userDisplayName } from '../utils/userDisplayName';
 
 type Props = {
   user: LoginData;
   onLogout: () => void;
+  onUserUpdated?: (user: LoginData) => void;
 };
 
 function societyInitials(name: string): string {
@@ -87,12 +91,14 @@ function formatRole(role: string | undefined): string {
   }
 }
 
-export function SocietyShell({ user, onLogout }: Props) {
+export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
   const { theme, toggleMode, mode } = useTheme();
+  const { toast } = useAppAlert();
+  const [sessionUser, setSessionUser] = useState(user);
   const [appContext, setAppContextState] = useState<AppViewContext>('CHAIRMAN');
   const [contextReady, setContextReady] = useState(false);
   const canSwitchView = canSwitchAppView(user);
-  const memberPortal = isMemberPortalView(user, appContext);
+  const memberPortal = isMemberPortalView(sessionUser, appContext);
   const notificationAudience = useMemo((): NotificationAudience | null => {
     if (canSwitchView) {
       return appContext;
@@ -101,7 +107,15 @@ export function SocietyShell({ user, onLogout }: Props) {
       return 'MEMBER';
     }
     return null;
-  }, [canSwitchView, user.role, appContext]);
+  }, [canSwitchView, sessionUser.role, appContext]);
+
+  useEffect(() => {
+    setSessionUser(user);
+  }, [user]);
+
+  const handleUserUpdated = useCallback((patch: Partial<LoginData>) => {
+    setSessionUser((current) => mergeLoginUserPatch(current, patch));
+  }, []);
   const [modules, setModules] = useState<NavModule[]>(
     memberPortal ? [...FALLBACK_MEMBER_MODULES] : [...FALLBACK_SOCIETY_MODULES, APPEARANCE_MODULE]
   );
@@ -111,7 +125,6 @@ export function SocietyShell({ user, onLogout }: Props) {
   const [initialPollId, setInitialPollId] = useState<string | null>(null);
   const [initialComplaintId, setInitialComplaintId] = useState<string | null>(null);
   const [bannerNotification, setBannerNotification] = useState<AppPushNotification | null>(null);
-  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const inbox = useNotificationInbox(user.userId, notificationAudience);
 
   useEffect(() => {
@@ -127,11 +140,30 @@ export function SocietyShell({ user, onLogout }: Props) {
     };
   }, [user.userId]);
 
+  useEffect(() => {
+    if (!contextReady || !memberPortal) {
+      return;
+    }
+    if (isMemberRole(sessionUser.role) && sessionUser.emailVerified === false) {
+      setActivePath('profile');
+    }
+  }, [contextReady, memberPortal, sessionUser.role, sessionUser.emailVerified]);
+
+  useEffect(() => {
+    if (!memberPortal) {
+      return;
+    }
+    return subscribeMemberProfileNavigation(() => {
+      setActivePath('profile');
+      toast('Please verify your email first.', 'error');
+    });
+  }, [memberPortal, toast]);
+
   const loadMeta = useCallback(async () => {
     try {
       if (memberPortal) {
         const [mods, overview] = await Promise.all([fetchMemberModules(), fetchMemberOverview()]);
-        const merged = [...mods].sort((a, b) => a.sortOrder - b.sortOrder);
+        const merged = mergeMemberPortalModules(mods);
         if (merged.length > 0) setModules(merged);
         if (overview.societyName) setSocietyName(overview.societyName);
         return;
@@ -284,9 +316,14 @@ export function SocietyShell({ user, onLogout }: Props) {
     setAppContextState('MEMBER');
   }
 
-  const portalBadge = memberPortal ? 'Member View' : formatRole(user.role);
+  const displayName = userDisplayName(sessionUser);
+  const portalBadge = memberPortal ? 'Member View' : formatRole(sessionUser.role);
+  const headerTitle = memberPortal && displayName ? displayName : societyName;
+  const avatarLabel = memberPortal && displayName ? displayName : societyName;
   const portalKicker = memberPortal
-    ? `Flat ${user.memberProfile?.flatNumber ?? '—'} · Resident access`
+    ? displayName
+      ? `${societyName} · Flat ${sessionUser.memberProfile?.flatNumber ?? '—'} · Resident access`
+      : `Flat ${sessionUser.memberProfile?.flatNumber ?? '—'} · Resident access`
     : 'Financial Command';
 
   if (!contextReady) {
@@ -356,14 +393,14 @@ export function SocietyShell({ user, onLogout }: Props) {
               { borderColor: theme.accentGold, backgroundColor: theme.accentSoft },
             ]}
           >
-            <Text style={styles.avatarText}>{societyInitials(societyName)}</Text>
+            <Text style={styles.avatarText}>{societyInitials(avatarLabel)}</Text>
           </View>
           <View style={styles.heroText}>
             <View style={[styles.badge, { backgroundColor: theme.accentSoft }]}>
               <Text style={[styles.badgeText, { color: theme.accentGold }]}>{portalBadge}</Text>
             </View>
             <Text style={styles.societyName} numberOfLines={2}>
-              {societyName}
+              {headerTitle}
             </Text>
             <Text style={[styles.moduleTitle, { color: theme.accentGold }]}>{activeTitle}</Text>
           </View>
@@ -371,13 +408,6 @@ export function SocietyShell({ user, onLogout }: Props) {
             <NotificationBellButton unreadCount={inbox.unreadCount} onPress={inbox.openPanel} />
             <Pressable style={styles.iconBtn} onPress={toggleMode} accessibilityLabel="Toggle theme">
               <Text style={styles.iconBtnText}>{mode === 'dark' ? '☀️' : '🌙'}</Text>
-            </Pressable>
-            <Pressable
-              style={styles.iconBtn}
-              onPress={() => setChangePasswordOpen(true)}
-              accessibilityLabel="Change password"
-            >
-              <Ionicons name="key-outline" size={20} color="#fff" />
             </Pressable>
             <Pressable style={styles.iconBtn} onPress={logout} accessibilityLabel="Log out">
               <Ionicons name="log-out-outline" size={22} color="#fff" />
@@ -405,7 +435,7 @@ export function SocietyShell({ user, onLogout }: Props) {
               >
                 Office
               </Text>
-              <Text style={styles.roleSegmentHint}>{formatRole(user.role)}</Text>
+              <Text style={styles.roleSegmentHint}>{formatRole(sessionUser.role)}</Text>
             </Pressable>
             <Pressable
               style={[
@@ -426,7 +456,7 @@ export function SocietyShell({ user, onLogout }: Props) {
                 Member
               </Text>
               <Text style={styles.roleSegmentHint}>
-                Flat {user.memberProfile?.flatNumber ?? '—'}
+                {displayName || `Flat ${sessionUser.memberProfile?.flatNumber ?? '—'}`}
               </Text>
             </Pressable>
           </View>
@@ -437,14 +467,23 @@ export function SocietyShell({ user, onLogout }: Props) {
         <ModuleRouter
           routePath={activePath}
           memberPortal={memberPortal}
-          userId={user.userId}
-          userRole={user.role}
+          userId={sessionUser.userId}
+          userRole={sessionUser.role}
           initialChatGroupId={initialChatGroupId}
           onChatGroupConsumed={() => setInitialChatGroupId(null)}
           initialPollId={initialPollId}
           onPollConsumed={() => setInitialPollId(null)}
           initialComplaintId={initialComplaintId}
           onComplaintConsumed={() => setInitialComplaintId(null)}
+          onUserUpdated={(patch) => {
+            handleUserUpdated(patch);
+            void updateStoredUser(patch).then((next) => {
+              if (next) {
+                onUserUpdated?.(next);
+              }
+            });
+          }}
+          onNavigateProfile={() => setActivePath('profile')}
         />
       </View>
 
@@ -483,7 +522,6 @@ export function SocietyShell({ user, onLogout }: Props) {
         </ScrollView>
       </View>
 
-      <ChangePasswordModal visible={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
     </View>
   );
 }

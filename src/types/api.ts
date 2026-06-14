@@ -85,6 +85,22 @@ export interface LoginData {
     email: string;
   };
   canSwitchToMemberView?: boolean;
+  emailVerified?: boolean;
+  firstName?: string;
+  lastName?: string;
+}
+
+export interface MemberProfile {
+  memberId: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string;
+  flatNumber: string;
+  phone: string;
+  emailVerified: boolean;
+  emailVerificationRequired: boolean;
+  societyName: string;
 }
 
 export interface NavModule {

@@ -1,7 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SectionCard } from '../../components/dashboard/SectionCard';
-import { ChangePasswordFlow } from '../../components/ChangePasswordFlow';
 import { useTheme } from '../../theme/ThemeContext';
 
 export function AppearanceModule() {
@@ -40,9 +39,6 @@ export function AppearanceModule() {
           />
         </View>
       </SectionCard>
-
-      <ChangePasswordFlow />
-
     </ScrollView>
   );
 }
