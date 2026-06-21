@@ -13,6 +13,7 @@ import { SettingsModule } from './SettingsModule';
 import { SupportModule } from './SupportModule';
 import { PollModule } from './PollModule';
 import { ComplaintModule } from './ComplaintModule';
+import { AmenityBookingModule } from './AmenityBookingModule';
 import { ChatModule } from './ChatModule';
 import { AppearanceModule } from './AppearanceModule';
 import { SubscriptionModule } from './SubscriptionModule';
@@ -28,6 +29,8 @@ export function ModuleRouter({
   onPollConsumed,
   initialComplaintId,
   onComplaintConsumed,
+  initialBookingId,
+  onBookingConsumed,
   onUserUpdated,
   onNavigateProfile,
 }: {
@@ -41,6 +44,8 @@ export function ModuleRouter({
   onPollConsumed?: () => void;
   initialComplaintId?: string | null;
   onComplaintConsumed?: () => void;
+  initialBookingId?: string | null;
+  onBookingConsumed?: () => void;
   onUserUpdated?: (patch: Partial<import('../../types/api').LoginData>) => void;
   onNavigateProfile?: () => void;
 }): ReactNode {
@@ -73,6 +78,14 @@ export function ModuleRouter({
             memberPortal
             initialComplaintId={initialComplaintId}
             onInitialComplaintConsumed={onComplaintConsumed}
+          />
+        );
+      case 'amenities':
+        return (
+          <AmenityBookingModule
+            memberPortal
+            initialBookingId={initialBookingId}
+            onInitialBookingConsumed={onBookingConsumed}
           />
         );
       case 'profile':
@@ -124,6 +137,14 @@ export function ModuleRouter({
           canManageComplaints={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
           initialComplaintId={initialComplaintId}
           onInitialComplaintConsumed={onComplaintConsumed}
+        />
+      );
+    case 'amenities':
+      return (
+        <AmenityBookingModule
+          canManageBookings={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
+          initialBookingId={initialBookingId}
+          onInitialBookingConsumed={onBookingConsumed}
         />
       );
     case 'support':

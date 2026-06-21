@@ -1,4 +1,5 @@
 import axios from 'axios';
+import * as FileSystem from 'expo-file-system/legacy';
 import { API_BASE_URL } from '../config/env';
 import { clearSession, getToken } from './storage';
 import { notifySessionInvalid } from './session';
@@ -26,7 +27,11 @@ import type {
   ReportEmailPayload,
   ReportEmailResult,
   SocietyOverview,
+  SocietyMemberPaymentSettings,
   MemberOverview,
+  MemberMaintenanceDue,
+  MemberMaintenanceCheckout,
+  MemberMaintenanceVerifyResult,
   MemberProfile,
   ChatThread,
   ChatThreadQuery,
@@ -136,8 +141,51 @@ export const fetchSocietyModules = () => getData<NavModule[]>('/modules/society'
 export const fetchMemberModules = () => getData<NavModule[]>('/modules/member');
 export const fetchOverview = () => getData<SocietyOverview>('/society/dashboard/overview');
 export const fetchMemberOverview = () => getData<MemberOverview>('/member/overview');
+export const fetchMemberMaintenanceDue = () => getData<MemberMaintenanceDue>('/member/maintenance/due');
 export const fetchMemberMaintenanceHistory = () =>
   getData<RecentExpense[]>('/member/maintenance');
+
+export async function createMemberMaintenanceCheckout(): Promise<MemberMaintenanceCheckout> {
+  const { data } = await client.post<ApiResponse<MemberMaintenanceCheckout>>('/member/maintenance/checkout');
+  return data.data;
+}
+
+export async function verifyMemberMaintenancePayment(payload: {
+  paymentId: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+}): Promise<MemberMaintenanceVerifyResult> {
+  const { data } = await client.post<ApiResponse<MemberMaintenanceVerifyResult>>(
+    '/member/maintenance/verify',
+    payload
+  );
+  return data.data;
+}
+
+export async function downloadMemberMaintenanceReceipt(expenseId: string): Promise<string> {
+  const token = await getToken();
+  const url = `${API_BASE_URL}/member/maintenance/${expenseId}/receipt`;
+  const filename = `maintenance-receipt-${expenseId}.pdf`;
+  const cacheDir = FileSystem.cacheDirectory;
+  if (!cacheDir) {
+    throw new Error('Unable to save receipt on this device.');
+  }
+  const fileUri = `${cacheDir}${filename}`;
+
+  const result = await FileSystem.downloadAsync(url, fileUri, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'X-Client-Type': MOBILE_CLIENT_TYPE,
+    },
+  });
+
+  if (result.status < 200 || result.status >= 300) {
+    throw new Error('Unable to download receipt. Please try again.');
+  }
+
+  return result.uri;
+}
 
 export async function changeFirstLoginPassword(newPassword: string): Promise<void> {
   const encryptedNewPassword = encryptPasswordForLogin(newPassword);
@@ -334,6 +382,38 @@ export async function updateMaintenanceSettings(
   const { data } = await client.put<ApiResponse<MaintenanceSettings>>(
     '/society/settings/maintenance',
     payload
+  );
+  return data.data;
+}
+
+export const fetchMemberPaymentSettings = () =>
+  getData<SocietyMemberPaymentSettings>('/society/settings/member-payments');
+
+export async function updateMemberPaymentSettings(
+  payload: Record<string, unknown>
+): Promise<SocietyMemberPaymentSettings> {
+  const { data } = await client.put<ApiResponse<SocietyMemberPaymentSettings>>(
+    '/society/settings/member-payments',
+    payload
+  );
+  return data.data;
+}
+
+export async function requestMemberPaymentSetupOtp(payload: Record<string, unknown>): Promise<{
+  message: string;
+  email: string;
+  expiresInMinutes: number;
+}> {
+  const { data } = await client.post<
+    ApiResponse<{ message: string; email: string; expiresInMinutes: number }>
+  >('/society/settings/member-payments/request-setup-otp', payload);
+  return data.data;
+}
+
+export async function verifyMemberPaymentSetupOtp(otp: string): Promise<SocietyMemberPaymentSettings> {
+  const { data } = await client.post<ApiResponse<SocietyMemberPaymentSettings>>(
+    '/society/settings/member-payments/verify-setup-otp',
+    { otp }
   );
   return data.data;
 }
@@ -578,6 +658,46 @@ export async function updateComplaint(
   return data.data;
 }
 
+export function fetchAmenityBookings(memberPortal: boolean): Promise<import('../types/api').AmenityBookingSummary[]> {
+  const url = memberPortal ? '/member/amenity-bookings' : '/society/amenity-bookings';
+  return getData<import('../types/api').AmenityBookingSummary[]>(url);
+}
+
+export function fetchAmenityBookingDetail(
+  memberPortal: boolean,
+  bookingId: string
+): Promise<import('../types/api').AmenityBookingDetail> {
+  const url = memberPortal
+    ? `/member/amenity-bookings/${bookingId}`
+    : `/society/amenity-bookings/${bookingId}`;
+  return getData<import('../types/api').AmenityBookingDetail>(url);
+}
+
+export async function createAmenityBooking(payload: {
+  amenityType: string;
+  bookingDate: string;
+  startTime: string;
+  endTime: string;
+  notes?: string;
+}): Promise<import('../types/api').AmenityBookingDetail> {
+  const { data } = await client.post<ApiResponse<import('../types/api').AmenityBookingDetail>>(
+    '/member/amenity-bookings',
+    payload
+  );
+  return data.data;
+}
+
+export async function cancelAmenityBooking(
+  memberPortal: boolean,
+  bookingId: string
+): Promise<import('../types/api').AmenityBookingDetail> {
+  const url = memberPortal
+    ? `/member/amenity-bookings/${bookingId}/cancel`
+    : `/society/amenity-bookings/${bookingId}/cancel`;
+  const { data } = await client.post<ApiResponse<import('../types/api').AmenityBookingDetail>>(url, {});
+  return data.data;
+}
+
 function audienceQuery(audience?: NotificationAudience | null): string {
   return audience ? `&audience=${encodeURIComponent(audience)}` : '';
 }
@@ -611,6 +731,7 @@ export async function markNotificationReadByTarget(params: {
   groupId?: string;
   pollId?: string;
   complaintId?: string;
+  amenityBookingId?: string;
 }): Promise<AppNotification> {
   const { data } = await client.post<ApiResponse<AppNotification>>('/notifications/read-by-target', null, {
     params,

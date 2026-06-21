@@ -136,6 +136,59 @@ export interface MemberOverview {
   totalDueAmount: number;
   remainingDueAmount: number;
   paymentType: string;
+  onlinePaymentEnabled?: boolean;
+  payableAmount?: number;
+  canPayOnline?: boolean;
+  maintenanceFromMonth?: string;
+  maintenanceToMonth?: string;
+  paymentUnavailableMessage?: string;
+}
+
+export interface MemberMaintenanceDue {
+  onlinePaymentEnabled: boolean;
+  onlinePaymentConfigured?: boolean;
+  paymentUnavailableMessage?: string;
+  alreadyPaid: boolean;
+  alreadyPaidMessage: string;
+  monthlyMaintenanceAmount: number;
+  carryForwardDue: number;
+  penaltyAmount: number;
+  totalDueAmount: number;
+  payableAmount: number;
+  maintenanceFromMonth: string;
+  maintenanceToMonth: string;
+  description: string;
+  canPayOnline: boolean;
+}
+
+export interface MemberMaintenanceCheckout {
+  required: boolean;
+  paymentId: string;
+  amountInr: number;
+  description: string;
+  maintenanceFromMonth: string;
+  maintenanceToMonth: string;
+  keyId?: string;
+  orderId?: string;
+  amount?: number;
+  currency?: string;
+  societyName?: string;
+  memberName?: string;
+  flatNumber?: string;
+  message?: string;
+  prefill?: {
+    name?: string;
+    email?: string;
+    contact?: string;
+  };
+}
+
+export interface MemberMaintenanceVerifyResult {
+  status: string;
+  expenseId?: string;
+  amount?: number;
+  remainingDueAmount?: number;
+  message?: string;
 }
 
 export interface RecentExpense {
@@ -176,6 +229,25 @@ export interface MaintenanceSettings {
   maintenancePenaltyGraceDay: number;
   maintenancePenaltyAmount: number;
   allowCustomMemberMaintenance: boolean;
+}
+
+export interface SocietyMemberPaymentSettings {
+  enabled: boolean;
+  configured: boolean;
+  keyId: string;
+  keySecretMasked: string;
+  testMode: boolean;
+  memberPaymentsReady: boolean;
+  message?: string;
+  routeEnabled?: boolean;
+  usesRoute?: boolean;
+  routeStatus?: string;
+  routeError?: string;
+  linkedAccountId?: string;
+  bankIfsc?: string;
+  bankBeneficiaryName?: string;
+  bankAccountMasked?: string;
+  manualKeysConfigured?: boolean;
 }
 
 export interface ReportSummary {
@@ -371,6 +443,24 @@ export interface ComplaintDetail extends ComplaintSummary {
   memberId?: string;
 }
 
+export interface AmenityBookingSummary {
+  bookingId: string;
+  amenityType: string;
+  amenityLabel: string;
+  bookingDate: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+  createdAt: string;
+  notes?: string | null;
+  memberName?: string;
+  flatNumber?: string;
+  memberId?: string;
+  mine?: boolean;
+}
+
+export type AmenityBookingDetail = AmenityBookingSummary;
+
 export interface AppNotification {
   notificationId: string;
   type: string;
@@ -381,6 +471,7 @@ export interface AppNotification {
   groupId?: string;
   pollId?: string;
   complaintId?: string;
+  amenityBookingId?: string;
   societyId?: string;
   read: boolean;
   readAt: string | null;

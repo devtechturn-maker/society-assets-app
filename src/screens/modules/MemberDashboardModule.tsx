@@ -3,7 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { KpiGrid } from '../../components/dashboard/KpiGrid';
 import { ListError, ListLoading } from '../../components/dashboard/ListStates';
 import { SectionCard } from '../../components/dashboard/SectionCard';
-import { fetchMemberOverview, fetchMemberProfile } from '../../services/api';
+import { PayMaintenanceButton } from '../../components/payment/PayMaintenanceButton';
+import { fetchMemberMaintenanceDue, fetchMemberOverview, fetchMemberProfile } from '../../services/api';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
 
@@ -14,6 +15,7 @@ type Props = {
 export function MemberDashboardModule({ onOpenProfile }: Props) {
   const { theme } = useTheme();
   const overview = useAsyncLoad(fetchMemberOverview, []);
+  const due = useAsyncLoad(fetchMemberMaintenanceDue, []);
   const profile = useAsyncLoad(fetchMemberProfile, []);
 
   const showVerifyPrompt = profile.data?.emailVerificationRequired === true;
@@ -23,9 +25,10 @@ export function MemberDashboardModule({ onOpenProfile }: Props) {
       contentContainerStyle={styles.scroll}
       refreshControl={
         <RefreshControl
-          refreshing={overview.refreshing || profile.refreshing}
+          refreshing={overview.refreshing || due.refreshing || profile.refreshing}
           onRefresh={() => {
             void overview.refresh();
+            void due.refresh();
             void profile.refresh();
           }}
         />
@@ -73,6 +76,22 @@ export function MemberDashboardModule({ onOpenProfile }: Props) {
               { label: 'Pending', value: overview.data.remainingDueAmount },
             ]}
           />
+          <SectionCard
+            title="Pay maintenance"
+            subtitle={
+              due.data?.canPayOnline
+                ? 'Pay your society maintenance securely online'
+                : 'Online payment will be available once your chairman completes society bank setup'
+            }
+          >
+            <PayMaintenanceButton
+              due={due.data}
+              onPaid={() => {
+                void overview.refresh();
+                void due.refresh();
+              }}
+            />
+          </SectionCard>
         </>
       ) : null}
     </ScrollView>

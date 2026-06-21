@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { RecentExpense } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
@@ -7,9 +8,10 @@ import { Badge, paymentBadgeTone } from './Badge';
 type Props = {
   row: RecentExpense;
   showMember?: boolean;
+  children?: ReactNode;
 };
 
-export function ExpenseRowCard({ row, showMember = false }: Props) {
+export function ExpenseRowCard({ row, showMember = false, children }: Props) {
   const { theme } = useTheme();
   const period =
     row.maintenanceFromMonth || row.maintenanceToMonth
@@ -38,6 +40,7 @@ export function ExpenseRowCard({ row, showMember = false }: Props) {
         <Text style={[styles.date, { color: theme.textMuted }]}>{formatDate(row.expenseDate)}</Text>
       </View>
       <Text style={[styles.created, { color: theme.textMuted }]}>Created {formatDateTime(row.createdAt)}</Text>
+      {children}
     </View>
   );
 }

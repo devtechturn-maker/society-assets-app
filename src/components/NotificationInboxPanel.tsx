@@ -11,7 +11,7 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import type { AppNotification } from '../types/api';
 
-type SectionKey = 'complaints' | 'chats' | 'polls';
+type SectionKey = 'complaints' | 'chats' | 'polls' | 'amenities';
 
 const SECTION_PREVIEW = 3;
 
@@ -48,6 +48,7 @@ function notificationGlyph(type: string): string {
   if (type.startsWith('COMPLAINT')) return '⚠';
   if (type.startsWith('GROUP')) return '💬';
   if (type.startsWith('POLL')) return '📊';
+  if (type.startsWith('AMENITY')) return '📅';
   return '🔔';
 }
 
@@ -65,22 +66,27 @@ function filterBySection(notifications: AppNotification[], section: SectionKey):
   if (section === 'chats') {
     return notifications.filter((n) => n.type.startsWith('GROUP'));
   }
-  return notifications.filter((n) => n.type.startsWith('POLL'));
+  if (section === 'polls') {
+    return notifications.filter((n) => n.type.startsWith('POLL'));
+  }
+  return notifications.filter((n) => n.type.startsWith('AMENITY'));
 }
 
 function sectionTitle(section: SectionKey): string {
   if (section === 'complaints') return 'Complaints';
   if (section === 'chats') return 'Chats';
-  return 'Polls';
+  if (section === 'polls') return 'Polls';
+  return 'Amenities';
 }
 
 function sectionEmptyCopy(section: SectionKey): string {
   if (section === 'complaints') return 'No complaint notifications';
   if (section === 'chats') return 'No chat notifications';
-  return 'No poll notifications';
+  if (section === 'polls') return 'No poll notifications';
+  return 'No amenity notifications';
 }
 
-const SECTIONS: SectionKey[] = ['complaints', 'chats', 'polls'];
+const SECTIONS: SectionKey[] = ['complaints', 'chats', 'polls', 'amenities'];
 
 function NotificationRow({
   item,
@@ -210,6 +216,7 @@ export function NotificationInboxPanel({
     complaints: SECTION_PREVIEW,
     chats: SECTION_PREVIEW,
     polls: SECTION_PREVIEW,
+    amenities: SECTION_PREVIEW,
   });
   const prevLoadingMoreRef = useRef(false);
 
@@ -218,6 +225,7 @@ export function NotificationInboxPanel({
       complaints: filterBySection(notifications, 'complaints'),
       chats: filterBySection(notifications, 'chats'),
       polls: filterBySection(notifications, 'polls'),
+      amenities: filterBySection(notifications, 'amenities'),
     }),
     [notifications]
   );
@@ -228,6 +236,7 @@ export function NotificationInboxPanel({
         complaints: SECTION_PREVIEW,
         chats: SECTION_PREVIEW,
         polls: SECTION_PREVIEW,
+        amenities: SECTION_PREVIEW,
       });
     }
   }, [visible]);
@@ -238,6 +247,7 @@ export function NotificationInboxPanel({
         complaints: current.complaints + SECTION_PREVIEW,
         chats: current.chats + SECTION_PREVIEW,
         polls: current.polls + SECTION_PREVIEW,
+        amenities: current.amenities + SECTION_PREVIEW,
       }));
     }
     prevLoadingMoreRef.current = loadingMore;

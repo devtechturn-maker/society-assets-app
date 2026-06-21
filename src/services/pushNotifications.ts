@@ -27,6 +27,13 @@ export type AppPushNotification = {
   subject: string;
   preview: string;
   type: 'COMPLAINT_CREATED' | 'COMPLAINT_UPDATED';
+} | {
+  kind: 'amenity';
+  notificationId?: string;
+  bookingId: string;
+  amenityLabel: string;
+  preview: string;
+  type: 'AMENITY_BOOKED';
 };
 
 /** @deprecated Use AppPushNotification */
@@ -75,6 +82,14 @@ async function ensureAndroidChannel(): Promise<void> {
   await Notifications.setNotificationChannelAsync('complaints', {
     name: 'Society Assets · Complaints',
     description: 'Member complaints and status updates',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#70088c',
+    sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync('amenities', {
+    name: 'Society Assets · Amenities',
+    description: 'Amenity booking updates',
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: '#70088c',
@@ -213,6 +228,8 @@ type PushData = {
   question?: string;
   complaintId?: string;
   subject?: string;
+  amenityBookingId?: string;
+  amenityType?: string;
   notificationId?: string;
 };
 
@@ -263,6 +280,23 @@ function parseAppPushNotification(
       notificationId: readNotificationId(data),
       complaintId,
       subject,
+      preview,
+      type: data.type,
+    };
+  }
+  if (data?.type === 'AMENITY_BOOKED') {
+    const bookingId = data.amenityBookingId ? String(data.amenityBookingId) : '';
+    if (!bookingId) return null;
+    const amenityLabel =
+      (data.amenityType && String(data.amenityType).replace(/_/g, ' ')) ||
+      (content.subtitle && String(content.subtitle).trim()) ||
+      'Amenity';
+    const preview = (content.body && String(content.body).trim()) || 'New amenity booking';
+    return {
+      kind: 'amenity',
+      notificationId: readNotificationId(data),
+      bookingId,
+      amenityLabel,
       preview,
       type: data.type,
     };
@@ -334,6 +368,7 @@ export function openNotificationResponse(
     onOpenChat?: (groupId?: string) => void;
     onOpenPoll?: (pollId?: string) => void;
     onOpenComplaint?: (complaintId?: string) => void;
+    onOpenAmenity?: (bookingId?: string) => void;
   }
 ): boolean {
   const parsed = parseAppPushFromResponse(response);
@@ -347,6 +382,10 @@ export function openNotificationResponse(
   }
   if (parsed.kind === 'complaint') {
     handlers.onOpenComplaint?.(parsed.complaintId);
+    return true;
+  }
+  if (parsed.kind === 'amenity') {
+    handlers.onOpenAmenity?.(parsed.bookingId);
     return true;
   }
   handlers.onOpenChat?.(parsed.groupId);
@@ -364,6 +403,7 @@ export async function resolveInitialNotificationTargets(): Promise<{
   groupId?: string;
   pollId?: string;
   complaintId?: string;
+  bookingId?: string;
 }> {
   if (!isRemotePushAvailable()) return {};
   const response = await Notifications.getLastNotificationResponseAsync();
@@ -371,6 +411,7 @@ export async function resolveInitialNotificationTargets(): Promise<{
   if (!parsed) return {};
   if (parsed.kind === 'poll') return { pollId: parsed.pollId };
   if (parsed.kind === 'complaint') return { complaintId: parsed.complaintId };
+  if (parsed.kind === 'amenity') return { bookingId: parsed.bookingId };
   return { groupId: parsed.groupId };
 }
 
@@ -384,6 +425,7 @@ export function addNotificationResponseListener(handlers: {
   onOpenChat?: (groupId?: string) => void;
   onOpenPoll?: (pollId?: string) => void;
   onOpenComplaint?: (complaintId?: string) => void;
+  onOpenAmenity?: (bookingId?: string) => void;
 }): Notifications.Subscription {
   if (!isRemotePushAvailable()) {
     return { remove: () => undefined };

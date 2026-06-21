@@ -63,8 +63,22 @@ export function ChatNotificationBanner({ notification, onPress, onDismiss }: Pro
   }
 
   const topInset = Platform.OS === 'ios' ? 52 : 12;
-  const title = notification.kind === 'poll' ? notification.question : notification.groupName;
-  const glyph = notification.kind === 'poll' ? '📊' : '💬';
+  const title =
+    notification.kind === 'poll'
+      ? notification.question
+      : notification.kind === 'complaint'
+        ? notification.subject
+        : notification.kind === 'amenity'
+          ? notification.amenityLabel
+          : notification.groupName;
+  const glyph =
+    notification.kind === 'poll'
+      ? '📊'
+      : notification.kind === 'complaint'
+        ? '⚠'
+        : notification.kind === 'amenity'
+          ? '📅'
+          : '💬';
 
   return (
     <Animated.View
