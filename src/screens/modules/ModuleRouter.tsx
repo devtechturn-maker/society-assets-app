@@ -14,7 +14,7 @@ import { SupportModule } from './SupportModule';
 import { PollModule } from './PollModule';
 import { ComplaintModule } from './ComplaintModule';
 import { AmenityBookingModule } from './AmenityBookingModule';
-import { RulesModule } from './RulesModule';
+import { AboutSocietyModule } from './AboutSocietyModule';
 import { HelpModule } from './HelpModule';
 import { AboutUsModule } from './AboutUsModule';
 import { ChatModule } from './ChatModule';
@@ -87,9 +87,9 @@ export function ModuleRouter({
             onInitialComplaintConsumed={onComplaintConsumed}
           />
         );
-      case 'rules':
+      case 'about-society':
         return (
-          <RulesModule
+          <AboutSocietyModule
             memberPortal
             initialRuleId={initialRuleId}
             onInitialRuleConsumed={onRuleConsumed}
@@ -158,10 +158,9 @@ export function ModuleRouter({
           onInitialComplaintConsumed={onComplaintConsumed}
         />
       );
-    case 'rules':
+    case 'about-society':
       return (
-        <RulesModule
-          canManageRules={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
+        <AboutSocietyModule
           initialRuleId={initialRuleId}
           onInitialRuleConsumed={onRuleConsumed}
         />

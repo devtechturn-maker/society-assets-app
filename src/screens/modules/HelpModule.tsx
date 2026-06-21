@@ -27,7 +27,7 @@ const CHAIRMAN_HELP: HelpSection[] = [
   {
     title: 'Members & communication',
     items: [
-      'Publish society rules from the Rules module — members receive an app notification.',
+      'Publish society rules from About Society — members receive an app notification.',
       'Create polls to collect member opinions and share results when voting closes.',
       'Use Group Chat to message members in society groups.',
     ],
@@ -62,7 +62,7 @@ const MEMBER_HELP: HelpSection[] = [
   {
     title: 'Staying informed',
     items: [
-      'Society rules published by the chairman appear under Rules with push notifications.',
+      'Society rules published by the chairman appear under About Society with push notifications.',
       'Vote on active polls and view results when the chairman shares them.',
       'Use Group Chat to stay connected with your society groups.',
     ],

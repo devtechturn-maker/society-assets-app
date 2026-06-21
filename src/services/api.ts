@@ -663,6 +663,11 @@ export function fetchRules(memberPortal: boolean): Promise<import('../types/api'
   return getData<import('../types/api').RuleSummary[]>(url);
 }
 
+export function fetchAboutSociety(memberPortal: boolean): Promise<import('../types/api').SocietyProfile> {
+  const url = memberPortal ? '/member/about-society' : '/society/about-society';
+  return getData<import('../types/api').SocietyProfile>(url);
+}
+
 export function fetchRuleDetail(memberPortal: boolean, ruleId: string): Promise<import('../types/api').RuleDetail> {
   const url = memberPortal ? `/member/rules/${ruleId}` : `/society/rules/${ruleId}`;
   return getData<import('../types/api').RuleDetail>(url);

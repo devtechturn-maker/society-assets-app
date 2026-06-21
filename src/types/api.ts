@@ -453,6 +453,23 @@ export interface RuleSummary {
 
 export type RuleDetail = RuleSummary;
 
+export interface SocietyProfile {
+  societyId: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  aboutDescription: string | null;
+  yearEstablished: number | null;
+  totalFlats: number | null;
+  totalBlocks: number | null;
+  registrationNumber: string | null;
+  amenitiesSummary: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+}
+
 export interface AmenityBookingSummary {
   bookingId: string;
   amenityType: string;
