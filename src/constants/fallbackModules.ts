@@ -14,7 +14,7 @@ export const FALLBACK_MEMBER_MODULES: NavModule[] = [
   { code: 'MEMBER_DASHBOARD', title: 'Home', routePath: 'dashboard', icon: 'pi pi-home', sortOrder: 1 },
   { code: 'MEMBER_MAINTENANCE', title: 'My Maintenance', routePath: 'maintenance', icon: 'pi pi-credit-card', sortOrder: 2 },
   { code: 'MEMBER_POLLS', title: 'Polls', routePath: 'polls', icon: 'pi pi-chart-pie', sortOrder: 3 },
-  { code: 'MEMBER_COMPLAINTS', title: 'Complaints', routePath: 'complaints', icon: 'pi pi-exclamation-circle', sortOrder: 4 },
+  { code: 'MEMBER_COMPLAINTS', title: 'Complaints', routePath: 'complaints', icon: 'pi pi-flag', sortOrder: 4 },
   { code: 'MEMBER_NOTICES', title: 'Notices', routePath: 'notices', icon: 'pi pi-megaphone', sortOrder: 5 },
   { code: 'MEMBER_AMENITIES', title: 'Amenities', routePath: 'amenities', icon: 'pi pi-calendar', sortOrder: 6 },
   { code: 'MEMBER_ABOUT_SOCIETY', title: 'About Society', routePath: 'about-society', icon: 'pi pi-building', sortOrder: 7 },
@@ -43,7 +43,7 @@ export const FALLBACK_SOCIETY_MODULES: NavModule[] = [
   { code: 'SOCIETY_MEMBERS', title: 'Members', routePath: 'members', icon: 'pi pi-users', sortOrder: 2 },
   { code: 'SOCIETY_COLLECTIONS', title: 'Maintenance', routePath: 'maintenance', icon: 'pi pi-credit-card', sortOrder: 3 },
   { code: 'SOCIETY_EXPENSES', title: 'Expenses', routePath: 'expenses', icon: 'pi pi-wallet', sortOrder: 4 },
-  { code: 'SOCIETY_COMPLAINTS', title: 'Complaints', routePath: 'complaints', icon: 'pi pi-exclamation-circle', sortOrder: 5 },
+  { code: 'SOCIETY_COMPLAINTS', title: 'Complaints', routePath: 'complaints', icon: 'pi pi-flag', sortOrder: 5 },
   { code: 'SOCIETY_OTHER_INCOME', title: 'Other Income', routePath: 'income', icon: 'pi pi-plus-circle', sortOrder: 6 },
   { code: 'SOCIETY_AMENITIES', title: 'Amenities', routePath: 'amenities', icon: 'pi pi-calendar', sortOrder: 7 },
   { code: 'SOCIETY_REPORTS', title: 'Reports', routePath: 'reports', icon: 'pi pi-chart-line', sortOrder: 8 },
@@ -52,10 +52,10 @@ export const FALLBACK_SOCIETY_MODULES: NavModule[] = [
   { code: 'SOCIETY_CONTRACTS', title: 'Contracts', routePath: 'contracts', icon: 'pi pi-file-edit', sortOrder: 11 },
   { code: 'SOCIETY_ABOUT_SOCIETY', title: 'About Society', routePath: 'about-society', icon: 'pi pi-building', sortOrder: 12 },
   { code: 'SOCIETY_NOTICES', title: 'Notices', routePath: 'notices', icon: 'pi pi-megaphone', sortOrder: 13 },
-  { code: 'SOCIETY_SETTINGS', title: 'Services', routePath: 'settings', icon: 'pi pi-cog', sortOrder: 14 },
-  { code: 'SOCIETY_HELP', title: 'Help', routePath: 'help', icon: 'pi pi-question-circle', sortOrder: 15 },
-  { code: 'SOCIETY_ABOUT_US', title: 'About Us', routePath: 'about-us', icon: 'pi pi-info-circle', sortOrder: 16 },
-  { code: 'SOCIETY_SUBSCRIPTION', title: 'Subscription', routePath: 'subscription', icon: 'pi pi-id-card', sortOrder: 17 },
+  { code: 'SOCIETY_SETTINGS', title: 'Services', routePath: 'settings', icon: 'pi pi-briefcase', sortOrder: 14 },
+  { code: 'SOCIETY_SUBSCRIPTION', title: 'Subscription', routePath: 'subscription', icon: 'pi pi-id-card', sortOrder: 15 },
+  { code: 'SOCIETY_HELP', title: 'Help', routePath: 'help', icon: 'pi pi-question-circle', sortOrder: 16 },
+  { code: 'SOCIETY_ABOUT_US', title: 'About Us', routePath: 'about-us', icon: 'pi pi-info-circle', sortOrder: 17 },
 ];
 
 export function moduleGlyph(icon: string): string {
@@ -68,6 +68,8 @@ export function moduleGlyph(icon: string): string {
   if (icon.includes('file')) return '📄';
   if (icon.includes('chart-pie')) return '📊';
   if (icon.includes('exclamation')) return '⚠';
+  if (icon.includes('flag')) return '🚩';
+  if (icon.includes('briefcase')) return '💼';
   if (icon.includes('calendar')) return '📅';
   if (icon.includes('book')) return '📖';
   if (icon.includes('megaphone')) return '📢';
