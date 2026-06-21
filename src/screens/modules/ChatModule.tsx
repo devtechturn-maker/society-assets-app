@@ -257,7 +257,7 @@ function GroupListScreen({
   return (
     <View style={[styles.flex, { backgroundColor: theme.pageBg }]}>
       <View style={[styles.listHeader, { backgroundColor: theme.cardBg, borderBottomColor: theme.cardBorder }]}>
-        <Text style={[styles.threadTitle, { color: theme.text }]}>Chat Groups</Text>
+        <Text style={[styles.threadTitle, { color: theme.text }]}>Group Chat</Text>
         <Text style={[styles.threadSub, { color: theme.textMuted }]}>
           {canManageGroups
             ? 'Create groups and add specific members'
