@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { ListEmpty, ListError, ListLoading } from '../../components/dashboard/ListStates';
-import { SectionCard } from '../../components/dashboard/SectionCard';
 import { ChangePasswordFlow } from '../../components/ChangePasswordFlow';
 import {
   addContractType,
@@ -29,6 +28,31 @@ import { useScreenCaptureSettings } from '../../context/ScreenCaptureContext';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import type { MaintenanceSettings } from '../../types/api';
+
+type ServicesSectionKey = 'security' | 'maintenance' | 'payments' | 'contracts';
+
+function ServicesAccordionSection({
+  title,
+  expanded,
+  onToggle,
+  children,
+}: {
+  title: string;
+  expanded: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  const { theme } = useTheme();
+  return (
+    <View style={[styles.accordion, { borderColor: theme.divider, backgroundColor: theme.cardBg }]}>
+      <Pressable style={styles.accordionHead} onPress={onToggle}>
+        <Text style={[styles.accordionTitle, { color: theme.text }]}>{title}</Text>
+        <Text style={[styles.accordionChevron, { color: theme.textMuted }]}>{expanded ? '▾' : '▸'}</Text>
+      </Pressable>
+      {expanded ? <View style={styles.accordionBody}>{children}</View> : null}
+    </View>
+  );
+}
 
 export function SettingsModule() {
   const { theme } = useTheme();
@@ -65,6 +89,16 @@ export function SettingsModule() {
   const [typeLabel, setTypeLabel] = useState('');
   const [typeCode, setTypeCode] = useState('');
   const [addingType, setAddingType] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Record<ServicesSectionKey, boolean>>({
+    security: false,
+    maintenance: false,
+    payments: false,
+    contracts: false,
+  });
+
+  function toggleSection(section: ServicesSectionKey) {
+    setExpandedSections((current) => ({ ...current, [section]: !current[section] }));
+  }
 
   useEffect(() => {
     if (!settingsLoad.data) return;
@@ -73,6 +107,9 @@ export function SettingsModule() {
     setPenaltyGraceDay(String(s.maintenancePenaltyGraceDay));
     setPenaltyAmount(String(s.maintenancePenaltyAmount));
     setAllowCustomMaintenance(s.allowCustomMemberMaintenance);
+    if (s.configured === false) {
+      setExpandedSections((current) => ({ ...current, maintenance: true }));
+    }
   }, [settingsLoad.data]);
 
   useEffect(() => {
@@ -318,13 +355,13 @@ export function SettingsModule() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} />}
       keyboardShouldPersistTaps="handled"
     >
-      <ChangePasswordFlow />
-
-      <SectionCard
-        title="Screenshots & screen recording"
-        subtitle="Saved on this device only. Turn off to block screenshots and screen recording in the app."
+      <ServicesAccordionSection
+        title="Account security"
+        expanded={expandedSections.security}
+        onToggle={() => toggleSection('security')}
       >
-        <View style={styles.captureRow}>
+        <ChangePasswordFlow />
+        <View style={[styles.captureRow, { marginTop: 16 }]}>
           <View style={styles.captureText}>
             <Text style={[styles.captureLabel, { color: theme.text }]}>Allow screenshots</Text>
             <Text style={[styles.captureHint, { color: theme.textMuted }]}>
@@ -339,11 +376,12 @@ export function SettingsModule() {
             trackColor={{ false: theme.divider, true: theme.accentGold }}
           />
         </View>
-      </SectionCard>
+      </ServicesAccordionSection>
 
-      <SectionCard
+      <ServicesAccordionSection
         title="Maintenance Rules & Penalty Settings"
-        subtitle="Configure default maintenance, grace days, penalty and per-member override mode"
+        expanded={expandedSections.maintenance}
+        onToggle={() => toggleSection('maintenance')}
       >
         {settingsLoad.loading ? <ListLoading /> : null}
         {settingsLoad.error ? <ListError message={settingsLoad.error} /> : null}
@@ -389,19 +427,16 @@ export function SettingsModule() {
               onPress={saveSettings}
               disabled={savingSettings}
             >
-              <Text style={styles.primaryBtnText}>{savingSettings ? 'Saving…' : 'Save Settings'}</Text>
+              <Text style={styles.primaryBtnText}>{savingSettings ? 'Saving…' : 'Save Maintenance'}</Text>
             </Pressable>
           </View>
         ) : null}
-      </SectionCard>
+      </ServicesAccordionSection>
 
-      <SectionCard
+      <ServicesAccordionSection
         title="Member online payments"
-        subtitle={
-          paymentSettingsLoad.data?.routeEnabled
-            ? 'Add your society bank account - SOCIETY-ASSETS creates the Razorpay payment account automatically.'
-            : 'Connect your society Razorpay account so members pay maintenance directly to your society'
-        }
+        expanded={expandedSections.payments}
+        onToggle={() => toggleSection('payments')}
       >
         {paymentSettingsLoad.loading ? <ListLoading /> : null}
         {paymentSettingsLoad.error ? <ListError message={paymentSettingsLoad.error} /> : null}
@@ -627,11 +662,12 @@ export function SettingsModule() {
             )}
           </View>
         ) : null}
-      </SectionCard>
+      </ServicesAccordionSection>
 
-      <SectionCard
+      <ServicesAccordionSection
         title="Contract Types"
-        subtitle="Used in the Contracts module dropdown. Leave code blank to auto-generate from the name."
+        expanded={expandedSections.contracts}
+        onToggle={() => toggleSection('contracts')}
       >
         {typesLoad.loading ? <ListLoading /> : null}
         {typesLoad.error ? <ListError message={typesLoad.error} /> : null}
@@ -676,7 +712,7 @@ export function SettingsModule() {
             <Text style={styles.primaryBtnText}>{addingType ? 'Adding…' : 'Add Contract Type'}</Text>
           </Pressable>
         </View>
-      </SectionCard>
+      </ServicesAccordionSection>
     </ScrollView>
   );
 }
@@ -741,7 +777,18 @@ function CheckboxField({
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: 12, paddingBottom: 32 },
+  scroll: { padding: 12, paddingBottom: 32, gap: 12 },
+  accordion: { borderWidth: 1, borderRadius: 12, overflow: 'hidden' },
+  accordionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  accordionTitle: { fontSize: 16, fontWeight: '700', flex: 1 },
+  accordionChevron: { fontSize: 16, fontWeight: '700' },
+  accordionBody: { paddingHorizontal: 14, paddingBottom: 14 },
   captureRow: {
     flexDirection: 'row',
     alignItems: 'center',

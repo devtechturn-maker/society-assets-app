@@ -79,7 +79,7 @@ export function AddContractModal({ visible, onClose, onSaved }: Props) {
     if (!contractType) {
       alert(
         'Contract type required',
-        'Add at least one contract type under Settings first, then try again.',
+        'Add at least one contract type under Services first, then try again.',
         { variant: 'warning' }
       );
       return;
@@ -156,7 +156,7 @@ export function AddContractModal({ visible, onClose, onSaved }: Props) {
           >
             {types.length === 0 && !loadingTypes ? (
               <Text style={[styles.warn, { color: theme.textMuted }]}>
-                No contract types yet. Add types in Settings → Contract Types, then return here.
+                No contract types yet. Add types in Services → Contract Types, then return here.
               </Text>
             ) : null}
 

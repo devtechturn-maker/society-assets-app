@@ -21,7 +21,7 @@ export function ContractsModule() {
       if (types.length === 0) {
         alert(
           'Contract types required',
-          'Add at least one contract type under Settings → Contract Types, then try again.',
+          'Add at least one contract type under Services → Contract Types, then try again.',
           { variant: 'warning' }
         );
         return;
@@ -40,7 +40,7 @@ export function ContractsModule() {
       >
         <SectionCard
           title="Service contracts"
-          subtitle="Contract types are managed in Settings. Chairman receives email 7 days before expiry (08:00 IST)."
+          subtitle="Contract types are managed in Services. Chairman receives email 7 days before expiry (08:00 IST)."
           headerRight={
             <Pressable style={[styles.addBtn, { backgroundColor: theme.accent }]} onPress={openAddContract}>
               <Text style={styles.addBtnText}>+ Add</Text>
