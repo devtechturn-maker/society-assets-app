@@ -1,52 +1,39 @@
 {
-
   "cli": {
-
     "version": ">= 16.0.0",
-
     "appVersionSource": "local"
-
   },
-
   "build": {
-
     "development": {
-
       "developmentClient": true,
-
       "distribution": "internal",
-
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://187.127.180.221:8080"
+      },
       "ios": {
-
         "simulator": false
-
       }
-
     },
-
     "development-simulator": {
-
       "developmentClient": true,
-
       "distribution": "internal",
-
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://187.127.180.221:8080"
+      },
       "ios": {
-
         "simulator": true
-
       }
-
     },
-
     "preview": {
-
-      "distribution": "internal"
-
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://187.127.180.221:8080"
+      }
     },
-
-    "production": {}
-
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://187.127.180.221:8080"
+      }
+    }
   }
-
 }
-
