@@ -14,15 +14,25 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.devtechturn.societyassets",
+      "buildNumber": "3",
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSExceptionDomains": {
+            "187.127.180.221": {
+              "NSExceptionAllowsInsecureHTTPLoads": true,
+              "NSIncludesSubdomains": true
+            }
+          }
+        }
       }
     },
     "android": {
       "package": "com.devtechturn.societyassets",
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#70088c"

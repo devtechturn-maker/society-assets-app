@@ -16,6 +16,11 @@
     "build:ios:dev": "node scripts/ensure-development-branch.mjs && eas build --profile development --platform ios",
     "build:android:dev": "node scripts/ensure-development-branch.mjs && eas build --profile development --platform android",
     "build:ios:sim": "node scripts/ensure-development-branch.mjs && eas build --profile development-simulator --platform ios",
+    "build:ios:preview": "node scripts/ensure-development-branch.mjs && eas build --profile preview --platform ios",
+    "build:android:preview": "node scripts/ensure-development-branch.mjs && eas build --profile preview --platform android",
+    "build:preview": "node scripts/ensure-development-branch.mjs && eas build --profile preview --platform all",
+    "submit:ios:preview": "eas submit --profile preview --platform ios --latest",
+    "submit:android:preview": "eas submit --profile preview --platform android --latest",
     "web": "expo start --web"
   },
   "dependencies": {
