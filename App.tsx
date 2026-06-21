@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, LogBox, Platform, StyleSheet, View } from 'react-native';
 import * as ExpoSplashScreen from 'expo-splash-screen';
+import { AppErrorBoundary } from './src/components/AppErrorBoundary';
 import { SecureScreenGuard } from './src/components/SecureScreenGuard';
 import { FirstLoginPasswordScreen } from './src/screens/FirstLoginPasswordScreen';
 import { ForgotPasswordScreen } from './src/screens/ForgotPasswordScreen';
@@ -187,13 +188,15 @@ function AppRoot() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <ScreenCaptureProvider>
-        <AppAlertProvider>
-          <AppRoot key={appLaunchGeneration} />
-        </AppAlertProvider>
-      </ScreenCaptureProvider>
-    </ThemeProvider>
+    <AppErrorBoundary>
+      <ThemeProvider>
+        <ScreenCaptureProvider>
+          <AppAlertProvider>
+            <AppRoot key={appLaunchGeneration} />
+          </AppAlertProvider>
+        </ScreenCaptureProvider>
+      </ThemeProvider>
+    </AppErrorBoundary>
   );
 }
 
