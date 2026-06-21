@@ -443,6 +443,16 @@ export interface ComplaintDetail extends ComplaintSummary {
   memberId?: string;
 }
 
+export interface RuleSummary {
+  ruleId: string;
+  subject: string;
+  description: string;
+  createdAt: string;
+  createdByName?: string;
+}
+
+export type RuleDetail = RuleSummary;
+
 export interface AmenityBookingSummary {
   bookingId: string;
   amenityType: string;
@@ -472,6 +482,7 @@ export interface AppNotification {
   pollId?: string;
   complaintId?: string;
   amenityBookingId?: string;
+  ruleId?: string;
   societyId?: string;
   read: boolean;
   readAt: string | null;

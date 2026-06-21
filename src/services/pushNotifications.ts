@@ -34,6 +34,13 @@ export type AppPushNotification = {
   amenityLabel: string;
   preview: string;
   type: 'AMENITY_BOOKED';
+} | {
+  kind: 'rule';
+  notificationId?: string;
+  ruleId: string;
+  subject: string;
+  preview: string;
+  type: 'RULE_PUBLISHED';
 };
 
 /** @deprecated Use AppPushNotification */
@@ -90,6 +97,14 @@ async function ensureAndroidChannel(): Promise<void> {
   await Notifications.setNotificationChannelAsync('amenities', {
     name: 'Society Assets · Amenities',
     description: 'Amenity booking updates',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#70088c',
+    sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync('rules', {
+    name: 'Society Assets · Rules',
+    description: 'Society rules published by the chairman',
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: '#70088c',
@@ -230,6 +245,7 @@ type PushData = {
   subject?: string;
   amenityBookingId?: string;
   amenityType?: string;
+  ruleId?: string;
   notificationId?: string;
 };
 
@@ -297,6 +313,23 @@ function parseAppPushNotification(
       notificationId: readNotificationId(data),
       bookingId,
       amenityLabel,
+      preview,
+      type: data.type,
+    };
+  }
+  if (data?.type === 'RULE_PUBLISHED') {
+    const ruleId = data.ruleId ? String(data.ruleId) : '';
+    if (!ruleId) return null;
+    const subject =
+      (data.subject && String(data.subject).trim()) ||
+      (content.title && String(content.title).trim()) ||
+      'Society rule';
+    const preview = (content.body && String(content.body).trim()) || subject;
+    return {
+      kind: 'rule',
+      notificationId: readNotificationId(data),
+      ruleId,
+      subject,
       preview,
       type: data.type,
     };
@@ -369,6 +402,7 @@ export function openNotificationResponse(
     onOpenPoll?: (pollId?: string) => void;
     onOpenComplaint?: (complaintId?: string) => void;
     onOpenAmenity?: (bookingId?: string) => void;
+    onOpenRule?: (ruleId?: string) => void;
   }
 ): boolean {
   const parsed = parseAppPushFromResponse(response);
@@ -388,6 +422,10 @@ export function openNotificationResponse(
     handlers.onOpenAmenity?.(parsed.bookingId);
     return true;
   }
+  if (parsed.kind === 'rule') {
+    handlers.onOpenRule?.(parsed.ruleId);
+    return true;
+  }
   handlers.onOpenChat?.(parsed.groupId);
   return true;
 }
@@ -404,6 +442,7 @@ export async function resolveInitialNotificationTargets(): Promise<{
   pollId?: string;
   complaintId?: string;
   bookingId?: string;
+  ruleId?: string;
 }> {
   if (!isRemotePushAvailable()) return {};
   const response = await Notifications.getLastNotificationResponseAsync();
@@ -412,6 +451,7 @@ export async function resolveInitialNotificationTargets(): Promise<{
   if (parsed.kind === 'poll') return { pollId: parsed.pollId };
   if (parsed.kind === 'complaint') return { complaintId: parsed.complaintId };
   if (parsed.kind === 'amenity') return { bookingId: parsed.bookingId };
+  if (parsed.kind === 'rule') return { ruleId: parsed.ruleId };
   return { groupId: parsed.groupId };
 }
 
@@ -426,6 +466,7 @@ export function addNotificationResponseListener(handlers: {
   onOpenPoll?: (pollId?: string) => void;
   onOpenComplaint?: (complaintId?: string) => void;
   onOpenAmenity?: (bookingId?: string) => void;
+  onOpenRule?: (ruleId?: string) => void;
 }): Notifications.Subscription {
   if (!isRemotePushAvailable()) {
     return { remove: () => undefined };

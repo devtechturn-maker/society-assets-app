@@ -14,6 +14,7 @@ import { SupportModule } from './SupportModule';
 import { PollModule } from './PollModule';
 import { ComplaintModule } from './ComplaintModule';
 import { AmenityBookingModule } from './AmenityBookingModule';
+import { RulesModule } from './RulesModule';
 import { ChatModule } from './ChatModule';
 import { AppearanceModule } from './AppearanceModule';
 import { SubscriptionModule } from './SubscriptionModule';
@@ -29,6 +30,8 @@ export function ModuleRouter({
   onPollConsumed,
   initialComplaintId,
   onComplaintConsumed,
+  initialRuleId,
+  onRuleConsumed,
   initialBookingId,
   onBookingConsumed,
   onUserUpdated,
@@ -44,6 +47,8 @@ export function ModuleRouter({
   onPollConsumed?: () => void;
   initialComplaintId?: string | null;
   onComplaintConsumed?: () => void;
+  initialRuleId?: string | null;
+  onRuleConsumed?: () => void;
   initialBookingId?: string | null;
   onBookingConsumed?: () => void;
   onUserUpdated?: (patch: Partial<import('../../types/api').LoginData>) => void;
@@ -78,6 +83,14 @@ export function ModuleRouter({
             memberPortal
             initialComplaintId={initialComplaintId}
             onInitialComplaintConsumed={onComplaintConsumed}
+          />
+        );
+      case 'rules':
+        return (
+          <RulesModule
+            memberPortal
+            initialRuleId={initialRuleId}
+            onInitialRuleConsumed={onRuleConsumed}
           />
         );
       case 'amenities':
@@ -137,6 +150,14 @@ export function ModuleRouter({
           canManageComplaints={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
           initialComplaintId={initialComplaintId}
           onInitialComplaintConsumed={onComplaintConsumed}
+        />
+      );
+    case 'rules':
+      return (
+        <RulesModule
+          canManageRules={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
+          initialRuleId={initialRuleId}
+          onInitialRuleConsumed={onRuleConsumed}
         />
       );
     case 'amenities':
