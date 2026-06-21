@@ -3,7 +3,7 @@ import type { AppNotification } from '../types/api';
 export type NotificationAudience = 'CHAIRMAN' | 'MEMBER';
 
 const CHAIRMAN_TYPES = new Set(['COMPLAINT_CREATED', 'POLL_VOTED']);
-const MEMBER_TYPES = new Set(['COMPLAINT_UPDATED', 'POLL_CREATED', 'POLL_RESULTS', 'GROUP_ADDED', 'AMENITY_BOOKED']);
+const MEMBER_TYPES = new Set(['COMPLAINT_UPDATED', 'POLL_CREATED', 'POLL_RESULTS', 'GROUP_ADDED', 'AMENITY_BOOKED', 'RULE_PUBLISHED']);
 const SHARED_TYPES = new Set(['GROUP_CHAT', 'GENERAL']);
 
 export function notificationMatchesAudience(

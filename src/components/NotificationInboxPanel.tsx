@@ -11,7 +11,7 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import type { AppNotification } from '../types/api';
 
-type SectionKey = 'complaints' | 'chats' | 'polls' | 'amenities';
+type SectionKey = 'complaints' | 'chats' | 'polls' | 'amenities' | 'rules';
 
 const SECTION_PREVIEW = 3;
 
@@ -49,6 +49,7 @@ function notificationGlyph(type: string): string {
   if (type.startsWith('GROUP')) return '💬';
   if (type.startsWith('POLL')) return '📊';
   if (type.startsWith('AMENITY')) return '📅';
+  if (type.startsWith('RULE')) return '📖';
   return '🔔';
 }
 
@@ -69,6 +70,9 @@ function filterBySection(notifications: AppNotification[], section: SectionKey):
   if (section === 'polls') {
     return notifications.filter((n) => n.type.startsWith('POLL'));
   }
+  if (section === 'rules') {
+    return notifications.filter((n) => n.type.startsWith('RULE'));
+  }
   return notifications.filter((n) => n.type.startsWith('AMENITY'));
 }
 
@@ -76,6 +80,7 @@ function sectionTitle(section: SectionKey): string {
   if (section === 'complaints') return 'Complaints';
   if (section === 'chats') return 'Chats';
   if (section === 'polls') return 'Polls';
+  if (section === 'rules') return 'Rules';
   return 'Amenities';
 }
 
@@ -83,10 +88,11 @@ function sectionEmptyCopy(section: SectionKey): string {
   if (section === 'complaints') return 'No complaint notifications';
   if (section === 'chats') return 'No chat notifications';
   if (section === 'polls') return 'No poll notifications';
+  if (section === 'rules') return 'No rule notifications';
   return 'No amenity notifications';
 }
 
-const SECTIONS: SectionKey[] = ['complaints', 'chats', 'polls', 'amenities'];
+const SECTIONS: SectionKey[] = ['complaints', 'chats', 'polls', 'rules', 'amenities'];
 
 function NotificationRow({
   item,
@@ -216,6 +222,7 @@ export function NotificationInboxPanel({
     complaints: SECTION_PREVIEW,
     chats: SECTION_PREVIEW,
     polls: SECTION_PREVIEW,
+    rules: SECTION_PREVIEW,
     amenities: SECTION_PREVIEW,
   });
   const prevLoadingMoreRef = useRef(false);
@@ -225,6 +232,7 @@ export function NotificationInboxPanel({
       complaints: filterBySection(notifications, 'complaints'),
       chats: filterBySection(notifications, 'chats'),
       polls: filterBySection(notifications, 'polls'),
+      rules: filterBySection(notifications, 'rules'),
       amenities: filterBySection(notifications, 'amenities'),
     }),
     [notifications]
@@ -236,6 +244,7 @@ export function NotificationInboxPanel({
         complaints: SECTION_PREVIEW,
         chats: SECTION_PREVIEW,
         polls: SECTION_PREVIEW,
+        rules: SECTION_PREVIEW,
         amenities: SECTION_PREVIEW,
       });
     }
@@ -247,6 +256,7 @@ export function NotificationInboxPanel({
         complaints: current.complaints + SECTION_PREVIEW,
         chats: current.chats + SECTION_PREVIEW,
         polls: current.polls + SECTION_PREVIEW,
+        rules: current.rules + SECTION_PREVIEW,
         amenities: current.amenities + SECTION_PREVIEW,
       }));
     }

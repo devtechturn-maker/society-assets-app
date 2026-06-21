@@ -124,6 +124,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
   const [initialChatGroupId, setInitialChatGroupId] = useState<string | null>(null);
   const [initialPollId, setInitialPollId] = useState<string | null>(null);
   const [initialComplaintId, setInitialComplaintId] = useState<string | null>(null);
+  const [initialRuleId, setInitialRuleId] = useState<string | null>(null);
   const [initialBookingId, setInitialBookingId] = useState<string | null>(null);
   const [bannerNotification, setBannerNotification] = useState<AppPushNotification | null>(null);
   const inbox = useNotificationInbox(user.userId, notificationAudience);
@@ -223,6 +224,13 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
     }
   }, []);
 
+  const openRuleFromNotification = useCallback((ruleId?: string) => {
+    setActivePath('rules');
+    if (ruleId) {
+      setInitialRuleId(ruleId);
+    }
+  }, []);
+
   const openAmenityFromNotification = useCallback((bookingId?: string) => {
     setActivePath('amenities');
     if (bookingId) {
@@ -258,6 +266,10 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
         openAmenityFromNotification(parsed.bookingId);
         return;
       }
+      if (parsed.kind === 'rule') {
+        openRuleFromNotification(parsed.ruleId);
+        return;
+      }
       openChatFromNotification(parsed.groupId);
     })();
 
@@ -277,6 +289,9 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
       },
       onOpenAmenity: (bookingId) => {
         openAmenityFromNotification(bookingId);
+      },
+      onOpenRule: (ruleId) => {
+        openRuleFromNotification(ruleId);
       },
     });
     const receivedSubscription = addNotificationReceivedListener((notification) => {
@@ -300,6 +315,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
     openChatFromNotification,
     openPollFromNotification,
     openComplaintFromNotification,
+    openRuleFromNotification,
     openAmenityFromNotification,
     inbox.markPushNotificationAsRead,
     inbox.refreshUnreadCount,
@@ -371,6 +387,10 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
               openAmenityFromNotification(item.bookingId);
               return;
             }
+            if (item.kind === 'rule') {
+              openRuleFromNotification(item.ruleId);
+              return;
+            }
             openChatFromNotification(item.groupId);
           });
         }}
@@ -400,6 +420,10 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
             }
             if (opened.amenityBookingId || opened.type.startsWith('AMENITY')) {
               openAmenityFromNotification(opened.amenityBookingId);
+              return;
+            }
+            if (opened.ruleId || opened.type.startsWith('RULE')) {
+              openRuleFromNotification(opened.ruleId);
               return;
             }
             if (opened.groupId || opened.type.startsWith('GROUP')) {
@@ -499,6 +523,8 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
           onPollConsumed={() => setInitialPollId(null)}
           initialComplaintId={initialComplaintId}
           onComplaintConsumed={() => setInitialComplaintId(null)}
+          initialRuleId={initialRuleId}
+          onRuleConsumed={() => setInitialRuleId(null)}
           initialBookingId={initialBookingId}
           onBookingConsumed={() => setInitialBookingId(null)}
           onUserUpdated={(patch) => {
