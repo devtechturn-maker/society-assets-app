@@ -15,6 +15,8 @@ import { PollModule } from './PollModule';
 import { ComplaintModule } from './ComplaintModule';
 import { AmenityBookingModule } from './AmenityBookingModule';
 import { RulesModule } from './RulesModule';
+import { HelpModule } from './HelpModule';
+import { AboutUsModule } from './AboutUsModule';
 import { ChatModule } from './ChatModule';
 import { AppearanceModule } from './AppearanceModule';
 import { SubscriptionModule } from './SubscriptionModule';
@@ -103,6 +105,10 @@ export function ModuleRouter({
         );
       case 'profile':
         return <MemberProfileModule onUserUpdated={onUserUpdated} />;
+      case 'help':
+        return <HelpModule memberPortal />;
+      case 'about-us':
+        return <AboutUsModule />;
       case 'support':
         return <SupportModule />;
       default:
@@ -168,6 +174,10 @@ export function ModuleRouter({
           onInitialBookingConsumed={onBookingConsumed}
         />
       );
+    case 'help':
+      return <HelpModule />;
+    case 'about-us':
+      return <AboutUsModule />;
     case 'support':
       return <SupportModule />;
     case 'appearance':

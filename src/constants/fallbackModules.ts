@@ -17,7 +17,9 @@ export const FALLBACK_MEMBER_MODULES: NavModule[] = [
   { code: 'MEMBER_COMPLAINTS', title: 'Complaints', routePath: 'complaints', icon: 'pi pi-exclamation-circle', sortOrder: 4 },
   { code: 'MEMBER_AMENITIES', title: 'Amenities', routePath: 'amenities', icon: 'pi pi-calendar', sortOrder: 5 },
   { code: 'MEMBER_RULES', title: 'Rules', routePath: 'rules', icon: 'pi pi-book', sortOrder: 6 },
-  { code: 'MEMBER_SUPPORT', title: 'Chat Groups', routePath: 'chat', icon: 'pi pi-comments', sortOrder: 7 },
+  { code: 'MEMBER_SUPPORT', title: 'Group Chat', routePath: 'chat', icon: 'pi pi-comments', sortOrder: 7 },
+  { code: 'MEMBER_HELP', title: 'Help', routePath: 'help', icon: 'pi pi-question-circle', sortOrder: 8 },
+  { code: 'MEMBER_ABOUT_US', title: 'About Us', routePath: 'about-us', icon: 'pi pi-info-circle', sortOrder: 9 },
   MEMBER_PROFILE_MODULE,
 ];
 
@@ -49,7 +51,9 @@ export const FALLBACK_SOCIETY_MODULES: NavModule[] = [
   { code: 'SOCIETY_REPORTS', title: 'Reports', routePath: 'reports', icon: 'pi pi-chart-line', sortOrder: 11 },
   { code: 'SOCIETY_SUBSCRIPTION', title: 'Subscription', routePath: 'subscription', icon: 'pi pi-credit-card', sortOrder: 12 },
   { code: 'SOCIETY_SETTINGS', title: 'Settings', routePath: 'settings', icon: 'pi pi-cog', sortOrder: 13 },
-  { code: 'SOCIETY_SUPPORT', title: 'Chat Groups', routePath: 'chat', icon: 'pi pi-comments', sortOrder: 14 },
+  { code: 'SOCIETY_SUPPORT', title: 'Group Chat', routePath: 'chat', icon: 'pi pi-comments', sortOrder: 14 },
+  { code: 'SOCIETY_HELP', title: 'Help', routePath: 'help', icon: 'pi pi-question-circle', sortOrder: 15 },
+  { code: 'SOCIETY_ABOUT_US', title: 'About Us', routePath: 'about-us', icon: 'pi pi-info-circle', sortOrder: 16 },
 ];
 
 export function moduleGlyph(icon: string): string {
@@ -69,6 +73,7 @@ export function moduleGlyph(icon: string): string {
   if (icon.includes('comment')) return '💬';
   if (icon.includes('user')) return '👤';
   if (icon.includes('question')) return '?';
+  if (icon.includes('info')) return 'ℹ';
   if (icon.includes('moon')) return '🌙';
   return '•';
 }
