@@ -177,6 +177,7 @@ export function useNotificationInbox(userId: string, audience: NotificationAudie
           complaintId: push.kind === 'complaint' ? push.complaintId : undefined,
           amenityBookingId: push.kind === 'amenity' ? push.bookingId : undefined,
           ruleId: push.kind === 'rule' ? push.ruleId : undefined,
+          noticeId: push.kind === 'notice' ? push.noticeId : undefined,
         });
         applyRead(updated);
       } catch {

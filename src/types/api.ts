@@ -453,6 +453,16 @@ export interface RuleSummary {
 
 export type RuleDetail = RuleSummary;
 
+export interface NoticeSummary {
+  noticeId: string;
+  subject: string;
+  description: string;
+  createdAt: string;
+  createdByName?: string;
+}
+
+export type NoticeDetail = NoticeSummary;
+
 export interface SocietyProfile {
   societyId: string;
   name: string;
@@ -500,6 +510,7 @@ export interface AppNotification {
   complaintId?: string;
   amenityBookingId?: string;
   ruleId?: string;
+  noticeId?: string;
   societyId?: string;
   read: boolean;
   readAt: string | null;

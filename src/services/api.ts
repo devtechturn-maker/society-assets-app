@@ -681,6 +681,27 @@ export async function createRule(payload: {
   return data.data;
 }
 
+export function fetchNotices(memberPortal: boolean): Promise<import('../types/api').NoticeSummary[]> {
+  const url = memberPortal ? '/member/notices' : '/society/notices';
+  return getData<import('../types/api').NoticeSummary[]>(url);
+}
+
+export function fetchNoticeDetail(
+  memberPortal: boolean,
+  noticeId: string
+): Promise<import('../types/api').NoticeDetail> {
+  const url = memberPortal ? `/member/notices/${noticeId}` : `/society/notices/${noticeId}`;
+  return getData<import('../types/api').NoticeDetail>(url);
+}
+
+export async function createNotice(payload: {
+  subject: string;
+  description: string;
+}): Promise<import('../types/api').NoticeDetail> {
+  const { data } = await client.post<ApiResponse<import('../types/api').NoticeDetail>>('/society/notices', payload);
+  return data.data;
+}
+
 export function fetchAmenityBookings(memberPortal: boolean): Promise<import('../types/api').AmenityBookingSummary[]> {
   const url = memberPortal ? '/member/amenity-bookings' : '/society/amenity-bookings';
   return getData<import('../types/api').AmenityBookingSummary[]>(url);
@@ -756,6 +777,7 @@ export async function markNotificationReadByTarget(params: {
   complaintId?: string;
   amenityBookingId?: string;
   ruleId?: string;
+  noticeId?: string;
 }): Promise<AppNotification> {
   const { data } = await client.post<ApiResponse<AppNotification>>('/notifications/read-by-target', null, {
     params,
