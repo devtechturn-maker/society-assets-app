@@ -16,7 +16,7 @@ export const FALLBACK_MEMBER_MODULES: NavModule[] = [
   { code: 'MEMBER_POLLS', title: 'Polls', routePath: 'polls', icon: 'pi pi-chart-pie', sortOrder: 3 },
   { code: 'MEMBER_COMPLAINTS', title: 'Complaints', routePath: 'complaints', icon: 'pi pi-exclamation-circle', sortOrder: 4 },
   { code: 'MEMBER_AMENITIES', title: 'Amenities', routePath: 'amenities', icon: 'pi pi-calendar', sortOrder: 5 },
-  { code: 'MEMBER_RULES', title: 'Rules', routePath: 'rules', icon: 'pi pi-book', sortOrder: 6 },
+  { code: 'MEMBER_ABOUT_SOCIETY', title: 'About Society', routePath: 'about-society', icon: 'pi pi-building', sortOrder: 6 },
   { code: 'MEMBER_SUPPORT', title: 'Group Chat', routePath: 'chat', icon: 'pi pi-comments', sortOrder: 7 },
   { code: 'MEMBER_HELP', title: 'Help', routePath: 'help', icon: 'pi pi-question-circle', sortOrder: 8 },
   { code: 'MEMBER_ABOUT_US', title: 'About Us', routePath: 'about-us', icon: 'pi pi-info-circle', sortOrder: 9 },
@@ -46,7 +46,7 @@ export const FALLBACK_SOCIETY_MODULES: NavModule[] = [
   { code: 'SOCIETY_POLLS', title: 'Polls', routePath: 'polls', icon: 'pi pi-chart-pie', sortOrder: 6 },
   { code: 'SOCIETY_COMPLAINTS', title: 'Complaints', routePath: 'complaints', icon: 'pi pi-exclamation-circle', sortOrder: 7 },
   { code: 'SOCIETY_AMENITIES', title: 'Amenities', routePath: 'amenities', icon: 'pi pi-calendar', sortOrder: 8 },
-  { code: 'SOCIETY_RULES', title: 'Rules', routePath: 'rules', icon: 'pi pi-book', sortOrder: 9 },
+  { code: 'SOCIETY_ABOUT_SOCIETY', title: 'About Society', routePath: 'about-society', icon: 'pi pi-building', sortOrder: 9 },
   { code: 'SOCIETY_MEMBERS', title: 'Members', routePath: 'members', icon: 'pi pi-users', sortOrder: 10 },
   { code: 'SOCIETY_REPORTS', title: 'Reports', routePath: 'reports', icon: 'pi pi-chart-line', sortOrder: 11 },
   { code: 'SOCIETY_SUBSCRIPTION', title: 'Subscription', routePath: 'subscription', icon: 'pi pi-credit-card', sortOrder: 12 },
@@ -68,6 +68,7 @@ export function moduleGlyph(icon: string): string {
   if (icon.includes('exclamation')) return '⚠';
   if (icon.includes('calendar')) return '📅';
   if (icon.includes('book')) return '📖';
+  if (icon.includes('building')) return '🏢';
   if (icon.includes('chart')) return '📊';
   if (icon.includes('cog')) return '⚙';
   if (icon.includes('comment')) return '💬';

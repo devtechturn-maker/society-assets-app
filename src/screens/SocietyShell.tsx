@@ -225,7 +225,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
   }, []);
 
   const openRuleFromNotification = useCallback((ruleId?: string) => {
-    setActivePath('rules');
+    setActivePath('about-society');
     if (ruleId) {
       setInitialRuleId(ruleId);
     }
