@@ -11,7 +11,7 @@ const CHAIRMAN_HELP: HelpSection[] = [
   {
     title: 'Getting started',
     items: [
-      'Complete maintenance setup under Settings before recording collections.',
+      'Complete maintenance setup under Services before recording collections.',
       'Add society members with flat numbers so maintenance and reports stay accurate.',
       'Use the dashboard overview to track income, expenses, and pending dues at a glance.',
     ],
@@ -20,7 +20,7 @@ const CHAIRMAN_HELP: HelpSection[] = [
     title: 'Maintenance & collections',
     items: [
       'Record maintenance manually or import entries from Excel under the Maintenance module.',
-      'Members can pay online when payment settings are configured in Settings.',
+      'Members can pay online when payment settings are configured in Services.',
       'Send pending reminders from the Maintenance audit view for members with outstanding dues.',
     ],
   },

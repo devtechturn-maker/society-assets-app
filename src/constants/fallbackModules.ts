@@ -50,7 +50,7 @@ export const FALLBACK_SOCIETY_MODULES: NavModule[] = [
   { code: 'SOCIETY_MEMBERS', title: 'Members', routePath: 'members', icon: 'pi pi-users', sortOrder: 10 },
   { code: 'SOCIETY_REPORTS', title: 'Reports', routePath: 'reports', icon: 'pi pi-chart-line', sortOrder: 11 },
   { code: 'SOCIETY_SUBSCRIPTION', title: 'Subscription', routePath: 'subscription', icon: 'pi pi-credit-card', sortOrder: 12 },
-  { code: 'SOCIETY_SETTINGS', title: 'Settings', routePath: 'settings', icon: 'pi pi-cog', sortOrder: 13 },
+  { code: 'SOCIETY_SETTINGS', title: 'Services', routePath: 'settings', icon: 'pi pi-cog', sortOrder: 13 },
   { code: 'SOCIETY_SUPPORT', title: 'Group Chat', routePath: 'chat', icon: 'pi pi-comments', sortOrder: 14 },
   { code: 'SOCIETY_HELP', title: 'Help', routePath: 'help', icon: 'pi pi-question-circle', sortOrder: 15 },
   { code: 'SOCIETY_ABOUT_US', title: 'About Us', routePath: 'about-us', icon: 'pi pi-info-circle', sortOrder: 16 },
