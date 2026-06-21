@@ -14,6 +14,7 @@ import { SupportModule } from './SupportModule';
 import { PollModule } from './PollModule';
 import { ComplaintModule } from './ComplaintModule';
 import { AmenityBookingModule } from './AmenityBookingModule';
+import { NoticeModule } from './NoticeModule';
 import { AboutSocietyModule } from './AboutSocietyModule';
 import { HelpModule } from './HelpModule';
 import { AboutUsModule } from './AboutUsModule';
@@ -34,6 +35,8 @@ export function ModuleRouter({
   onComplaintConsumed,
   initialRuleId,
   onRuleConsumed,
+  initialNoticeId,
+  onNoticeConsumed,
   initialBookingId,
   onBookingConsumed,
   onUserUpdated,
@@ -51,6 +54,8 @@ export function ModuleRouter({
   onComplaintConsumed?: () => void;
   initialRuleId?: string | null;
   onRuleConsumed?: () => void;
+  initialNoticeId?: string | null;
+  onNoticeConsumed?: () => void;
   initialBookingId?: string | null;
   onBookingConsumed?: () => void;
   onUserUpdated?: (patch: Partial<import('../../types/api').LoginData>) => void;
@@ -93,6 +98,14 @@ export function ModuleRouter({
             memberPortal
             initialRuleId={initialRuleId}
             onInitialRuleConsumed={onRuleConsumed}
+          />
+        );
+      case 'notices':
+        return (
+          <NoticeModule
+            memberPortal
+            initialNoticeId={initialNoticeId}
+            onInitialNoticeConsumed={onNoticeConsumed}
           />
         );
       case 'amenities':
@@ -163,6 +176,14 @@ export function ModuleRouter({
         <AboutSocietyModule
           initialRuleId={initialRuleId}
           onInitialRuleConsumed={onRuleConsumed}
+        />
+      );
+    case 'notices':
+      return (
+        <NoticeModule
+          canManageNotices={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
+          initialNoticeId={initialNoticeId}
+          onInitialNoticeConsumed={onNoticeConsumed}
         />
       );
     case 'amenities':
