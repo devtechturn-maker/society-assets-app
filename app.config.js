@@ -5,7 +5,8 @@ const STAGING_API_URL = 'http://187.127.180.221:8080';
 
 module.exports = ({ config }) => {
   const profile = process.env.EAS_BUILD_PROFILE || '';
-  const storeBuild = profile === 'preview' || profile === 'production';
+  const storeBuild =
+    profile === 'preview' || profile === 'preview-apk' || profile === 'production';
 
   let plugins = appJson.expo.plugins || [];
   if (storeBuild) {
