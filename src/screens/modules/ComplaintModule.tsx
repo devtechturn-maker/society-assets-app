@@ -23,6 +23,7 @@ import type { ComplaintDetail, ComplaintSummary } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
 import { useAppAlert } from '../../context/AppAlertContext';
+import { useHardwareBack } from '../../hooks/useHardwareBack';
 
 type Screen = 'list' | 'create' | 'detail';
 
@@ -143,6 +144,18 @@ export function ComplaintModule({
   const descriptionFocusedRef = useRef(false);
   const chairmanNoteFocusedRef = useRef(false);
   const keyboardHeight = useKeyboardHeight();
+
+  useHardwareBack(
+    useCallback(() => {
+      if (screen !== 'list') {
+        setScreen('list');
+        setActiveComplaint(null);
+        return true;
+      }
+      return false;
+    }, [screen]),
+    screen !== 'list'
+  );
 
   const keyboardScrollPadding = Math.max(0, keyboardHeight - BOTTOM_TAB_BAR_HEIGHT);
 

@@ -3,6 +3,7 @@ import { Animated, Image, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as ExpoSplashScreen from 'expo-splash-screen';
 import { useTheme } from '../theme/ThemeContext';
+import { APP_NAME } from '../constants/branding';
 
 /** Always show at least this long on every cold start / full reload. */
 export const SPLASH_DURATION_MS = 2500;
@@ -75,13 +76,13 @@ export function SplashScreen({ onFinish }: Props) {
             source={splashLogo}
             style={styles.logo}
             resizeMode="contain"
-            accessibilityLabel="Society Assets"
+            accessibilityLabel={APP_NAME}
           />
         </Animated.View>
       </View>
 
       <Animated.Text style={[styles.footerBrand, { opacity: footerOpacity }]}>
-        SOCIETY ASSETS
+        {APP_NAME.toUpperCase()}
       </Animated.Text>
     </View>
   );

@@ -23,6 +23,7 @@ import {
 import type { ChatGroupSummary, ChatMessage, ChatThread, SocietyMember } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
+import { useHardwareBack } from '../../hooks/useHardwareBack';
 
 const POLL_MS = 5000;
 const BOTTOM_TAB_BAR_HEIGHT = 62;
@@ -858,6 +859,23 @@ export function ChatModule({
   const [screen, setScreen] = useState<Screen>(initialGroupId ? 'chat' : 'list');
   const [activeGroupId, setActiveGroupId] = useState<string | null>(initialGroupId ?? null);
   const [listRefreshToken, setListRefreshToken] = useState(0);
+
+  useHardwareBack(
+    useCallback(() => {
+      if (screen === 'create') {
+        setScreen('list');
+        return true;
+      }
+      if (screen === 'chat') {
+        setListRefreshToken((token) => token + 1);
+        setScreen('list');
+        setActiveGroupId(null);
+        return true;
+      }
+      return false;
+    }, [screen]),
+    screen !== 'list'
+  );
 
   useEffect(() => {
     if (initialGroupId) {

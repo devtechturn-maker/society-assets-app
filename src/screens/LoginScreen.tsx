@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,14 +18,13 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config/env';
 import { useAppAlert } from '../context/AppAlertContext';
 import { LoginCityscape } from '../components/LoginCityscape';
+import { AppLogo } from '../components/AppLogo';
+import { PRIMARY_LOGO_ASPECT } from '../constants/branding';
 import { login } from '../services/api';
 import { initializeAppViewContext } from '../services/appContext';
 import { saveSession } from '../services/storage';
 import { colors } from '../theme/colors';
 import type { LoginData } from '../types/api';
-
-const LOGO = require('../../assets/primary-logo.png');
-const LOGO_ASPECT = 1536 / 1024;
 
 type Props = {
   onLoggedIn: (user: LoginData) => void;
@@ -67,10 +65,10 @@ function useLoginLogoSize(screenWidth: number, screenHeight: number) {
     const maxLogoHeight = Math.min(screenHeight * 0.38, 255);
     const maxLogoWidth = screenWidth - 48;
     let logoWidth = Math.min(maxLogoWidth, 220);
-    let logoHeight = logoWidth * LOGO_ASPECT;
+    let logoHeight = logoWidth * PRIMARY_LOGO_ASPECT;
     if (logoHeight > maxLogoHeight) {
       logoHeight = maxLogoHeight;
-      logoWidth = logoHeight / LOGO_ASPECT;
+      logoWidth = logoHeight / PRIMARY_LOGO_ASPECT;
     }
     return { logoWidth, logoHeight };
   }, [screenWidth, screenHeight]);
@@ -128,12 +126,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans, onForgotPassword }: Props
         >
           <View style={styles.page}>
             <View style={styles.contentBlock}>
-              <Image
-                source={LOGO}
-                style={{ width: logoWidth, height: logoHeight, marginBottom: 18 }}
-                resizeMode="contain"
-                accessibilityLabel="Society Assets"
-              />
+              <AppLogo variant="primary" size={logoWidth} style={{ marginBottom: 18 }} />
 
               <View style={styles.authCard}>
               <View style={styles.cardBody}>

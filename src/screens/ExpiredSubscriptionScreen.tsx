@@ -1,4 +1,6 @@
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppLogo } from '../components/AppLogo';
+import { APP_NAME } from '../constants/branding';
 import { WEB_PORTAL_URL } from '../config/env';
 import type { SocietySubscriptionStatus } from '../types/api';
 
@@ -15,11 +17,11 @@ export function ExpiredSubscriptionScreen({ status, onLogout }: Props) {
 
   return (
     <View style={styles.page}>
-      <Text style={styles.icon}>!</Text>
+      <AppLogo variant="splash" size={88} style={styles.logo} />
       <Text style={styles.title}>Plan expired</Text>
       <Text style={styles.message}>
         {status.message ??
-          'Your Society Assets subscription has expired. Renew on our website to continue using the app.'}
+          `Your ${APP_NAME} subscription has expired. Renew on our website to continue using the app.`}
       </Text>
       {status.planName ? (
         <View style={styles.box}>
@@ -47,25 +49,16 @@ const styles = StyleSheet.create({
     padding: 24,
     justifyContent: 'center',
   },
-  icon: {
+  logo: {
     alignSelf: 'center',
-    width: 56,
-    height: 56,
-    lineHeight: 56,
-    textAlign: 'center',
-    borderRadius: 28,
-    backgroundColor: '#fee2e2',
-    color: '#b91c1c',
-    fontSize: 28,
-    fontWeight: '800',
-    overflow: 'hidden',
+    marginBottom: 8,
   },
   title: {
     fontSize: 24,
     fontWeight: '800',
     color: '#0f172a',
     textAlign: 'center',
-    marginTop: 16,
+    marginTop: 8,
   },
   message: {
     fontSize: 15,

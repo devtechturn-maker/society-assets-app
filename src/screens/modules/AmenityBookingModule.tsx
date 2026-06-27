@@ -20,6 +20,7 @@ import { AMENITY_TYPE_OPTIONS } from '../../constants/amenityTypes';
 import { useTheme } from '../../theme/ThemeContext';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
 import { useAppAlert } from '../../context/AppAlertContext';
+import { useHardwareBack } from '../../hooks/useHardwareBack';
 
 type Screen = 'list' | 'create' | 'detail';
 
@@ -67,6 +68,18 @@ export function AmenityBookingModule({
   const [startTime, setStartTime] = useState('10:00');
   const [endTime, setEndTime] = useState('11:00');
   const [notes, setNotes] = useState('');
+
+  useHardwareBack(
+    useCallback(() => {
+      if (screen !== 'list') {
+        setScreen('list');
+        setActiveBooking(null);
+        return true;
+      }
+      return false;
+    }, [screen]),
+    screen !== 'list'
+  );
 
   const loadBookings = useCallback(async () => {
     setLoading(true);

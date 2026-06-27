@@ -1,5 +1,7 @@
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppLogo } from '../../components/AppLogo';
 import { SectionCard } from '../../components/dashboard/SectionCard';
+import { APP_NAME, APP_TAGLINE } from '../../constants/branding';
 import { useTheme } from '../../theme/ThemeContext';
 
 type AboutBlock = {
@@ -45,10 +47,13 @@ export function AboutUsModule() {
 
   return (
     <ScrollView contentContainerStyle={styles.scroll}>
-      <SectionCard
-        title="About Us"
-        subtitle="Society Assets — building trust and managing assets for modern housing communities."
-      >
+      <View style={[styles.hero, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
+        <AppLogo variant="glyph" size={44} framed />
+        <Text style={[styles.heroTitle, { color: theme.text }]}>{APP_NAME}</Text>
+        <Text style={[styles.heroHeader, { color: theme.textMuted }]}>{APP_TAGLINE}</Text>
+      </View>
+
+      <SectionCard title="About Us" subtitle={`${APP_NAME} — building trust and managing assets for modern housing communities.`}>
         {ABOUT_BLOCKS.map((block) => (
           <SectionCard key={block.title} title={block.title}>
             {block.paragraphs.map((paragraph) => (
@@ -65,5 +70,24 @@ export function AboutUsModule() {
 
 const styles = StyleSheet.create({
   scroll: { padding: 12, paddingBottom: 32, gap: 12 },
+  hero: {
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    gap: 6,
+  },
+  heroTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  heroHeader: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 8,
+  },
   body: { fontSize: 15, lineHeight: 22, marginBottom: 10 },
 });

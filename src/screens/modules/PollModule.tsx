@@ -22,6 +22,7 @@ import type { PollDetail, PollSummary, SocietyMember } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
 import { useAppAlert } from '../../context/AppAlertContext';
+import { useHardwareBack } from '../../hooks/useHardwareBack';
 
 type Screen = 'list' | 'create' | 'detail' | 'share';
 
@@ -60,6 +61,22 @@ export function PollModule({
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [shareAllMembers, setShareAllMembers] = useState(true);
   const [shareMemberIds, setShareMemberIds] = useState<string[]>([]);
+
+  useHardwareBack(
+    useCallback(() => {
+      if (screen === 'share') {
+        setScreen('detail');
+        return true;
+      }
+      if (screen === 'create' || screen === 'detail') {
+        setScreen('list');
+        setActivePoll(null);
+        return true;
+      }
+      return false;
+    }, [screen]),
+    screen !== 'list'
+  );
 
   const loadPolls = useCallback(async () => {
     setLoading(true);
