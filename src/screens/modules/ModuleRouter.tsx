@@ -41,6 +41,8 @@ export function ModuleRouter({
   onBookingConsumed,
   onUserUpdated,
   onNavigateProfile,
+  onLogout,
+  onOpenNotice,
 }: {
   routePath: string;
   memberPortal?: boolean;
@@ -60,11 +62,18 @@ export function ModuleRouter({
   onBookingConsumed?: () => void;
   onUserUpdated?: (patch: Partial<import('../../types/api').LoginData>) => void;
   onNavigateProfile?: () => void;
+  onLogout?: () => void;
+  onOpenNotice?: (noticeId: string) => void;
 }): ReactNode {
   if (memberPortal) {
     switch (routePath) {
       case 'dashboard':
-        return <MemberDashboardModule onOpenProfile={() => onNavigateProfile?.()} />;
+        return (
+          <MemberDashboardModule
+            onOpenProfile={() => onNavigateProfile?.()}
+            onOpenNotice={onOpenNotice}
+          />
+        );
       case 'maintenance':
         return <MemberMaintenanceModule />;
       case 'chat':
@@ -117,7 +126,7 @@ export function ModuleRouter({
           />
         );
       case 'profile':
-        return <MemberProfileModule onUserUpdated={onUserUpdated} />;
+        return <MemberProfileModule onUserUpdated={onUserUpdated} onLogout={onLogout} />;
       case 'help':
         return <HelpModule memberPortal />;
       case 'about-us':
@@ -201,7 +210,7 @@ export function ModuleRouter({
     case 'support':
       return <SupportModule />;
     case 'appearance':
-      return <AppearanceModule />;
+      return <AppearanceModule onLogout={onLogout} />;
     case 'subscription':
       return <SubscriptionModule />;
     default:

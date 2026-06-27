@@ -5,6 +5,7 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -27,6 +28,7 @@ import { useTheme } from '../../theme/ThemeContext';
 
 type Props = {
   onUserUpdated?: (patch: Partial<LoginData>) => void;
+  onLogout?: () => void;
 };
 
 function apiErrorMessage(error: unknown, fallback: string): string {
@@ -37,8 +39,8 @@ function apiErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-export function MemberProfileModule({ onUserUpdated }: Props) {
-  const { theme } = useTheme();
+export function MemberProfileModule({ onUserUpdated, onLogout }: Props) {
+  const { theme, mode, setMode } = useTheme();
   const { toast } = useAppAlert();
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -217,6 +219,33 @@ export function MemberProfileModule({ onUserUpdated }: Props) {
               </Text>
             )}
           </SectionCard>
+
+          <SectionCard title="Appearance" subtitle="Choose light or dark mode on this device">
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleCopy}>
+                <Text style={[styles.toggleLabel, { color: theme.text }]}>Dark mode</Text>
+                <Text style={[styles.hint, { color: theme.textMuted, marginTop: 2 }]}>
+                  {mode === 'dark' ? 'Dark theme is on' : 'Light theme is on'}
+                </Text>
+              </View>
+              <Switch
+                value={mode === 'dark'}
+                onValueChange={(on) => setMode(on ? 'dark' : 'light')}
+                trackColor={{ false: theme.divider, true: theme.accentGold }}
+              />
+            </View>
+          </SectionCard>
+
+          {onLogout ? (
+            <Pressable
+              style={[styles.logoutBtn, { borderColor: theme.divider }]}
+              onPress={onLogout}
+              accessibilityLabel="Log out"
+            >
+              <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+              <Text style={styles.logoutText}>Log out</Text>
+            </Pressable>
+          ) : null}
         </>
       ) : null}
     </ScrollView>
@@ -285,5 +314,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1.1,
     textTransform: 'uppercase',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  toggleCopy: { flex: 1 },
+  toggleLabel: { fontSize: 16, fontWeight: '600' },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 48,
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: '#fef2f2',
+  },
+  logoutText: {
+    color: '#ef4444',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

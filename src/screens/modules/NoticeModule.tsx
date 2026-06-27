@@ -14,6 +14,7 @@ import type { NoticeDetail, NoticeSummary } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { ListEmpty } from '../../components/dashboard/ListStates';
 import { useAppAlert } from '../../context/AppAlertContext';
+import { useHardwareBack } from '../../hooks/useHardwareBack';
 
 type Screen = 'list' | 'create' | 'detail';
 
@@ -47,6 +48,18 @@ export function NoticeModule({
   const [saving, setSaving] = useState(false);
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
+
+  useHardwareBack(
+    useCallback(() => {
+      if (screen !== 'list') {
+        setScreen('list');
+        setActiveNotice(null);
+        return true;
+      }
+      return false;
+    }, [screen]),
+    screen !== 'list'
+  );
 
   const loadNotices = useCallback(async () => {
     try {

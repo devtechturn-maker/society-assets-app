@@ -11,8 +11,9 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme/ThemeContext';
 import type { AppPushNotification } from '../services/pushNotifications';
+import { APP_NAME, brandLogos } from '../constants/branding';
 
-const logoGlyph = require('../../assets/logo-glyph.png');
+const logoGlyph = brandLogos.glyph;
 
 const AUTO_DISMISS_MS = 5000;
 
@@ -125,7 +126,7 @@ export function ChatNotificationBanner({ notification, onPress, onDismiss }: Pro
         <View style={styles.copy}>
           <View style={styles.titleRow}>
             <Text style={[styles.brand, { color: theme.accentGold }]} numberOfLines={1}>
-              Society Assets
+              {APP_NAME}
             </Text>
             <Text style={[styles.time, { color: theme.textMuted }]}>now</Text>
           </View>

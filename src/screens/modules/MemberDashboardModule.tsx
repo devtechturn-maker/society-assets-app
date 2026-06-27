@@ -1,35 +1,42 @@
+import { useMemo } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { KpiGrid } from '../../components/dashboard/KpiGrid';
 import { ListError, ListLoading } from '../../components/dashboard/ListStates';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { PayMaintenanceButton } from '../../components/payment/PayMaintenanceButton';
-import { fetchMemberMaintenanceDue, fetchMemberOverview, fetchMemberProfile } from '../../services/api';
+import { fetchMemberMaintenanceDue, fetchMemberOverview, fetchMemberProfile, fetchNotices } from '../../services/api';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
 
 type Props = {
   onOpenProfile?: () => void;
+  onOpenNotice?: (noticeId: string) => void;
 };
 
-export function MemberDashboardModule({ onOpenProfile }: Props) {
+export function MemberDashboardModule({ onOpenProfile, onOpenNotice }: Props) {
   const { theme } = useTheme();
   const overview = useAsyncLoad(fetchMemberOverview, []);
   const due = useAsyncLoad(fetchMemberMaintenanceDue, []);
   const profile = useAsyncLoad(fetchMemberProfile, []);
+  const notices = useAsyncLoad(() => fetchNotices(true), []);
 
   const showVerifyPrompt = profile.data?.emailVerificationRequired === true;
+  const recentNotices = useMemo(() => (notices.data ?? []).slice(0, 2), [notices.data]);
+  const pendingAmount = overview.data?.remainingDueAmount ?? 0;
+  const highlightPending = pendingAmount > 0;
 
   return (
     <ScrollView
       contentContainerStyle={styles.scroll}
       refreshControl={
         <RefreshControl
-          refreshing={overview.refreshing || due.refreshing || profile.refreshing}
+          refreshing={overview.refreshing || due.refreshing || profile.refreshing || notices.refreshing}
           onRefresh={() => {
             void overview.refresh();
             void due.refresh();
             void profile.refresh();
+            void notices.refresh();
           }}
         />
       }
@@ -58,25 +65,44 @@ export function MemberDashboardModule({ onOpenProfile }: Props) {
       {overview.loading ? <ListLoading /> : null}
       {overview.error ? <ListError message={overview.error} /> : null}
       {overview.data ? (
-        <>
-          <SectionCard title="Your flat">
-            <View style={styles.metaBlock}>
-              <Text style={[styles.metaLine, { color: theme.textPrimary }]}>
-                {overview.data.memberName} · Flat {overview.data.flatNumber}
+        <KpiGrid
+          columns={3}
+          items={[
+            { label: 'Last Payment', value: overview.data.lastPaymentAmount },
+            { label: 'Total Due', value: overview.data.totalDueAmount },
+            {
+              label: 'Pending',
+              value: overview.data.remainingDueAmount,
+              highlight: highlightPending,
+            },
+          ]}
+        />
+      ) : null}
+
+      {recentNotices.length > 0 ? (
+        <SectionCard title="Recent notices" subtitle="Latest updates from your society">
+          {recentNotices.map((notice, index) => (
+            <Pressable
+              key={notice.noticeId}
+              style={[
+                styles.noticeRow,
+                index > 0 ? { borderTopColor: theme.divider, borderTopWidth: 1 } : null,
+              ]}
+              onPress={() => onOpenNotice?.(notice.noticeId)}
+              accessibilityLabel={`Open notice: ${notice.subject}`}
+            >
+              <Ionicons name="megaphone-outline" size={18} color={theme.accentGold} />
+              <Text style={[styles.noticeTitle, { color: theme.text }]} numberOfLines={2}>
+                {notice.subject}
               </Text>
-              <Text style={[styles.metaSub, { color: theme.textMuted }]}>
-                {overview.data.societyName}
-              </Text>
-            </View>
-          </SectionCard>
-          <KpiGrid
-            items={[
-              { label: 'Last payment', value: overview.data.lastPaymentAmount },
-              { label: 'Total due', value: overview.data.totalDueAmount },
-              { label: 'Pending', value: overview.data.remainingDueAmount },
-            ]}
-          />
-          <SectionCard
+              <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+            </Pressable>
+          ))}
+        </SectionCard>
+      ) : null}
+
+      {overview.data ? (
+        <SectionCard
             title="Pay maintenance"
             subtitle={
               due.data?.canPayOnline
@@ -92,7 +118,6 @@ export function MemberDashboardModule({ onOpenProfile }: Props) {
               }}
             />
           </SectionCard>
-        </>
       ) : null}
     </ScrollView>
   );
@@ -129,7 +154,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  metaBlock: { paddingVertical: 4 },
-  metaLine: { fontSize: 16, fontWeight: '600' },
-  metaSub: { marginTop: 4, fontSize: 14 },
+  noticeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+  },
+  noticeTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
 });

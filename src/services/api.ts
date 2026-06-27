@@ -97,6 +97,10 @@ export function isMemberRole(role: string): boolean {
   return (role ?? '').toUpperCase() === 'MEMBER';
 }
 
+export function isTreasurerRole(role: string): boolean {
+  return (role ?? '').toUpperCase() === 'TREASURER';
+}
+
 /** Society staff or flat member — both use the mobile app. */
 export function isSocietyRole(role: string): boolean {
   return SOCIETY_APP_ROLES.has((role ?? '').toUpperCase());
@@ -138,6 +142,7 @@ export async function login(email: string, password: string): Promise<LoginData>
 }
 
 export const fetchSocietyModules = () => getData<NavModule[]>('/modules/society');
+export const fetchTreasurerModules = () => getData<NavModule[]>('/modules/treasurer');
 export const fetchMemberModules = () => getData<NavModule[]>('/modules/member');
 export const fetchOverview = () => getData<SocietyOverview>('/society/dashboard/overview');
 export const fetchMemberOverview = () => getData<MemberOverview>('/member/overview');
