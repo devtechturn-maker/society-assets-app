@@ -1,14 +1,9 @@
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { useTheme } from '../../theme/ThemeContext';
 
-type Props = {
-  onLogout?: () => void;
-};
-
-export function AppearanceModule({ onLogout }: Props) {
+export function AppearanceModule() {
   const { theme, mode, setMode } = useTheme();
 
   return (
@@ -44,19 +39,6 @@ export function AppearanceModule({ onLogout }: Props) {
           />
         </View>
       </SectionCard>
-
-      {onLogout ? (
-        <View style={styles.logoutWrap}>
-          <Pressable
-            style={[styles.logoutBtn, { borderColor: theme.divider }]}
-            onPress={onLogout}
-            accessibilityLabel="Log out"
-          >
-            <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-            <Text style={styles.logoutText}>Log out</Text>
-          </Pressable>
-        </View>
-      ) : null}
     </ScrollView>
   );
 }
@@ -117,20 +99,4 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   toggleLabel: { fontSize: 16, fontWeight: '600' },
-  logoutWrap: { paddingHorizontal: 12, marginTop: 4 },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 48,
-    borderRadius: 8,
-    borderWidth: 1,
-    backgroundColor: '#fef2f2',
-  },
-  logoutText: {
-    color: '#ef4444',
-    fontSize: 14,
-    fontWeight: '700',
-  },
 });

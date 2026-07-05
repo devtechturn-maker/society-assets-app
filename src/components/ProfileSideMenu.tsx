@@ -7,11 +7,11 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { UiIcon } from './UiIcon';
+import { iconFromPrimeIcon, iconForRoutePath } from '../constants/uiIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme/ThemeContext';
 import { AppLogo } from './AppLogo';
-import { moduleGlyph } from '../constants/fallbackModules';
 
 export type SideMenuItem = {
   label: string;
@@ -26,6 +26,7 @@ type Props = {
   societyName?: string;
   onClose: () => void;
   onSelect: (routePath: string) => void;
+  onLogout?: () => void;
 };
 
 const PANEL_WIDTH = 288;
@@ -37,6 +38,7 @@ export function ProfileSideMenu({
   societyName,
   onClose,
   onSelect,
+  onLogout,
 }: Props) {
   const { theme } = useTheme();
   const slideX = useRef(new Animated.Value(-PANEL_WIDTH)).current;
@@ -96,14 +98,16 @@ export function ProfileSideMenu({
                   ]}
                   onPress={() => onSelect(item.routePath)}
                 >
-                  <Text style={[styles.menuGlyph, active ? { color: theme.accentGold } : { color: theme.textMuted }]}>
-                    {moduleGlyph(item.icon)}
-                  </Text>
+                  <UiIcon
+                    name={iconFromPrimeIcon(item.icon) || iconForRoutePath(item.routePath)}
+                    size={22}
+                    color={active ? theme.accentGold : theme.textMuted}
+                  />
                   <Text style={[styles.menuLabel, { color: active ? theme.accentGold : theme.text }]}>
                     {item.label}
                   </Text>
-                  <Ionicons
-                    name="chevron-forward"
+                  <UiIcon
+                    name="chevron-right"
                     size={18}
                     color={active ? theme.accentGold : theme.textMuted}
                   />
@@ -112,9 +116,23 @@ export function ProfileSideMenu({
             })}
           </View>
 
-          <Pressable style={styles.closeBtn} onPress={onClose}>
-            <Text style={[styles.closeText, { color: theme.textMuted }]}>Close</Text>
-          </Pressable>
+          <View style={styles.panelFooter}>
+            {onLogout ? (
+              <Pressable
+                style={[styles.logoutBtn, { borderColor: theme.divider }]}
+                onPress={() => {
+                  onClose();
+                  onLogout();
+                }}
+                accessibilityLabel="Log out"
+              >
+                <Text style={styles.logoutText}>Log out</Text>
+              </Pressable>
+            ) : null}
+            <Pressable style={styles.closeBtn} onPress={onClose}>
+              <Text style={[styles.closeText, { color: theme.textMuted }]}>Close</Text>
+            </Pressable>
+          </View>
         </Animated.View>
       </View>
     </Modal>
@@ -142,6 +160,7 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     shadowOffset: { width: 4, height: 0 },
     elevation: 12,
+    flexDirection: 'column',
   },
   panelHead: {
     paddingTop: 56,
@@ -158,6 +177,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   menuList: {
+    flex: 1,
     paddingHorizontal: 12,
     paddingTop: 12,
     gap: 8,
@@ -182,12 +202,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   closeBtn: {
-    marginTop: 'auto',
-    paddingVertical: 18,
+    paddingVertical: 14,
     alignItems: 'center',
   },
   closeText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  panelFooter: {
+    marginTop: 'auto',
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  logoutBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    backgroundColor: '#fef2f2',
+  },
+  logoutText: {
+    color: '#ef4444',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

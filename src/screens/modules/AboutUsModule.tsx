@@ -14,7 +14,7 @@ const ABOUT_BLOCKS: AboutBlock[] = [
     title: 'Our mission',
     paragraphs: [
       'Society Assets helps housing societies run maintenance, expenses, and member communication in one secure place.',
-      'We built GrihaLedger so chairmen spend less time on spreadsheets and members always know where they stand.',
+      'We built Society Assets so chairmen spend less time on spreadsheets and members always know where they stand.',
     ],
   },
   {

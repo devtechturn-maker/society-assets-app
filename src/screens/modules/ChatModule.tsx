@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Keyboard,
   Platform,
   Pressable,
@@ -13,19 +14,35 @@ import {
 } from 'react-native';
 import {
   CHAT_MESSAGE_PAGE_SIZE,
+  closePoll,
   createChatGroup,
+  createGroupChatPoll,
   fetchChatGroups,
   fetchGroupChatThread,
   fetchMembers,
+  fetchPollDetail,
   markGroupChatRead,
   sendGroupChatMessage,
+  sendGroupChatMessageWithPhoto,
+  voteOnPoll,
 } from '../../services/api';
-import type { ChatGroupSummary, ChatMessage, ChatThread, SocietyMember } from '../../types/api';
+import type { ChatGroupSummary, ChatMessage, ChatThread, PollDetail, SocietyMember } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
 import { useHardwareBack } from '../../hooks/useHardwareBack';
+import { useAppAlert } from '../../context/AppAlertContext';
+import { CreatePollModal } from '../../components/chat/CreatePollModal';
+import { EditGroupMembersModal } from '../../components/chat/EditGroupMembersModal';
+import { PollMessageBubble } from '../../components/chat/PollMessageBubble';
+import { AuthenticatedImage } from '../../components/chat/AuthenticatedImage';
+import {
+  pickPhotoFromCamera,
+  pickPhotoFromLibrary,
+  showPhotoSourcePicker,
+  type PickedPhoto,
+} from '../../utils/pickPhoto';
 
-const POLL_MS = 5000;
+const POLL_MS = 15000;
 const BOTTOM_TAB_BAR_HEIGHT = 62;
 const BOTTOM_SCROLL_THRESHOLD_PX = 72;
 const TOP_SCROLL_THRESHOLD_PX = 80;
@@ -109,6 +126,41 @@ function useKeyboardInset(): number {
   return inset;
 }
 
+async function hydratePollMessages(
+  messages: ChatMessage[],
+  memberPortal: boolean
+): Promise<ChatMessage[]> {
+  const needsPoll = messages.filter(
+    (message) =>
+      (message.messageType === 'POLL' || message.pollId) && !message.poll && message.pollId
+  );
+  if (needsPoll.length === 0) {
+    return messages;
+  }
+  const pollById = new Map<string, PollDetail>();
+  await Promise.all(
+    needsPoll.map(async (message) => {
+      const pollId = String(message.pollId);
+      if (pollById.has(pollId)) return;
+      try {
+        const poll = await fetchPollDetail(memberPortal, pollId);
+        pollById.set(pollId, poll);
+      } catch {
+        /* ignore missing poll */
+      }
+    })
+  );
+  if (pollById.size === 0) {
+    return messages;
+  }
+  return messages.map((message) => {
+    const pollId = message.pollId ? String(message.pollId) : '';
+    const poll = pollId ? pollById.get(pollId) : undefined;
+    if (!poll) return message;
+    return { ...message, poll, messageType: 'POLL' as const };
+  });
+}
+
 function formatTime(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
@@ -126,9 +178,85 @@ function UnreadDivider({ count }: { count: number }) {
   );
 }
 
-const MessageBubble = memo(function MessageBubble({ message }: { message: ChatMessage }) {
+const MessageBubble = memo(function MessageBubble({
+  message,
+  memberPortal,
+  canManageGroups,
+  onVote,
+  onClosePoll,
+}: {
+  message: ChatMessage;
+  memberPortal: boolean;
+  canManageGroups: boolean;
+  onVote: (pollId: string, optionId: string) => void;
+  onClosePoll: (pollId: string) => void;
+}) {
   const { theme } = useTheme();
   const mine = message.mine;
+  const poll = message.poll;
+  const isPoll = message.messageType === 'POLL' || Boolean(message.pollId);
+  const isImage =
+    message.messageType === 'IMAGE' || Boolean(message.attachmentUrl || message.localPreviewUri);
+  const showResults = Boolean(
+    poll && (poll.showResults || poll.status === 'CLOSED' || (canManageGroups && !memberPortal))
+  );
+
+  if (isPoll && poll) {
+    return (
+      <View style={[styles.bubbleRow, mine ? styles.bubbleRowMine : styles.bubbleRowOther]}>
+        <PollMessageBubble
+          message={message}
+          poll={poll}
+          showResults={showResults}
+          canManageGroups={canManageGroups}
+          memberPortal={memberPortal}
+          onVote={onVote}
+          onClosePoll={onClosePoll}
+        />
+      </View>
+    );
+  }
+
+  if (isImage && (message.attachmentUrl || message.localPreviewUri)) {
+    const attachmentPath =
+      message.attachmentUrl &&
+      memberPortal &&
+      message.attachmentUrl.startsWith('/society/')
+        ? message.attachmentUrl.replace('/society/chat/', '/member/chat/')
+        : message.attachmentUrl;
+
+    return (
+      <View style={[styles.bubbleRow, mine ? styles.bubbleRowMine : styles.bubbleRowOther]}>
+        <View
+          style={[
+            styles.bubble,
+            styles.imageBubble,
+            mine
+              ? { backgroundColor: theme.accent, borderBottomRightRadius: 4 }
+              : { backgroundColor: theme.chipBg, borderBottomLeftRadius: 4 },
+          ]}
+        >
+          {!mine ? (
+            <Text style={[styles.senderName, { color: theme.textMuted }]}>{message.senderName}</Text>
+          ) : null}
+          <AuthenticatedImage
+            path={attachmentPath}
+            localUri={message.localPreviewUri}
+            style={styles.chatImage}
+          />
+          {message.body ? (
+            <Text style={[styles.bubbleText, { color: mine ? '#fff' : theme.text, marginTop: 8 }]}>
+              {message.body}
+            </Text>
+          ) : null}
+          <Text style={[styles.bubbleTime, { color: mine ? 'rgba(255,255,255,0.75)' : theme.textMuted }]}>
+            {formatTime(message.sentAt)}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.bubbleRow, mine ? styles.bubbleRowMine : styles.bubbleRowOther]}>
       <View
@@ -154,45 +282,104 @@ const MessageBubble = memo(function MessageBubble({ message }: { message: ChatMe
 function ChatComposer({
   sending,
   onSend,
+  onSendPhoto,
   onFocus,
+  canCreatePoll,
+  onCreatePoll,
 }: {
   sending: boolean;
   onSend: (text: string) => Promise<void>;
+  onSendPhoto: (photo: PickedPhoto, caption: string) => Promise<void>;
   onFocus?: () => void;
+  canCreatePoll?: boolean;
+  onCreatePoll?: () => void;
 }) {
   const { theme } = useTheme();
   const [text, setText] = useState('');
+  const [pendingPhoto, setPendingPhoto] = useState<PickedPhoto | null>(null);
 
   const submit = async () => {
     const trimmed = text.trim();
+    if (pendingPhoto) {
+      const photo = pendingPhoto;
+      setPendingPhoto(null);
+      setText('');
+      await onSendPhoto(photo, trimmed);
+      return;
+    }
     if (!trimmed || sending) return;
     setText('');
     await onSend(trimmed);
   };
 
+  const attachPhoto = () => {
+    showPhotoSourcePicker(
+      () => {
+        void pickPhotoFromCamera().then((photo) => {
+          if (photo) setPendingPhoto(photo);
+        });
+      },
+      () => {
+        void pickPhotoFromLibrary().then((photo) => {
+          if (photo) setPendingPhoto(photo);
+        });
+      }
+    );
+  };
+
+  const canSend = Boolean(text.trim() || pendingPhoto) && !sending;
+
   return (
     <View style={[styles.composer, { backgroundColor: theme.cardBg, borderTopColor: theme.cardBorder }]}>
-      <TextInput
-        style={[styles.composerInput, { color: theme.text, backgroundColor: theme.chipBg }]}
-        placeholder="Type a message…"
-        placeholderTextColor={theme.textMuted}
-        value={text}
-        onChangeText={setText}
-        onFocus={onFocus}
-        multiline
-        maxLength={2000}
-      />
-      <Pressable
-        style={[styles.sendBtn, { backgroundColor: theme.accent, opacity: sending || !text.trim() ? 0.5 : 1 }]}
-        onPress={submit}
-        disabled={sending || !text.trim()}
-      >
-        {sending ? (
-          <ActivityIndicator color="#fff" size="small" />
-        ) : (
-          <Text style={styles.sendBtnText}>Send</Text>
-        )}
-      </Pressable>
+      {pendingPhoto ? (
+        <View style={styles.composerPreviewRow}>
+          <Image source={{ uri: pendingPhoto.uri }} style={styles.composerPreviewImage} />
+          <Pressable onPress={() => setPendingPhoto(null)} hitSlop={8}>
+            <Text style={{ color: theme.textMuted, fontWeight: '700' }}>Remove</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      <View style={styles.composerRow}>
+        <Pressable
+          style={[styles.attachBtn, { backgroundColor: theme.chipBg }]}
+          onPress={attachPhoto}
+          hitSlop={8}
+          accessibilityLabel="Attach photo"
+        >
+          <Text style={styles.attachBtnIcon}>📷</Text>
+        </Pressable>
+        {canCreatePoll ? (
+          <Pressable
+            style={[styles.attachBtn, { backgroundColor: theme.chipBg }]}
+            onPress={onCreatePoll}
+            hitSlop={8}
+            accessibilityLabel="Create poll"
+          >
+            <Text style={styles.attachBtnIcon}>📊</Text>
+          </Pressable>
+        ) : null}
+        <TextInput
+          style={[styles.composerInput, { color: theme.text, backgroundColor: theme.chipBg }]}
+          placeholder={pendingPhoto ? 'Add a caption (optional)…' : 'Type a message…'}
+          placeholderTextColor={theme.textMuted}
+          value={text}
+          onChangeText={setText}
+          onFocus={onFocus}
+          multiline
+          maxLength={2000}
+        />
+        <Pressable
+          style={[styles.sendBtn, { backgroundColor: theme.accent, opacity: canSend ? 1 : 0.5 }]}
+          onPress={submit}
+          disabled={!canSend}
+        >
+          {sending ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.sendBtnText}>Send</Text>
+          )}
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -424,13 +611,20 @@ function CreateGroupScreen({
 function GroupChatScreen({
   memberPortal,
   groupId,
+  canManageGroups,
+  initialPollId,
+  onInitialPollConsumed,
   onBack,
 }: {
   memberPortal: boolean;
   groupId: string;
+  canManageGroups: boolean;
+  initialPollId?: string | null;
+  onInitialPollConsumed?: () => void;
   onBack: () => void;
 }) {
   const { theme } = useTheme();
+  const { alert } = useAppAlert();
   const [thread, setThread] = useState<ChatThread | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -440,6 +634,9 @@ function GroupChatScreen({
   const [nearBottom, setNearBottom] = useState(true);
   const [hasMoreOlder, setHasMoreOlder] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const [showPollCreate, setShowPollCreate] = useState(false);
+  const [showEditMembers, setShowEditMembers] = useState(false);
+  const [pollSaving, setPollSaving] = useState(false);
   const listRef = useRef<FlatList<ThreadRow>>(null);
   const keyboardInset = useKeyboardInset();
   const scrollOffsetRef = useRef(0);
@@ -574,8 +771,9 @@ function GroupChatScreen({
             limit: CHAT_MESSAGE_PAGE_SIZE,
           });
           const normalized = normalizeThread(data);
+          const hydrated = await hydratePollMessages(normalized.messages, memberPortal);
           const unread = Number(data.unreadCount ?? 0);
-          setThread(normalized);
+          setThread({ ...normalized, messages: hydrated });
           setHasMoreOlder(Boolean(data.hasMoreOlder));
           setOpenedUnreadCount(unread);
           setFirstUnreadMessageId(
@@ -598,7 +796,17 @@ function GroupChatScreen({
           const prevIds = new Set(prev.messages.map((message) => String(message.id)));
           const fresh = added.filter((message) => !prevIds.has(String(message.id)));
           if (fresh.length === 0) return prev;
-          return { ...prev, messages: [...prev.messages, ...fresh] };
+
+          void hydratePollMessages(fresh, memberPortal).then((hydratedFresh) => {
+            setThread((current) => {
+              if (!current) return current;
+              const ids = new Set(current.messages.map((message) => String(message.id)));
+              const toAppend = hydratedFresh.filter((message) => !ids.has(String(message.id)));
+              if (toAppend.length === 0) return current;
+              return { ...current, messages: [...current.messages, ...toAppend] };
+            });
+          });
+          return prev;
         });
 
         let nextFirstUnread: string | null = null;
@@ -648,6 +856,77 @@ function GroupChatScreen({
     setTimeout(() => listRef.current?.scrollToEnd({ animated }), 50);
   }, []);
 
+  const updatePollInThread = useCallback((poll: PollDetail) => {
+    setThread((prev) => {
+      if (!prev) return prev;
+      const pollId = String(poll.pollId);
+      return {
+        ...prev,
+        messages: prev.messages.map((message) =>
+          String(message.pollId ?? message.poll?.pollId ?? '') === pollId
+            ? { ...message, poll, pollId: poll.pollId, messageType: 'POLL' as const }
+            : message
+        ),
+      };
+    });
+  }, []);
+
+  const handleVote = useCallback(
+    async (pollId: string, optionId: string) => {
+      try {
+        const updated = await voteOnPoll(pollId, optionId);
+        updatePollInThread(updated);
+      } catch (err) {
+        await alert('Could not vote', err instanceof Error ? err.message : 'Try again.');
+      }
+    },
+    [updatePollInThread, alert]
+  );
+
+  const handleClosePoll = useCallback(
+    async (pollId: string) => {
+      try {
+        const updated = await closePoll(pollId);
+        updatePollInThread(updated);
+      } catch (err) {
+        await alert('Could not close poll', err instanceof Error ? err.message : 'Try again.');
+      }
+    },
+    [updatePollInThread, alert]
+  );
+
+  const submitPollCreate = async (question: string, options: string[], expiresInMinutes: number) => {
+    if (!question) {
+      await alert('Missing question', 'Enter a poll question.');
+      return;
+    }
+    if (options.length < 2) {
+      await alert('Need options', 'Add at least two options.');
+      return;
+    }
+    setPollSaving(true);
+    try {
+      const message = await createGroupChatPoll(groupId, question, options, expiresInMinutes);
+      const pollMessage: ChatMessage = {
+        ...message,
+        mine: true,
+        messageType: message.messageType ?? 'POLL',
+      };
+      setThread((prev) => {
+        if (!prev) return prev;
+        if (prev.messages.some((row) => String(row.id) === String(pollMessage.id))) return prev;
+        return { ...prev, messages: [...prev.messages, pollMessage] };
+      });
+      setShowPollCreate(false);
+      scrollToEnd(true);
+      await clearActiveChatUnread();
+    } catch (err) {
+      await alert('Could not create poll', err instanceof Error ? err.message : 'Try again.');
+    } finally {
+      setPollSaving(false);
+    }
+  };
+
   const scrollToUnreadAnchor = useCallback(() => {
     const rows = buildThreadRows(thread?.messages ?? [], firstUnreadMessageId, openedUnreadCount);
     const dividerIndex = rows.findIndex((row) => row.kind === 'divider');
@@ -691,6 +970,22 @@ function GroupChatScreen({
     scrollToUnreadAnchor,
     ensureUnreadAnchorLoaded,
   ]);
+
+  useEffect(() => {
+    if (!initialPollId || !thread?.messages.length) return;
+    const pollId = String(initialPollId);
+    const rows = buildThreadRows(thread.messages, firstUnreadMessageId, openedUnreadCount);
+    const index = rows.findIndex(
+      (row) =>
+        row.kind === 'message' &&
+        String(row.message.pollId ?? row.message.poll?.pollId ?? '') === pollId
+    );
+    onInitialPollConsumed?.();
+    if (index < 0) return;
+    setTimeout(() => {
+      listRef.current?.scrollToIndex({ index, viewPosition: 0.5, animated: true });
+    }, 120);
+  }, [initialPollId, thread?.messages, firstUnreadMessageId, openedUnreadCount, onInitialPollConsumed]);
 
   useEffect(() => {
     if (keyboardInset > 0 && nearBottom) scrollToEnd();
@@ -749,6 +1044,37 @@ function GroupChatScreen({
     }
   };
 
+  const handleSendPhoto = async (photo: PickedPhoto, caption: string) => {
+    setSending(true);
+    try {
+      const message = await sendGroupChatMessageWithPhoto(
+        memberPortal,
+        groupId,
+        caption,
+        photo.uri,
+        photo.fileName,
+        photo.mimeType
+      );
+      const imageMessage: ChatMessage = {
+        ...message,
+        mine: true,
+        messageType: 'IMAGE',
+        localPreviewUri: photo.uri,
+      };
+      setThread((prev) => {
+        if (!prev) return prev;
+        if (prev.messages.some((row) => String(row.id) === String(imageMessage.id))) return prev;
+        return { ...prev, messages: [...prev.messages, imageMessage] };
+      });
+      scrollToEnd();
+      await clearActiveChatUnread();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Send failed');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleBack = async () => {
     await clearActiveChatUnread();
     onBack();
@@ -765,9 +1091,15 @@ function GroupChatScreen({
       item.kind === 'divider' ? (
         <UnreadDivider count={openedUnreadCount} />
       ) : (
-        <MessageBubble message={item.message} />
+        <MessageBubble
+          message={item.message}
+          memberPortal={memberPortal}
+          canManageGroups={canManageGroups}
+          onVote={handleVote}
+          onClosePoll={handleClosePoll}
+        />
       ),
-    [openedUnreadCount]
+    [openedUnreadCount, memberPortal, canManageGroups, handleVote, handleClosePoll]
   );
 
   if (loading && !thread) {
@@ -792,14 +1124,47 @@ function GroupChatScreen({
   return (
     <View style={[styles.flex, { backgroundColor: theme.pageBg, paddingBottom: keyboardInset }]}>
       <View style={[styles.threadHeader, { backgroundColor: theme.cardBg, borderBottomColor: theme.cardBorder }]}>
-        <Pressable onPress={handleBack}>
-          <Text style={{ color: theme.accent, fontWeight: '700' }}>← Groups</Text>
+        <Pressable onPress={handleBack} style={styles.threadBackBtn} hitSlop={8}>
+          <Text style={[styles.threadBackText, { color: theme.accent }]}>← Groups</Text>
         </Pressable>
-        <Text style={[styles.threadTitle, { color: theme.text, marginTop: 6 }]}>{groupTitle}</Text>
-        <Text style={[styles.threadSub, { color: theme.textMuted }]}>
-          {thread?.memberCount ?? 0} members in this group
-        </Text>
+        <View style={styles.threadHeaderCenter}>
+          <Text style={[styles.threadTitle, { color: theme.text }]} numberOfLines={1}>
+            {groupTitle}
+          </Text>
+          <Text style={[styles.threadSub, { color: theme.textMuted }]} numberOfLines={1}>
+            {thread?.memberCount ?? 0} members
+          </Text>
+        </View>
+        {canManageGroups && !memberPortal ? (
+          <Pressable
+            style={[styles.threadAddBtn, { backgroundColor: theme.accentSoft, borderColor: theme.accent }]}
+            onPress={() => setShowEditMembers(true)}
+            hitSlop={8}
+            accessibilityLabel="Add members"
+          >
+            <Text style={[styles.threadAddBtnIcon, { color: theme.accent }]}>+</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.threadAddBtnSpacer} />
+        )}
       </View>
+      <CreatePollModal
+        visible={showPollCreate}
+        saving={pollSaving}
+        onClose={() => setShowPollCreate(false)}
+        onSubmit={(question, options, expiresInMinutes) =>
+          void submitPollCreate(question, options, expiresInMinutes)
+        }
+      />
+      <EditGroupMembersModal
+        visible={showEditMembers}
+        groupId={groupId}
+        groupName={groupTitle}
+        onClose={() => setShowEditMembers(false)}
+        onSaved={(memberCount) => {
+          setThread((prev) => (prev ? { ...prev, memberCount } : prev));
+        }}
+      />
       <FlatList
         ref={listRef}
         style={styles.messageScroll}
@@ -835,9 +1200,12 @@ function GroupChatScreen({
       <ChatComposer
         sending={sending}
         onSend={handleSend}
+        onSendPhoto={handleSendPhoto}
         onFocus={() => {
           if (nearBottom) scrollToEnd();
         }}
+        canCreatePoll={canManageGroups && !memberPortal}
+        onCreatePoll={() => setShowPollCreate(true)}
       />
     </View>
   );
@@ -848,13 +1216,17 @@ export function ChatModule({
   userId,
   canManageGroups = false,
   initialGroupId,
+  initialPollId,
   onInitialGroupConsumed,
+  onInitialPollConsumed,
 }: {
   memberPortal?: boolean;
   userId?: string;
   canManageGroups?: boolean;
   initialGroupId?: string | null;
+  initialPollId?: string | null;
   onInitialGroupConsumed?: () => void;
+  onInitialPollConsumed?: () => void;
 }): ReactNode {
   const [screen, setScreen] = useState<Screen>(initialGroupId ? 'chat' : 'list');
   const [activeGroupId, setActiveGroupId] = useState<string | null>(initialGroupId ?? null);
@@ -902,6 +1274,9 @@ export function ChatModule({
       <GroupChatScreen
         memberPortal={memberPortal}
         groupId={activeGroupId}
+        canManageGroups={canManageGroups}
+        initialPollId={initialPollId}
+        onInitialPollConsumed={onInitialPollConsumed}
         onBack={() => {
           setListRefreshToken((token) => token + 1);
           setScreen('list');
@@ -929,9 +1304,30 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   listHeader: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
-  threadHeader: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
-  threadTitle: { fontSize: 18, fontWeight: '800' },
-  threadSub: { fontSize: 13, marginTop: 2 },
+  threadHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  threadBackBtn: { flexShrink: 0 },
+  threadBackText: { fontSize: 14, fontWeight: '700' },
+  threadHeaderCenter: { flex: 1, minWidth: 0, gap: 1 },
+  threadTitle: { fontSize: 16, fontWeight: '800', lineHeight: 20 },
+  threadSub: { fontSize: 12, lineHeight: 16 },
+  threadAddBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  threadAddBtnIcon: { fontSize: 22, fontWeight: '700', lineHeight: 24, marginTop: -1 },
+  threadAddBtnSpacer: { width: 34, height: 34, flexShrink: 0 },
   createBtn: { marginTop: 12, alignSelf: 'flex-start', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
   createBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
   groupList: { padding: 12, gap: 10, flexGrow: 1 },
@@ -982,8 +1378,26 @@ const styles = StyleSheet.create({
   bubble: { maxWidth: '82%', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8 },
   senderName: { fontSize: 11, fontWeight: '700', marginBottom: 2 },
   bubbleText: { fontSize: 15, lineHeight: 21 },
+  attachBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attachBtnIcon: { fontSize: 20 },
   bubbleTime: { fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
-  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 10, borderTopWidth: 1 },
+  imageBubble: { maxWidth: '88%' },
+  chatImage: { width: 220, height: 220, borderRadius: 12 },
+  composer: { padding: 10, borderTopWidth: 1, gap: 8 },
+  composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  composerPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingBottom: 4,
+  },
+  composerPreviewImage: { width: 64, height: 64, borderRadius: 10 },
   composerInput: {
     flex: 1,
     minHeight: 42,

@@ -17,6 +17,7 @@ export type AppPushNotification = {
   kind: 'poll';
   notificationId?: string;
   pollId: string;
+  groupId?: string;
   question: string;
   preview: string;
   type: 'POLL_CREATED' | 'POLL_RESULTS' | 'POLL_VOTED';
@@ -292,6 +293,7 @@ function parseAppPushNotification(
       kind: 'poll',
       notificationId: readNotificationId(data),
       pollId,
+      groupId: data.groupId ? String(data.groupId) : undefined,
       question,
       preview,
       type: data.type,
@@ -432,7 +434,7 @@ export function openNotificationResponse(
   handlers: {
     onOpen?: (notification: AppPushNotification) => void;
     onOpenChat?: (groupId?: string) => void;
-    onOpenPoll?: (pollId?: string) => void;
+    onOpenPoll?: (pollId?: string, groupId?: string) => void;
     onOpenComplaint?: (complaintId?: string) => void;
     onOpenAmenity?: (bookingId?: string) => void;
     onOpenRule?: (ruleId?: string) => void;
@@ -445,7 +447,7 @@ export function openNotificationResponse(
   }
   handlers.onOpen?.(parsed);
   if (parsed.kind === 'poll') {
-    handlers.onOpenPoll?.(parsed.pollId);
+    handlers.onOpenPoll?.(parsed.pollId, parsed.groupId);
     return true;
   }
   if (parsed.kind === 'complaint') {
@@ -503,7 +505,7 @@ export async function resolveInitialNotificationGroupId(): Promise<string | unde
 export function addNotificationResponseListener(handlers: {
   onOpen?: (notification: AppPushNotification) => void;
   onOpenChat?: (groupId?: string) => void;
-  onOpenPoll?: (pollId?: string) => void;
+  onOpenPoll?: (pollId?: string, groupId?: string) => void;
   onOpenComplaint?: (complaintId?: string) => void;
   onOpenAmenity?: (bookingId?: string) => void;
   onOpenRule?: (ruleId?: string) => void;

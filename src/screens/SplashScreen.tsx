@@ -1,89 +1,59 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as ExpoSplashScreen from 'expo-splash-screen';
+import { AppLogo } from '../components/AppLogo';
 import { useTheme } from '../theme/ThemeContext';
-import { APP_NAME } from '../constants/branding';
 
-/** Always show at least this long on every cold start / full reload. */
+/** Minimum branded splash time on cold start / full reload. */
 export const SPLASH_DURATION_MS = 2500;
-
-const LOGO_WIDTH = 300;
-const LOGO_HEIGHT = 340;
-
-const splashLogo = require('../../assets/logo.png');
 
 type Props = {
   onFinish: () => void;
+  /** When true, splash may dismiss after the minimum duration (session + assets ready). */
+  appReady?: boolean;
 };
 
-/** Branded splash: theme background + centered app logo. */
-export function SplashScreen({ onFinish }: Props) {
+/** Branded splash: same image as native splash, shown at full opacity immediately. */
+export function SplashScreen({ onFinish, appReady = false }: Props) {
   const { theme } = useTheme();
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.92)).current;
-  const footerOpacity = useRef(new Animated.Value(0)).current;
   const finished = useRef(false);
+  const startedAt = useRef(Date.now());
 
   useEffect(() => {
+    if (!appReady) {
+      return;
+    }
     ExpoSplashScreen.hideAsync().catch(() => undefined);
-
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(logoOpacity, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.spring(logoScale, {
-          toValue: 1,
-          friction: 9,
-          tension: 65,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.timing(footerOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [logoOpacity, logoScale, footerOpacity]);
+  }, [appReady]);
 
   useEffect(() => {
+    if (!appReady || finished.current) {
+      return;
+    }
+
+    const elapsed = Date.now() - startedAt.current;
+    const remaining = Math.max(0, SPLASH_DURATION_MS - elapsed);
     const timer = setTimeout(() => {
       if (finished.current) {
         return;
       }
       finished.current = true;
       onFinish();
-    }, SPLASH_DURATION_MS);
+    }, remaining);
+
     return () => clearTimeout(timer);
-  }, [onFinish]);
+  }, [appReady, onFinish]);
 
   return (
     <View style={[styles.root, { backgroundColor: theme.splashBg }]}>
       <StatusBar style="light" backgroundColor={theme.splashBg} />
 
       <View style={styles.center}>
-        <Animated.View
-          style={{
-            opacity: logoOpacity,
-            transform: [{ scale: logoScale }],
-          }}
-        >
-          <Image
-            source={splashLogo}
-            style={styles.logo}
-            resizeMode="contain"
-            accessibilityLabel={APP_NAME}
-          />
-        </Animated.View>
+        <AppLogo variant="splash" size={300} />
       </View>
 
-      <Animated.Text style={[styles.footerBrand, { opacity: footerOpacity }]}>
-        {APP_NAME.toUpperCase()}
-      </Animated.Text>
+      <Text style={styles.footerBrand}>SOCIETY ASSETS</Text>
     </View>
   );
 }
@@ -96,10 +66,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  logo: {
-    width: LOGO_WIDTH,
-    height: LOGO_HEIGHT,
   },
   footerBrand: {
     position: 'absolute',

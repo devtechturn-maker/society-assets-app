@@ -1,6 +1,6 @@
 import { Image, StyleSheet, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { APP_NAME, PRIMARY_LOGO_ASPECT, brandLogos } from '../constants/branding';
+import { APP_NAME, PRIMARY_LOGO_ASPECT, SPLASH_LOGO_ASPECT, brandLogos } from '../constants/branding';
 
 export type AppLogoVariant = 'glyph' | 'primary' | 'splash';
 
@@ -14,6 +14,11 @@ type Props = {
   accessibilityLabel?: string;
 };
 
+const imageProps = {
+  resizeMode: 'contain' as const,
+  fadeDuration: 0,
+};
+
 export function AppLogo({
   variant = 'glyph',
   size = 32,
@@ -24,32 +29,32 @@ export function AppLogo({
 }: Props) {
   const source = brandLogos[variant];
 
-  if (variant === 'primary') {
+  if (variant === 'primary' || variant === 'splash') {
+    const aspect = variant === 'primary' ? PRIMARY_LOGO_ASPECT : SPLASH_LOGO_ASPECT;
     const width = size;
-    const height = size * PRIMARY_LOGO_ASPECT;
+    const height = size * aspect;
     return (
-      <Image
-        source={source}
-        style={[{ width, height }, imageStyle]}
-        resizeMode="contain"
-        accessibilityLabel={accessibilityLabel}
-      />
+      <View style={style}>
+        <Image
+          source={source}
+          style={[{ width, height }, imageStyle]}
+          accessibilityLabel={accessibilityLabel}
+          {...imageProps}
+        />
+      </View>
     );
   }
 
   const logo = (
     <Image
       source={source}
-      style={[
-        variant === 'splash' ? { width: size, height: size } : { width: size, height: size },
-        imageStyle,
-      ]}
-      resizeMode="contain"
+      style={[{ width: size, height: size }, imageStyle]}
       accessibilityLabel={accessibilityLabel}
+      {...imageProps}
     />
   );
 
-  if (!framed || variant !== 'glyph') {
+  if (!framed) {
     return <View style={style}>{logo}</View>;
   }
 
@@ -62,12 +67,7 @@ export function AppLogo({
         end={{ x: 1, y: 1 }}
         style={[styles.frame, { width: frameSize, height: frameSize, borderRadius: frameSize / 4 }]}
       >
-        <Image
-          source={source}
-          style={[{ width: size, height: size }, imageStyle]}
-          resizeMode="contain"
-          accessibilityLabel={accessibilityLabel}
-        />
+        {logo}
       </LinearGradient>
     </View>
   );
