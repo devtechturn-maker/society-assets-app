@@ -39,7 +39,7 @@ function apiErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-export function MemberProfileModule({ onUserUpdated, onLogout }: Props) {
+export function MemberProfileModule({ onUserUpdated }: Props) {
   const { theme, mode, setMode } = useTheme();
   const { toast } = useAppAlert();
   const [profile, setProfile] = useState<MemberProfile | null>(null);
@@ -235,17 +235,6 @@ export function MemberProfileModule({ onUserUpdated, onLogout }: Props) {
               />
             </View>
           </SectionCard>
-
-          {onLogout ? (
-            <Pressable
-              style={[styles.logoutBtn, { borderColor: theme.divider }]}
-              onPress={onLogout}
-              accessibilityLabel="Log out"
-            >
-              <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-              <Text style={styles.logoutText}>Log out</Text>
-            </Pressable>
-          ) : null}
         </>
       ) : null}
     </ScrollView>
@@ -323,19 +312,5 @@ const styles = StyleSheet.create({
   },
   toggleCopy: { flex: 1 },
   toggleLabel: { fontSize: 16, fontWeight: '600' },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 48,
-    borderRadius: 8,
-    borderWidth: 1,
-    backgroundColor: '#fef2f2',
-  },
-  logoutText: {
-    color: '#ef4444',
-    fontSize: 14,
-    fontWeight: '700',
-  },
+
 });

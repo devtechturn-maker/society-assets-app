@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   BackHandler,
   Platform,
   Pressable,
@@ -16,7 +15,6 @@ import {
   canSwitchAppView,
   isMemberPortalView,
   resolveInitialAppViewContext,
-  setAppViewContext,
   type AppViewContext,
 } from '../services/appContext';
 import {
@@ -31,15 +29,17 @@ import {
 import type { LoginData, NavModule } from '../types/api';
 import { APPEARANCE_MODULE } from '../constants/appearanceModule';
 import {
-  FALLBACK_MEMBER_MODULES,
-  FALLBACK_SOCIETY_MODULES,
-  FALLBACK_TREASURER_MODULES,
-  filterBottomTabModules,
+  FALLBACK_MEMBER_NAV_SOURCE,
+  FALLBACK_SOCIETY_NAV_SOURCE,
+  FALLBACK_TREASURER_NAV_SOURCE,
+  prepareBottomTabModules,
+  ACTIVITY_HUB_ROUTE_PATHS,
   MEMBER_SIDE_MENU_ITEMS,
-  moduleGlyph,
-  isColorfulModuleGlyph,
   SOCIETY_SIDE_MENU_ITEMS,
 } from '../constants/fallbackModules';
+import { iconFromPrimeIcon, iconForRoutePath } from '../constants/uiIcons';
+import { UiIcon } from '../components/UiIcon';
+import type { NavPortalKind } from '../constants/activityHub';
 import { useTheme } from '../theme/ThemeContext';
 import { ChatNotificationBanner } from '../components/ChatNotificationBanner';
 import {
@@ -52,7 +52,6 @@ import {
   addNotificationResponseListener,
   parseAppPushFromResponse,
   registerPushNotificationsWithBackend,
-  unregisterPushNotificationsFromBackend,
   type AppPushNotification,
 } from '../services/pushNotifications';
 import * as Notifications from 'expo-notifications';
@@ -61,15 +60,16 @@ import { pushTypeMatchesAudience, type NotificationAudience } from '../utils/not
 import { subscribeMemberProfileNavigation } from '../services/memberProfileNavigation';
 import { useAppAlert } from '../context/AppAlertContext';
 import { mergeLoginUserPatch, userDisplayName } from '../utils/userDisplayName';
-import { AppLogo } from '../components/AppLogo';
+import { AppLogoLoader } from '../components/AppLogoLoader';
 import { ProfileSideMenu } from '../components/ProfileSideMenu';
-import { APP_PRODUCT_NAME } from '../constants/branding';
+import { SocietyJoinCodeHeader } from '../components/society/SocietyJoinCodeHeader';
 import { runHardwareBackHandlers } from '../services/hardwareBackNavigation';
 
 type Props = {
   user: LoginData;
   onLogout: () => void;
   onUserUpdated?: (user: LoginData) => void;
+  onSwitchRole?: () => void;
 };
 
 function societyInitials(name: string): string {
@@ -85,24 +85,7 @@ function tabLabel(title: string): string {
   return `${trimmed.slice(0, 10)}…`;
 }
 
-function formatRole(role: string | undefined): string {
-  switch ((role ?? '').trim().toUpperCase()) {
-    case 'CHAIRMAN':
-      return 'Chairman';
-    case 'TREASURER':
-      return 'Treasurer';
-    case 'AUDITOR':
-      return 'Auditor';
-    case 'USER':
-      return 'Staff';
-    case 'MEMBER':
-      return 'Member';
-    default:
-      return role?.trim() || 'User';
-  }
-}
-
-export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
+export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Props) {
   const { theme } = useTheme();
   const { toast } = useAppAlert();
   const [sessionUser, setSessionUser] = useState(user);
@@ -112,6 +95,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
   const memberPortal = isMemberPortalView(sessionUser, appContext);
   const treasurerPortal =
     !memberPortal && isTreasurerRole(sessionUser.role ?? user.role ?? '');
+  const navPortal: NavPortalKind = memberPortal ? 'member' : treasurerPortal ? 'treasurer' : 'society';
   const notificationAudience = useMemo((): NotificationAudience | null => {
     if (canSwitchView) {
       return appContext;
@@ -129,12 +113,15 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
   const handleUserUpdated = useCallback((patch: Partial<LoginData>) => {
     setSessionUser((current) => mergeLoginUserPatch(current, patch));
   }, []);
-  const [modules, setModules] = useState<NavModule[]>(
-    memberPortal
-      ? filterBottomTabModules([...FALLBACK_MEMBER_MODULES])
-      : treasurerPortal
-        ? filterBottomTabModules([...FALLBACK_TREASURER_MODULES, APPEARANCE_MODULE])
-        : filterBottomTabModules([...FALLBACK_SOCIETY_MODULES, APPEARANCE_MODULE])
+  const [modules, setModules] = useState<NavModule[]>(() =>
+    prepareBottomTabModules(
+      memberPortal
+        ? [...FALLBACK_MEMBER_NAV_SOURCE]
+        : treasurerPortal
+          ? [...FALLBACK_TREASURER_NAV_SOURCE, APPEARANCE_MODULE]
+          : [...FALLBACK_SOCIETY_NAV_SOURCE, APPEARANCE_MODULE],
+      navPortal
+    )
   );
   const [activePath, setActivePath] = useState('dashboard');
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
@@ -166,6 +153,16 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
       }
       if (inbox.panelOpen) {
         inbox.closePanel();
+        return true;
+      }
+      if (ACTIVITY_HUB_ROUTE_PATHS.has(activePathRef.current)) {
+        setActivePath('activity');
+        lastTabPathRef.current = 'activity';
+        return true;
+      }
+      if (activePathRef.current === 'activity') {
+        setActivePath('dashboard');
+        lastTabPathRef.current = 'dashboard';
         return true;
       }
       if (activePathRef.current !== 'dashboard') {
@@ -216,20 +213,20 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
     try {
       if (memberPortal) {
         const [mods, overview] = await Promise.all([fetchMemberModules(), fetchMemberOverview()]);
-        const merged = filterBottomTabModules(mods);
+        const merged = prepareBottomTabModules(mods, 'member');
         if (merged.length > 0) setModules(merged);
         if (overview.societyName) setSocietyName(overview.societyName);
         return;
       }
       if (treasurerPortal) {
         const [mods, overview] = await Promise.all([fetchTreasurerModules(), fetchOverview()]);
-        const merged = filterBottomTabModules([...mods, APPEARANCE_MODULE]);
+        const merged = prepareBottomTabModules([...mods, APPEARANCE_MODULE], 'treasurer');
         if (merged.length > 0) setModules(merged);
         if (overview.societyName) setSocietyName(overview.societyName);
         return;
       }
       const [mods, overview] = await Promise.all([fetchSocietyModules(), fetchOverview()]);
-      const merged = filterBottomTabModules([...mods, APPEARANCE_MODULE]);
+      const merged = prepareBottomTabModules([...mods, APPEARANCE_MODULE], 'society');
       if (merged.length > 0) setModules(merged);
       if (overview.societyName) setSocietyName(overview.societyName);
     } catch {
@@ -245,7 +242,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
         /* defaults */
       }
     }
-  }, [memberPortal, treasurerPortal]);
+  }, [memberPortal, treasurerPortal, navPortal]);
 
   useEffect(() => {
     if (!contextReady) {
@@ -256,16 +253,19 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
 
   useEffect(() => {
     setModules(
-      memberPortal
-        ? filterBottomTabModules([...FALLBACK_MEMBER_MODULES])
-        : treasurerPortal
-          ? filterBottomTabModules([...FALLBACK_TREASURER_MODULES, APPEARANCE_MODULE])
-          : filterBottomTabModules([...FALLBACK_SOCIETY_MODULES, APPEARANCE_MODULE])
+      prepareBottomTabModules(
+        memberPortal
+          ? [...FALLBACK_MEMBER_NAV_SOURCE]
+          : treasurerPortal
+            ? [...FALLBACK_TREASURER_NAV_SOURCE, APPEARANCE_MODULE]
+            : [...FALLBACK_SOCIETY_NAV_SOURCE, APPEARANCE_MODULE],
+        navPortal
+      )
     );
     setActivePath('dashboard');
     setSideMenuOpen(false);
     lastTabPathRef.current = 'dashboard';
-  }, [memberPortal, treasurerPortal]);
+  }, [memberPortal, treasurerPortal, navPortal]);
 
   const openChatFromNotification = useCallback((groupId?: string) => {
     setActivePath('chat');
@@ -274,8 +274,11 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
     }
   }, []);
 
-  const openPollFromNotification = useCallback((pollId?: string) => {
-    setActivePath('polls');
+  const openPollFromNotification = useCallback((pollId?: string, groupId?: string) => {
+    setActivePath('chat');
+    if (groupId) {
+      setInitialChatGroupId(groupId);
+    }
     if (pollId) {
       setInitialPollId(pollId);
     }
@@ -327,7 +330,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
       }
       await inbox.markPushNotificationAsRead(parsed);
       if (parsed.kind === 'poll') {
-        openPollFromNotification(parsed.pollId);
+        openPollFromNotification(parsed.pollId, parsed.groupId);
         return;
       }
       if (parsed.kind === 'complaint') {
@@ -357,8 +360,8 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
       onOpenChat: (groupId) => {
         openChatFromNotification(groupId);
       },
-      onOpenPoll: (pollId) => {
-        openPollFromNotification(pollId);
+      onOpenPoll: (pollId, groupId) => {
+        openPollFromNotification(pollId, groupId);
       },
       onOpenComplaint: (complaintId) => {
         openComplaintFromNotification(complaintId);
@@ -402,8 +405,6 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
   ]);
 
   async function logout() {
-    await unregisterPushNotificationsFromBackend();
-    await clearSession();
     onLogout();
   }
 
@@ -412,17 +413,39 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
   }, []);
 
   const openSideMenuRoute = useCallback((routePath: string) => {
-    const sideRoutes = new Set(['profile', 'appearance', 'about-us', 'about-society', 'help']);
+    if (routePath === '__switch_role__') {
+      setSideMenuOpen(false);
+      onSwitchRole?.();
+      return;
+    }
+    const sideRoutes = new Set(['profile', 'appearance', 'about-us', 'about-society', 'help', 'subscription']);
     if (!sideRoutes.has(activePathRef.current)) {
       lastTabPathRef.current = activePathRef.current;
     }
     setActivePath(routePath);
     setSideMenuOpen(false);
-  }, []);
+  }, [onSwitchRole]);
+
+  const sideMenuItems = useMemo(() => {
+    const base = memberPortal ? MEMBER_SIDE_MENU_ITEMS : SOCIETY_SIDE_MENU_ITEMS;
+    if (canSwitchView && onSwitchRole) {
+      return [
+        { label: 'Switch role', routePath: '__switch_role__', icon: 'pi pi-sync' },
+        ...base,
+      ];
+    }
+    return base;
+  }, [memberPortal, canSwitchView, onSwitchRole]);
 
   const openProfileScreen = useCallback(() => {
     openSideMenuRoute(memberPortal ? 'profile' : 'appearance');
   }, [memberPortal, openSideMenuRoute]);
+
+  const navigateFromActivity = useCallback((routePath: string) => {
+    setSideMenuOpen(false);
+    lastTabPathRef.current = 'activity';
+    setActivePath(routePath);
+  }, []);
 
   const selectTab = useCallback((routePath: string) => {
     setSideMenuOpen(false);
@@ -430,27 +453,10 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
     lastTabPathRef.current = routePath;
   }, []);
 
-  async function switchToOfficeView() {
-    if (!canSwitchView || !memberPortal) {
-      return;
-    }
-    await setAppViewContext('CHAIRMAN');
-    setAppContextState('CHAIRMAN');
-  }
-
-  async function switchToMemberView() {
-    if (!canSwitchView || memberPortal) {
-      return;
-    }
-    await setAppViewContext('MEMBER');
-    setAppContextState('MEMBER');
-  }
-
   if (!contextReady) {
     return (
       <View style={[styles.root, styles.boot, { backgroundColor: theme.pageBg }]}>
-        <AppLogo variant="splash" size={96} style={styles.bootLogo} />
-        <ActivityIndicator size="large" color={theme.accent} />
+        <AppLogoLoader size="lg" tone="onLight" label="Loading your society…" />
       </View>
     );
   }
@@ -467,7 +473,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
           setBannerNotification(null);
           void inbox.markPushNotificationAsRead(item).then(() => {
             if (item.kind === 'poll') {
-              openPollFromNotification(item.pollId);
+              openPollFromNotification(item.pollId, item.groupId);
               return;
             }
             if (item.kind === 'complaint') {
@@ -506,7 +512,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
           void inbox.handleOpenNotification(item).then((opened) => {
             if (!opened) return;
             if (opened.pollId || opened.type.startsWith('POLL')) {
-              openPollFromNotification(opened.pollId);
+              openPollFromNotification(opened.pollId, opened.groupId);
               return;
             }
             if (opened.complaintId || opened.type.startsWith('COMPLAINT')) {
@@ -534,11 +540,12 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
 
       <ProfileSideMenu
         visible={sideMenuOpen}
-        items={[...(memberPortal ? MEMBER_SIDE_MENU_ITEMS : SOCIETY_SIDE_MENU_ITEMS)]}
+        items={sideMenuItems}
         activePath={activePath}
         societyName={societyName}
         onClose={() => setSideMenuOpen(false)}
         onSelect={openSideMenuRoute}
+        onLogout={() => void logout()}
       />
 
       <LinearGradient colors={[...theme.headerGradient]} style={styles.hero}>
@@ -567,54 +574,9 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
         <Text style={styles.kicker}>
           {memberPortal
             ? `${societyName} · Flat ${sessionUser.memberProfile?.flatNumber ?? '—'}`
-            : `${APP_PRODUCT_NAME} · Financial Command`}
+            : societyName}
         </Text>
-        {canSwitchView ? (
-          <View style={styles.roleSwitcher}>
-            <Pressable
-              style={[
-                styles.roleSegment,
-                !memberPortal ? styles.roleSegmentActive : null,
-                !memberPortal ? { borderColor: theme.accentGold, backgroundColor: theme.accentSoft } : null,
-              ]}
-              onPress={() => void switchToOfficeView()}
-              accessibilityLabel="Switch to office view"
-              accessibilityState={{ selected: !memberPortal }}
-            >
-              <Text
-                style={[
-                  styles.roleSegmentTitle,
-                  !memberPortal ? { color: theme.accentGold } : styles.roleSegmentTitleIdle,
-                ]}
-              >
-                Office
-              </Text>
-              <Text style={styles.roleSegmentHint}>{formatRole(sessionUser.role)}</Text>
-            </Pressable>
-            <Pressable
-              style={[
-                styles.roleSegment,
-                memberPortal ? styles.roleSegmentActive : null,
-                memberPortal ? { borderColor: theme.accentGold, backgroundColor: theme.accentSoft } : null,
-              ]}
-              onPress={() => void switchToMemberView()}
-              accessibilityLabel="Switch to member view"
-              accessibilityState={{ selected: memberPortal }}
-            >
-              <Text
-                style={[
-                  styles.roleSegmentTitle,
-                  memberPortal ? { color: theme.accentGold } : styles.roleSegmentTitleIdle,
-                ]}
-              >
-                Member
-              </Text>
-              <Text style={styles.roleSegmentHint}>
-                Flat {sessionUser.memberProfile?.flatNumber ?? '—'}
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
+        {!memberPortal ? <SocietyJoinCodeHeader /> : null}
       </LinearGradient>
 
       <View style={styles.content}>
@@ -646,6 +608,8 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
           onNavigateProfile={openProfileScreen}
           onOpenNotice={(noticeId) => openNoticeFromNotification(noticeId)}
           onLogout={() => void logout()}
+          onNavigateFromActivity={navigateFromActivity}
+          navPortal={navPortal}
         />
       </View>
 
@@ -659,26 +623,20 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           {modules.map((m) => {
-            const active = activePath === m.routePath;
-            const colorfulGlyph = isColorfulModuleGlyph(m.icon);
+            const active =
+              m.routePath === 'activity'
+                ? activePath === 'activity' || ACTIVITY_HUB_ROUTE_PATHS.has(activePath)
+                : activePath === m.routePath;
+            const tabIconColor = active ? theme.accentGold : theme.textMuted;
+            const tabIconName =
+              m.routePath === 'activity' ? 'grid' : iconFromPrimeIcon(m.icon) || iconForRoutePath(m.routePath);
             return (
               <Pressable
                 key={m.code}
                 style={[styles.tab, active ? { backgroundColor: theme.accentSoft } : null]}
                 onPress={() => selectTab(m.routePath)}
               >
-                <Text
-                  style={[
-                    styles.tabGlyph,
-                    colorfulGlyph
-                      ? null
-                      : active
-                        ? { color: theme.accentGold }
-                        : { color: theme.textMuted },
-                  ]}
-                >
-                  {moduleGlyph(m.icon)}
-                </Text>
+                <UiIcon name={tabIconName} size={22} color={tabIconColor} />
                 <Text
                   style={[
                     styles.tabLabel,
@@ -701,7 +659,6 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   boot: { alignItems: 'center', justifyContent: 'center', gap: 16 },
-  bootLogo: { marginBottom: 4 },
   hero: {
     paddingTop: 44,
     paddingHorizontal: 16,
@@ -745,42 +702,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-  },
-  roleSwitcher: {
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 10,
-    padding: 3,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  roleSegment: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 7,
-    paddingHorizontal: 6,
-    borderRadius: 9,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  roleSegmentActive: {
-    borderWidth: 1,
-  },
-  roleSegmentTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  roleSegmentTitleIdle: {
-    color: '#cbd5e1',
-  },
-  roleSegmentHint: {
-    marginTop: 2,
-    fontSize: 10,
-    color: '#94a3b8',
-    textAlign: 'center',
   },
   content: { flex: 1 },
   bottomBar: {

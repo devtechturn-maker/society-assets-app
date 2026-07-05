@@ -14,14 +14,14 @@ React Native app for **society users only** (chairman, treasurer, member, audito
 | Where you run the app                                  | Set `EXPO_PUBLIC_API_URL` to                                     |
 | ------------------------------------------------------ | ---------------------------------------------------------------- |
 | Android **emulator** on same PC as API                 | `http://10.0.2.2:8080` (default in `src/config/env.ts` if unset) |
-| **Expo Go** on a **physical phone** (same Wi‑Fi as PC) | `http://<YOUR_PC_LAN_IP>:8080` e.g. `http://192.168.1.37:8080`   |
+| **Expo Go** on a **physical phone** (same Wi‑Fi as PC) | `http://<YOUR_PC_LAN_IP>:8080` e.g. `http://192.168.1.39:8080`   |
 
 The app resolves the base URL in this order: **`EXPO_PUBLIC_API_URL`** (`.env`) → **`expo.extra.apiBaseUrl`** in `app.json` → emulator default `http://10.0.2.2:8080`. A wrong IP causes **Login failed / Network error** in Expo Go.
 
 Create a `.env` file in this folder (copy from `.env.example`):
 
 ```bash
-EXPO_PUBLIC_API_URL=http://192.168.1.37:8080
+EXPO_PUBLIC_API_URL=http://192.168.1.39:8080
 ```
 
 Restart Expo after changing `.env` (`Ctrl+C`, then `npx expo start` again).

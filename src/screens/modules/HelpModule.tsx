@@ -13,7 +13,7 @@ const CHAIRMAN_HELP: HelpSection[] = [
     items: [
       'Complete maintenance setup under Services before recording collections.',
       'Add society members with flat numbers so maintenance and reports stay accurate.',
-      'Use the dashboard overview to track income, expenses, and pending dues at a glance.',
+      'Record society income and expenses together under Income & Expenses — choose Expense or Income when adding an entry.',
     ],
   },
   {
@@ -28,7 +28,7 @@ const CHAIRMAN_HELP: HelpSection[] = [
     title: 'Members & communication',
     items: [
       'Publish society rules from About Society — members receive an app notification.',
-      'Create polls to collect member opinions and share results when voting closes.',
+      'Create polls inside group chats and share results when voting closes.',
       'Use Group Chat to message members in society groups.',
     ],
   },
@@ -63,7 +63,7 @@ const MEMBER_HELP: HelpSection[] = [
     title: 'Staying informed',
     items: [
       'Society rules published by the chairman appear under About Society with push notifications.',
-      'Vote on active polls and view results when the chairman shares them.',
+      'Vote on polls in group chat and view live results after you vote.',
       'Use Group Chat to stay connected with your society groups.',
     ],
   },

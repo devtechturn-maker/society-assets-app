@@ -4,16 +4,32 @@ export interface ApiResponse<T> {
   timestamp: string;
 }
 
+export interface DurationPlanCard {
+  months: number;
+  label: string;
+  pricePerFlat: number;
+  flatCount: number;
+  amount: number;
+  monthlyEquivalent: number;
+}
+
 export interface SocietySubscriptionStatus {
   status: string;
   canAccessApp: boolean;
   renewRequired: boolean;
+  needsPlanPurchase?: boolean;
+  onTrial?: boolean;
   message?: string;
   portalUrl?: string;
   planId?: string;
   planName?: string;
   planCode?: string;
   price?: number;
+  pricePerFlat?: number;
+  flatCount?: number;
+  trialDaysConfigured?: number;
+  durationPlans?: DurationPlanCard[];
+  billingMonths?: number;
   billingCycle?: string;
   memberLimit?: number;
   additionalMemberPrice?: number;
@@ -71,12 +87,54 @@ export interface PublicSubscriptionPlan {
   active: boolean;
 }
 
+export interface LoginAccountOption {
+  memberId: string | null;
+  userId: string;
+  societyId: string;
+  societyName: string;
+  role: string;
+  email: string;
+  flatNumber: string;
+  displayName: string;
+}
+
+export type FlatNumberFormat = 'FLOOR' | 'SEQUENTIAL' | 'CUSTOM';
+
+export type SmsLoginVerifyResult =
+  | ({ selectionRequired: false; onboardingRequired?: false } & LoginData)
+  | {
+      selectionRequired: true;
+      onboardingRequired?: false;
+      selectionToken: string;
+      accounts: LoginAccountOption[];
+    }
+  | {
+      onboardingRequired: true;
+      selectionRequired?: false;
+      selectionToken: string;
+      accounts?: LoginAccountOption[];
+    };
+
+export interface OnboardingSocietyOption {
+  societyId: string;
+  societyName: string;
+  totalFlats?: number | null;
+  totalBuildings?: number | null;
+  openFlats: number;
+}
+
+export interface OnboardingOpenFlat {
+  memberId: string;
+  flatNumber: string;
+}
+
 export interface LoginData {
   token: string;
   role: string;
   societyId: string | null;
   firstLogin: boolean;
   userId: string;
+  activeMemberId?: string | null;
   subscription?: SocietySubscriptionStatus;
   memberProfile?: {
     memberId: string;
@@ -287,6 +345,20 @@ export interface SocietyMember {
   phone: string;
   customMaintenanceAmount?: number;
   createdAt: string | null;
+  lastLoginAt?: string | null;
+  ownershipLabel?: string;
+  isTreasurer?: boolean;
+}
+
+export interface DirectoryEntry {
+  id: string;
+  name: string;
+  flatNumber: string;
+  phone: string;
+  email?: string;
+  lastLoginAt?: string | null;
+  ownershipLabel?: string;
+  isTreasurer?: boolean;
 }
 
 export interface MemberUploadResult {
@@ -350,6 +422,11 @@ export interface ReportEmailPayload {
   reportTypes: string[];
 }
 
+export interface ReportDownloadPayload {
+  includeAllReports: boolean;
+  reportTypes: string[];
+}
+
 export interface ReportEmailResult {
   sentCount: number;
   reportCount: number;
@@ -359,6 +436,11 @@ export interface ReportEmailResult {
 export interface ChatMessage {
   id: string;
   body: string;
+  messageType?: 'TEXT' | 'POLL' | 'IMAGE';
+  pollId?: string;
+  poll?: PollDetail;
+  attachmentUrl?: string;
+  localPreviewUri?: string;
   sentAt: string;
   readAt: string | null;
   senderUserId: string;
@@ -412,6 +494,8 @@ export interface PollSummary {
   allMembers: boolean;
   createdAt: string;
   closedAt: string | null;
+  expiresAt?: string | null;
+  expired?: boolean;
   totalVotes: number;
   participantCount: number;
   hasVoted: boolean;
@@ -441,6 +525,7 @@ export interface ComplaintDetail extends ComplaintSummary {
   description: string;
   chairmanNote?: string | null;
   memberId?: string;
+  attachments?: { index: number; url: string; memberUrl?: string }[];
 }
 
 export interface RuleSummary {

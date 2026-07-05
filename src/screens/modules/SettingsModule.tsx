@@ -4,7 +4,6 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -24,7 +23,6 @@ import {
   verifyMemberPaymentSetupOtp,
 } from '../../services/api';
 import { useAppAlert } from '../../context/AppAlertContext';
-import { useScreenCaptureSettings } from '../../context/ScreenCaptureContext';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import type { MaintenanceSettings } from '../../types/api';
@@ -57,7 +55,6 @@ function ServicesAccordionSection({
 export function SettingsModule() {
   const { theme } = useTheme();
   const { alert, confirm } = useAppAlert();
-  const { allowScreenCapture, setAllowScreenCapture } = useScreenCaptureSettings();
   const settingsLoad = useAsyncLoad(fetchMaintenanceSettings, []);
   const paymentSettingsLoad = useAsyncLoad(fetchMemberPaymentSettings, []);
   const typesLoad = useAsyncLoad(fetchContractTypes, []);
@@ -361,21 +358,6 @@ export function SettingsModule() {
         onToggle={() => toggleSection('security')}
       >
         <ChangePasswordFlow />
-        <View style={[styles.captureRow, { marginTop: 16 }]}>
-          <View style={styles.captureText}>
-            <Text style={[styles.captureLabel, { color: theme.text }]}>Allow screenshots</Text>
-            <Text style={[styles.captureHint, { color: theme.textMuted }]}>
-              {allowScreenCapture
-                ? 'Screenshots and screen recording are allowed.'
-                : 'Screenshots and screen recording are blocked.'}
-            </Text>
-          </View>
-          <Switch
-            value={allowScreenCapture}
-            onValueChange={setAllowScreenCapture}
-            trackColor={{ false: theme.divider, true: theme.accentGold }}
-          />
-        </View>
       </ServicesAccordionSection>
 
       <ServicesAccordionSection
@@ -789,15 +771,6 @@ const styles = StyleSheet.create({
   accordionTitle: { fontSize: 16, fontWeight: '700', flex: 1 },
   accordionChevron: { fontSize: 16, fontWeight: '700' },
   accordionBody: { paddingHorizontal: 14, paddingBottom: 14 },
-  captureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  captureText: { flex: 1, minWidth: 0 },
-  captureLabel: { fontSize: 16, fontWeight: '600' },
-  captureHint: { fontSize: 13, marginTop: 4, lineHeight: 18 },
   form: { gap: 4 },
   field: { marginBottom: 12 },
   fieldLabel: {

@@ -9,17 +9,19 @@ import {
 import axios from 'axios';
 import { SectionCard } from '../dashboard/SectionCard';
 import { ListLoading } from '../dashboard/ListStates';
-import { fetchMembers, sendReportsEmail } from '../../services/api';
+import { fetchRegisteredMembers, sendReportsEmail } from '../../services/api';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
+import { openReportDownload } from '../../utils/reportDownload';
 import type { SocietyMember } from '../../types/api';
 
 export function ReportEmailForm() {
   const { alert } = useAppAlert();
   const { theme } = useTheme();
-  const members = useAsyncLoad(fetchMembers, []);
+  const members = useAsyncLoad(fetchRegisteredMembers, []);
   const [sending, setSending] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const [sendToAllMembers, setSendToAllMembers] = useState(false);
   const [memberIds, setMemberIds] = useState<string[]>([]);
@@ -53,6 +55,19 @@ export function ReportEmailForm() {
     }
   }
 
+  function resolveReportTypes(): string[] | null {
+    if (includeAllReports) {
+      return [];
+    }
+    const reportTypes: string[] = [];
+    if (includeSummary) reportTypes.push('SUMMARY');
+    if (includeMonthlyMaintenance) reportTypes.push('MONTHLY_MAINTENANCE');
+    if (includeExpenseCategories) reportTypes.push('EXPENSE_CATEGORIES');
+    if (includePaymentModes) reportTypes.push('PAYMENT_MODES');
+    if (includeMemberPending) reportTypes.push('MEMBER_PENDING');
+    return reportTypes.length > 0 ? reportTypes : null;
+  }
+
   async function submit() {
     const emails = customEmails
       .split(',')
@@ -66,19 +81,12 @@ export function ReportEmailForm() {
       return;
     }
 
-    const reportTypes: string[] = [];
-    if (!includeAllReports) {
-      if (includeSummary) reportTypes.push('SUMMARY');
-      if (includeMonthlyMaintenance) reportTypes.push('MONTHLY_MAINTENANCE');
-      if (includeExpenseCategories) reportTypes.push('EXPENSE_CATEGORIES');
-      if (includePaymentModes) reportTypes.push('PAYMENT_MODES');
-      if (includeMemberPending) reportTypes.push('MEMBER_PENDING');
-      if (reportTypes.length === 0) {
-        alert('Reports required', 'Select at least one report type or enable Include all reports.', {
-          variant: 'error',
-        });
-        return;
-      }
+    const reportTypes = resolveReportTypes();
+    if (reportTypes === null) {
+      alert('Reports required', 'Select at least one report type or enable Include all reports.', {
+        variant: 'error',
+      });
+      return;
     }
 
     setSending(true);
@@ -107,10 +115,40 @@ export function ReportEmailForm() {
     }
   }
 
+  async function download() {
+    const reportTypes = resolveReportTypes();
+    if (reportTypes === null) {
+      alert('Reports required', 'Select at least one report type or enable Include all reports.', {
+        variant: 'error',
+      });
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      await openReportDownload({
+        includeAllReports,
+        reportTypes,
+      });
+      alert('Reports ready', 'Use Save to Files or your preferred app to keep the PDF or ZIP.', {
+        variant: 'success',
+      });
+    } catch (e: unknown) {
+      const msg = axios.isAxiosError(e)
+        ? (e.response?.data as { message?: string } | undefined)?.message
+        : undefined;
+      alert('Download failed', msg ?? (e instanceof Error ? e.message : 'Unable to download reports'), {
+        variant: 'error',
+      });
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <SectionCard
-      title="Email Reports (PDF Attachments)"
-      subtitle="Send selected or all reports to members and/or custom emails"
+      title="Export Reports (PDF)"
+      subtitle="Download to your device or email selected reports to members"
     >
       <CheckboxRow
         label="Send to all registered members"
@@ -122,6 +160,11 @@ export function ReportEmailForm() {
         <View style={styles.block}>
           <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>Send to selected members</Text>
           {members.loading ? <ListLoading /> : null}
+          {(members.data ?? []).length === 0 && !members.loading ? (
+            <Text style={[styles.emptyHint, { color: theme.textMuted }]}>
+              No registered members yet. Share your join code so members can sign up.
+            </Text>
+          ) : null}
           {(members.data ?? []).map((m) => (
             <MemberPick key={m.id} member={m} selected={memberIds.includes(m.id)} onToggle={() => toggleMember(m.id)} />
           ))}
@@ -197,13 +240,24 @@ export function ReportEmailForm() {
         </View>
       </View>
 
-      <Pressable
-        style={[styles.submit, { backgroundColor: theme.accent }, sending ? styles.disabled : null]}
-        onPress={submit}
-        disabled={sending}
-      >
-        <Text style={styles.submitText}>{sending ? 'Sending…' : 'Send Report Emails'}</Text>
-      </Pressable>
+      <View style={styles.exportActions}>
+        <Pressable
+          style={[styles.exportBtn, styles.downloadBtn, { borderColor: theme.inputBorder }, downloading ? styles.disabled : null]}
+          onPress={download}
+          disabled={downloading || sending}
+        >
+          <Text style={[styles.downloadBtnText, { color: theme.text }]}>
+            {downloading ? 'Preparing…' : 'Download Reports'}
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.exportBtn, styles.submit, { backgroundColor: theme.accent }, sending ? styles.disabled : null]}
+          onPress={submit}
+          disabled={sending || downloading}
+        >
+          <Text style={styles.submitText}>{sending ? 'Sending…' : 'Send Report Emails'}</Text>
+        </Pressable>
+      </View>
     </SectionCard>
   );
 }
@@ -366,12 +420,26 @@ const styles = StyleSheet.create({
   memberText: { flex: 1, minWidth: 0 },
   memberName: { fontSize: 14, fontWeight: '600' },
   memberEmail: { fontSize: 12, marginTop: 2 },
-  submit: {
+  emptyHint: { fontSize: 13, lineHeight: 18, marginBottom: 4 },
+  exportActions: {
+    flexDirection: 'row',
+    gap: 10,
     marginTop: 4,
+  },
+  exportBtn: {
+    flex: 1,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
   },
+  downloadBtn: {
+    borderWidth: 1,
+  },
+  downloadBtnText: {
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  submit: {},
   submitText: {
     color: '#fff',
     fontWeight: '700',

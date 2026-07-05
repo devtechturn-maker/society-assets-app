@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { APP_NAME, APP_PRODUCT_NAME, APP_TAGLINE } from '../constants/branding';
+import { APP_NAME, APP_TAGLINE } from '../constants/branding';
 import { useTheme } from '../theme/ThemeContext';
 import { AppLogo } from './AppLogo';
 
@@ -15,10 +15,7 @@ export function AppBrandFooter({ compact = false }: Props) {
       <AppLogo variant="glyph" size={compact ? 22 : 28} framed />
       <Text style={[styles.name, { color: theme.text }]}>{APP_NAME}</Text>
       {!compact ? (
-        <>
-          <Text style={[styles.product, { color: theme.accentGold }]}>{APP_PRODUCT_NAME}</Text>
-          <Text style={[styles.tagline, { color: theme.textMuted }]}>{APP_TAGLINE}</Text>
-        </>
+        <Text style={[styles.tagline, { color: theme.textMuted }]}>{APP_TAGLINE}</Text>
       ) : null}
     </View>
   );
@@ -39,12 +36,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 0.3,
-  },
-  product: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
   },
   tagline: {
     fontSize: 12,

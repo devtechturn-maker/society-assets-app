@@ -6,7 +6,12 @@ import { notifySessionInvalid } from './session';
 import type {
   ApiResponse,
   ExpenseCategoryReportRow,
+  FlatNumberFormat,
   LoginData,
+  LoginAccountOption,
+  OnboardingOpenFlat,
+  OnboardingSocietyOption,
+  SmsLoginVerifyResult,
   MaintenanceSettings,
   MonthlyMaintenanceReportRow,
   NavModule,
@@ -19,6 +24,7 @@ import type {
   MemberUploadResult,
   MemberExcelValidation,
   SocietyMember,
+  DirectoryEntry,
   SocietySubscriptionStatus,
   PublicSubscriptionPlan,
   UpgradeQuote,
@@ -26,6 +32,7 @@ import type {
   UpdateMemberPayload,
   ReportEmailPayload,
   ReportEmailResult,
+  ReportDownloadPayload,
   SocietyOverview,
   SocietyMemberPaymentSettings,
   MemberOverview,
@@ -46,6 +53,7 @@ import type {
 } from '../types/api';
 import type { NotificationAudience } from '../utils/notificationAudience';
 import { encryptPasswordForLogin } from '../crypto/rsaEncrypt';
+import { attachGlobalLoadingInterceptors } from './globalApiLoading';
 import { isEmailNotVerifiedError, requestMemberProfileNavigation } from './memberProfileNavigation';
 
 /** Identifies society mobile app to the API (long-lived JWT on login). */
@@ -59,6 +67,18 @@ const client = axios.create({
     'X-Client-Type': MOBILE_CLIENT_TYPE,
   },
 });
+
+const publicClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Client-Type': MOBILE_CLIENT_TYPE,
+  },
+});
+
+attachGlobalLoadingInterceptors(client);
+attachGlobalLoadingInterceptors(publicClient);
 
 client.interceptors.request.use(async (config) => {
   const token = await getToken();
@@ -113,13 +133,192 @@ async function getData<T>(url: string): Promise<T> {
 
 /** Public catalog — no auth required. */
 export async function fetchPublicPlans(): Promise<PublicSubscriptionPlan[]> {
-  const { data } = await axios.get<ApiResponse<PublicSubscriptionPlan[]>>(
-    `${API_BASE_URL}/subscription-plans`,
-    { timeout: 30000 }
-  );
+  const { data } = await publicClient.get<ApiResponse<PublicSubscriptionPlan[]>>('/subscription-plans');
   return (data.data ?? []).filter((p) => p.active);
 }
 
+function assertMobileLoginData(payload: LoginData): LoginData {
+  const role = (payload.role ?? '').toUpperCase();
+  if (role === 'PRODUCT_OWNER') {
+    throw new Error('Product owner accounts use the web dashboard. This app is for society users only.');
+  }
+  if (!isSocietyRole(role)) {
+    throw new Error('This account cannot use the society app. Use the web app or contact your administrator.');
+  }
+  if (!payload.societyId) {
+    throw new Error('No society linked to this account.');
+  }
+  return payload;
+}
+
+export async function requestSmsLoginOtp(
+  phone: string
+): Promise<{ message: string; expiresInMinutes: number; sandbox?: boolean; sandboxOtp?: string }> {
+  const { data } = await client.post<
+    ApiResponse<{ message: string; expiresInMinutes: number; sandbox?: boolean; sandboxOtp?: string }>
+  >('/auth/login/request-sms-otp', { phone: phone.trim(), clientType: MOBILE_CLIENT_TYPE });
+  return data.data;
+}
+
+export async function verifySmsLoginOtp(phone: string, otp: string): Promise<SmsLoginVerifyResult> {
+  const { data } = await client.post<ApiResponse<SmsLoginVerifyResult>>('/auth/login/verify-sms-otp', {
+    phone: phone.trim(),
+    otp: otp.trim(),
+    clientType: MOBILE_CLIENT_TYPE,
+  });
+  const payload = data.data;
+  if (payload.onboardingRequired || payload.selectionRequired) {
+    return payload;
+  }
+  return assertMobileLoginData(payload as LoginData);
+}
+
+export async function completeSmsLoginOtp(
+  phone: string,
+  selectionToken: string,
+  account: Pick<LoginAccountOption, 'memberId' | 'userId'>
+): Promise<LoginData> {
+  const { data } = await client.post<ApiResponse<LoginData>>('/auth/login/complete-sms-otp', {
+    phone: phone.trim(),
+    selectionToken: selectionToken.trim(),
+    memberId: account.memberId,
+    userId: account.userId,
+    clientType: MOBILE_CLIENT_TYPE,
+  });
+  return assertMobileLoginData(data.data);
+}
+
+export async function previewFlatNumbers(payload: {
+  totalFlats: number;
+  totalBuildings: number;
+  flatNumberFormat: FlatNumberFormat;
+  flatsPerFloor?: number;
+}): Promise<{ total: number; flatNumbers: string[] }> {
+  const { data } = await client.post<ApiResponse<{ total: number; flatNumbers: string[] }>>(
+    '/auth/onboarding/preview-flats',
+    payload
+  );
+  return data.data;
+}
+
+export async function searchOnboardingSocieties(query: string): Promise<OnboardingSocietyOption[]> {
+  const { data } = await client.get<ApiResponse<OnboardingSocietyOption[]>>('/auth/onboarding/societies', {
+    params: { q: query.trim() },
+  });
+  return data.data ?? [];
+}
+
+export async function lookupOnboardingJoinCode(code: string): Promise<OnboardingSocietyOption & { joinCode: string }> {
+  const normalized = code.trim().replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const { data } = await client.get<ApiResponse<OnboardingSocietyOption & { joinCode: string }>>(
+    `/auth/onboarding/join-code/${encodeURIComponent(normalized)}`
+  );
+  return data.data;
+}
+
+export async function listOnboardingOpenFlats(societyId: string): Promise<OnboardingOpenFlat[]> {
+  const { data } = await client.get<ApiResponse<OnboardingOpenFlat[]>>(
+    `/auth/onboarding/societies/${societyId}/open-flats`
+  );
+  return data.data ?? [];
+}
+
+export async function createSocietyMobile(payload: {
+  phone: string;
+  selectionToken: string;
+  societyName: string;
+  totalFlats: number;
+  totalBuildings: number;
+  flatNumberFormat: FlatNumberFormat;
+  flatsPerFloor?: number;
+  chairmanName: string;
+  email: string;
+  societyAddress?: string;
+}): Promise<LoginData> {
+  const { data } = await client.post<ApiResponse<LoginData>>('/auth/onboarding/create-society', {
+    ...payload,
+    clientType: MOBILE_CLIENT_TYPE,
+  });
+  return assertMobileLoginData(data.data);
+}
+
+export async function joinSocietyMobile(payload: {
+  phone: string;
+  selectionToken: string;
+  societyId: string;
+  memberId: string;
+  memberName: string;
+}): Promise<LoginData> {
+  const { data } = await client.post<ApiResponse<LoginData>>('/auth/onboarding/join-society', {
+    ...payload,
+    clientType: MOBILE_CLIENT_TYPE,
+  });
+  return assertMobileLoginData(data.data);
+}
+
+export async function fetchClaimableFlats(): Promise<OnboardingOpenFlat[]> {
+  const { data } = await client.get<ApiResponse<OnboardingOpenFlat[]>>('/society/members/claimable-flats');
+  return data.data ?? [];
+}
+
+export async function linkMemberFlat(memberId: string): Promise<LoginData['memberProfile']> {
+  const { data } = await client.post<ApiResponse<LoginData['memberProfile']>>('/society/members/link-flat', {
+    memberId,
+  });
+  return data.data;
+}
+
+export async function refreshLoginSession(): Promise<LoginData> {
+  const { data } = await client.get<ApiResponse<LoginData>>('/auth/session');
+  return assertMobileLoginData(data.data);
+}
+
+export async function createAdditionalSocietyMobile(payload: {
+  societyName: string;
+  totalFlats: number;
+  totalBuildings: number;
+  flatNumberFormat: FlatNumberFormat;
+  flatsPerFloor?: number;
+  chairmanName: string;
+  email: string;
+  societyAddress?: string;
+}): Promise<LoginData> {
+  const { data } = await client.post<ApiResponse<LoginData>>('/auth/society/create-additional', {
+    ...payload,
+    clientType: MOBILE_CLIENT_TYPE,
+  });
+  return assertMobileLoginData(data.data);
+}
+
+export async function requestLoginOtp(email: string): Promise<{ message: string; expiresInMinutes: number }> {
+  const { data } = await client.post<ApiResponse<{ message: string; expiresInMinutes: number }>>(
+    '/auth/login/request-otp',
+    { email: email.trim().toLowerCase(), clientType: MOBILE_CLIENT_TYPE }
+  );
+  return data.data;
+}
+
+export async function verifyLoginOtp(email: string, otp: string): Promise<LoginData> {
+  const { data } = await client.post<ApiResponse<LoginData>>('/auth/login/verify-otp', {
+    email: email.trim().toLowerCase(),
+    otp: otp.trim(),
+    clientType: MOBILE_CLIENT_TYPE,
+  });
+  const payload = data.data;
+  const role = (payload.role ?? '').toUpperCase();
+  if (role === 'PRODUCT_OWNER') {
+    throw new Error('Product owner accounts use the web dashboard. This app is for society users only.');
+  }
+  if (!isSocietyRole(role)) {
+    throw new Error('This account cannot use the society app. Use the web app or contact your administrator.');
+  }
+  if (!payload.societyId) {
+    throw new Error('No society linked to this account.');
+  }
+  return payload;
+}
+
+/** @deprecated Use requestLoginOtp + verifyLoginOtp */
 export async function login(email: string, password: string): Promise<LoginData> {
   const encryptedPassword = encryptPasswordForLogin(password);
   const { data } = await client.post<ApiResponse<LoginData>>('/auth/login', {
@@ -200,10 +399,9 @@ export async function changeFirstLoginPassword(newPassword: string): Promise<voi
 }
 
 export async function requestPasswordResetOtp(email: string): Promise<{ message: string; expiresInMinutes: number }> {
-  const { data } = await axios.post<ApiResponse<{ message: string; expiresInMinutes: number }>>(
-    `${API_BASE_URL}/auth/forgot-password/request-otp`,
-    { email: email.trim().toLowerCase() },
-    { timeout: 30000 }
+  const { data } = await publicClient.post<ApiResponse<{ message: string; expiresInMinutes: number }>>(
+    '/auth/forgot-password/request-otp',
+    { email: email.trim().toLowerCase() }
   );
   return data.data;
 }
@@ -212,10 +410,9 @@ export async function verifyPasswordResetOtp(
   email: string,
   otp: string
 ): Promise<{ message: string; resetToken: string }> {
-  const { data } = await axios.post<ApiResponse<{ message: string; resetToken: string }>>(
-    `${API_BASE_URL}/auth/forgot-password/verify-otp`,
-    { email: email.trim().toLowerCase(), otp: otp.trim() },
-    { timeout: 30000 }
+  const { data } = await publicClient.post<ApiResponse<{ message: string; resetToken: string }>>(
+    '/auth/forgot-password/verify-otp',
+    { email: email.trim().toLowerCase(), otp: otp.trim() }
   );
   return data.data;
 }
@@ -226,15 +423,11 @@ export async function resetPasswordWithToken(
   newPassword: string
 ): Promise<void> {
   const encryptedNewPassword = encryptPasswordForLogin(newPassword);
-  await axios.post<ApiResponse<{ message: string }>>(
-    `${API_BASE_URL}/auth/forgot-password/reset`,
-    {
-      email: email.trim().toLowerCase(),
-      resetToken,
-      encryptedNewPassword,
-    },
-    { timeout: 30000 }
-  );
+  await publicClient.post<ApiResponse<{ message: string }>>('/auth/forgot-password/reset', {
+    email: email.trim().toLowerCase(),
+    resetToken,
+    encryptedNewPassword,
+  });
 }
 
 export async function confirmChangePassword(resetToken: string, newPassword: string): Promise<void> {
@@ -270,13 +463,70 @@ export async function verifyChangePasswordOtp(
 export const fetchRecentExpenses = () => getData<RecentExpense[]>('/society/dashboard/recent-expenses');
 export const fetchExpenseHistory = () => getData<RecentExpense[]>('/expenses');
 export const fetchMaintenanceHistory = () => getData<RecentExpense[]>('/expenses/maintenance');
-export const fetchOtherIncomeHistory = () => getData<RecentExpense[]>('/expenses/income');
+export const fetchLedgerHistory = () => getData<RecentExpense[]>('/expenses/ledger');
 export const fetchMaintenancePending = () =>
   getData<PendingMaintenanceMember[]>('/expenses/maintenance/pending');
 export const fetchMembers = () => getData<SocietyMember[]>('/society/members');
+export const fetchRegisteredMembers = () => getData<SocietyMember[]>('/society/members/registered');
+export const fetchSocietyJoinCode = () =>
+  getData<{ societyId: string; societyName: string; joinCode: string }>('/society/join-code');
+export const fetchMemberDirectory = () => getData<DirectoryEntry[]>('/member/directory');
 
 export const fetchSubscriptionStatus = () =>
   getData<SocietySubscriptionStatus>('/society/subscription/status');
+
+export async function createDurationPlanCheckout(months: number): Promise<{
+  societyId: string;
+  months: number;
+  flatCount: number;
+  pricePerFlat: number;
+  amount: number;
+  payment: {
+    required?: boolean;
+    activated?: boolean;
+    status?: string;
+    amountInr?: number;
+    keyId?: string;
+    orderId?: string;
+    amount?: number;
+    currency?: string;
+    planName?: string;
+  };
+}> {
+  const { data } = await client.post<
+    ApiResponse<{
+      societyId: string;
+      months: number;
+      flatCount: number;
+      pricePerFlat: number;
+      amount: number;
+      payment: {
+        required?: boolean;
+        activated?: boolean;
+        status?: string;
+        amountInr?: number;
+        keyId?: string;
+        orderId?: string;
+        amount?: number;
+        currency?: string;
+        planName?: string;
+      };
+    }>
+  >('/society/subscription/duration/checkout', { months });
+  return data.data;
+}
+
+export async function verifySubscriptionPayment(payload: {
+  societyId: string;
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+}): Promise<{ status: string; validUntil?: string; planName?: string }> {
+  const { data } = await client.post<
+    ApiResponse<{ status: string; validUntil?: string; planName?: string }>
+  >('/payments/verify', payload);
+  return data.data;
+}
 
 export const fetchSocietySubscriptionPlans = () =>
   getData<PublicSubscriptionPlan[]>('/society/subscription/plans');
@@ -524,6 +774,60 @@ export async function sendReportsEmail(payload: ReportEmailPayload): Promise<Rep
   return data.data;
 }
 
+export async function downloadReportsToDevice(
+  payload: ReportDownloadPayload
+): Promise<{ uri: string; filename: string; mimeType: string }> {
+  const response = await client.post<ArrayBuffer>('/society/dashboard/reports/download', payload, {
+    responseType: 'arraybuffer',
+  });
+  const disposition = response.headers['content-disposition'];
+  const filename =
+    parseContentDispositionFilename(typeof disposition === 'string' ? disposition : null) ??
+    'society-reports.zip';
+  const mimeType =
+    typeof response.headers['content-type'] === 'string'
+      ? response.headers['content-type']
+      : filename.endsWith('.pdf')
+        ? 'application/pdf'
+        : 'application/zip';
+  const cacheDir = FileSystem.cacheDirectory;
+  if (!cacheDir) {
+    throw new Error('Unable to save reports on this device.');
+  }
+  const fileUri = `${cacheDir}${filename}`;
+  const base64 = uint8ArrayToBase64(new Uint8Array(response.data));
+  await FileSystem.writeAsStringAsync(fileUri, base64, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return { uri: fileUri, filename, mimeType };
+}
+
+function parseContentDispositionFilename(header: string | null): string | null {
+  if (!header) {
+    return null;
+  }
+  const utf8Match = header.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1].trim());
+    } catch {
+      return utf8Match[1].trim();
+    }
+  }
+  const plainMatch = header.match(/filename="?([^";]+)"?/i);
+  return plainMatch?.[1]?.trim() ?? null;
+}
+
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  const chunkSize = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
 export function fetchChatGroups(memberPortal: boolean): Promise<ChatGroupSummary[]> {
   const url = memberPortal ? '/member/chat/groups' : '/society/chat/groups';
   return getData<ChatGroupSummary[]>(url);
@@ -555,6 +859,21 @@ export async function createChatGroup(name: string, memberIds: string[]): Promis
   return data.data;
 }
 
+export function fetchChatGroupMembers(groupId: string): Promise<SocietyMember[]> {
+  return getData<SocietyMember[]>(`/society/chat/groups/${groupId}/members`);
+}
+
+export async function addChatGroupMembers(
+  groupId: string,
+  memberIds: string[]
+): Promise<ChatGroupSummary> {
+  const { data } = await client.post<ApiResponse<ChatGroupSummary>>(
+    `/society/chat/groups/${groupId}/members`,
+    { memberIds }
+  );
+  return data.data;
+}
+
 export async function sendGroupChatMessage(
   memberPortal: boolean,
   groupId: string,
@@ -564,6 +883,51 @@ export async function sendGroupChatMessage(
     ? `/member/chat/groups/${groupId}/messages`
     : `/society/chat/groups/${groupId}/messages`;
   const { data } = await client.post<ApiResponse<ChatMessage>>(url, { body });
+  return data.data;
+}
+
+export async function sendGroupChatMessageWithPhoto(
+  memberPortal: boolean,
+  groupId: string,
+  body: string,
+  photoUri: string,
+  fileName: string,
+  mimeType: string
+): Promise<ChatMessage> {
+  const url = memberPortal
+    ? `/member/chat/groups/${groupId}/messages`
+    : `/society/chat/groups/${groupId}/messages`;
+  const formData = new FormData();
+  if (body.trim()) {
+    formData.append('body', body.trim());
+  }
+  formData.append('photo', {
+    uri: photoUri,
+    name: fileName,
+    type: mimeType,
+  } as unknown as Blob);
+  const { data } = await client.post<ApiResponse<ChatMessage>>(url, formData, {
+    transformRequest: (payload, headers) => {
+      if (headers) {
+        delete headers['Content-Type'];
+      }
+      return payload;
+    },
+  });
+  return data.data;
+}
+
+export async function createGroupChatPoll(
+  groupId: string,
+  question: string,
+  options: string[],
+  expiresInMinutes?: number
+): Promise<ChatMessage> {
+  const { data } = await client.post<ApiResponse<ChatMessage>>(`/society/chat/groups/${groupId}/polls`, {
+    question,
+    options,
+    expiresInMinutes,
+  });
   return data.data;
 }
 
@@ -605,6 +969,7 @@ export async function createPoll(payload: {
   options: string[];
   allMembers: boolean;
   memberIds: string[];
+  expiresInMinutes?: number;
 }): Promise<PollDetail> {
   const { data } = await client.post<ApiResponse<PollDetail>>('/society/polls', payload);
   return data.data;
@@ -647,8 +1012,31 @@ export async function createComplaint(payload: {
   subject: string;
   description: string;
   category: string;
+  photos?: { uri: string; fileName: string; mimeType: string }[];
 }): Promise<ComplaintDetail> {
-  const { data } = await client.post<ApiResponse<ComplaintDetail>>('/member/complaints', payload);
+  const photos = payload.photos?.filter(Boolean) ?? [];
+  if (photos.length > 0) {
+    const formData = new FormData();
+    formData.append('subject', payload.subject);
+    formData.append('description', payload.description);
+    formData.append('category', payload.category);
+    photos.forEach((photo) => {
+      formData.append('photos', {
+        uri: photo.uri,
+        name: photo.fileName,
+        type: photo.mimeType,
+      } as unknown as Blob);
+    });
+    const { data } = await client.post<ApiResponse<ComplaintDetail>>('/member/complaints', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data.data;
+  }
+  const { data } = await client.post<ApiResponse<ComplaintDetail>>('/member/complaints', {
+    subject: payload.subject,
+    description: payload.description,
+    category: payload.category,
+  });
   return data.data;
 }
 

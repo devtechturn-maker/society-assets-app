@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Dimensions,
   FlatList,
+  Image,
   Keyboard,
   Platform,
   Pressable,
@@ -24,6 +25,13 @@ import { useTheme } from '../../theme/ThemeContext';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useHardwareBack } from '../../hooks/useHardwareBack';
+import { AuthenticatedImage } from '../../components/chat/AuthenticatedImage';
+import {
+  pickPhotoFromCamera,
+  pickPhotoFromLibrary,
+  showPhotoSourcePicker,
+  type PickedPhoto,
+} from '../../utils/pickPhoto';
 
 type Screen = 'list' | 'create' | 'detail';
 
@@ -136,6 +144,7 @@ export function ComplaintModule({
   const [category, setCategory] = useState<string>('OTHER');
   const [status, setStatus] = useState<string>('OPEN');
   const [chairmanNote, setChairmanNote] = useState('');
+  const [photos, setPhotos] = useState<PickedPhoto[]>([]);
 
   const formScrollRef = useRef<ScrollView>(null);
   const descriptionFieldRef = useRef<View>(null);
@@ -242,10 +251,12 @@ export function ComplaintModule({
         subject: trimmedSubject,
         description: trimmedDescription,
         category,
+        photos,
       });
       setSubject('');
       setDescription('');
       setCategory('OTHER');
+      setPhotos([]);
       setScreen('list');
       await loadComplaints();
       await alert('Submitted', 'Your complaint was sent to the society chairman.');
@@ -354,6 +365,38 @@ export function ComplaintModule({
               }}
             />
           </View>
+          <Text style={[styles.label, { color: theme.textMuted }]}>Photos (optional)</Text>
+          <View style={styles.photoRow}>
+            {photos.map((photo, index) => (
+              <View key={`${photo.uri}-${index}`} style={styles.photoThumbWrap}>
+                <Image source={{ uri: photo.uri }} style={styles.photoThumb} />
+                <Pressable style={styles.photoRemove} onPress={() => setPhotos((rows) => rows.filter((_, i) => i !== index))}>
+                  <Text style={styles.photoRemoveText}>×</Text>
+                </Pressable>
+              </View>
+            ))}
+            {photos.length < 3 ? (
+              <Pressable
+                style={[styles.addPhotoBtn, { borderColor: theme.cardBorder, backgroundColor: theme.chipBg }]}
+                onPress={() =>
+                  showPhotoSourcePicker(
+                    () => {
+                      void pickPhotoFromCamera().then((photo) => {
+                        if (photo) setPhotos((rows) => [...rows, photo].slice(0, 3));
+                      });
+                    },
+                    () => {
+                      void pickPhotoFromLibrary().then((photo) => {
+                        if (photo) setPhotos((rows) => [...rows, photo].slice(0, 3));
+                      });
+                    }
+                  )
+                }
+              >
+                <Text style={{ color: theme.accent, fontWeight: '700' }}>+ Photo</Text>
+              </Pressable>
+            ) : null}
+          </View>
           <Pressable
             style={[styles.primaryBtn, { backgroundColor: theme.accent, opacity: saving ? 0.6 : 1 }]}
             onPress={() => void submitCreate()}
@@ -404,6 +447,20 @@ export function ComplaintModule({
             <Text style={[styles.label, { color: theme.textMuted }]}>Description</Text>
             <Text style={{ color: theme.text, lineHeight: 22 }}>{activeComplaint.description}</Text>
           </View>
+          {activeComplaint.attachments?.length ? (
+            <View style={[styles.detailBox, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
+              <Text style={[styles.label, { color: theme.textMuted }]}>Photos</Text>
+              <View style={styles.photoRow}>
+                {activeComplaint.attachments.map((attachment) => (
+                  <AuthenticatedImage
+                    key={attachment.index}
+                    path={memberPortal ? attachment.memberUrl ?? attachment.url : attachment.url}
+                    style={styles.photoThumb}
+                  />
+                ))}
+              </View>
+            </View>
+          ) : null}
           {activeComplaint.chairmanNote ? (
             <View style={[styles.detailBox, { backgroundColor: theme.accentSoft, borderColor: theme.accent }]}>
               <Text style={[styles.label, { color: theme.accent }]}>Chairman response</Text>
@@ -557,4 +614,27 @@ const styles = StyleSheet.create({
   cardSubject: { fontSize: 16, fontWeight: '700' },
   badge: { marginTop: 6, fontSize: 12, fontWeight: '700' },
   detailBox: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 6 },
+  photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
+  photoThumbWrap: { position: 'relative' },
+  photoThumb: { width: 88, height: 88, borderRadius: 10 },
+  photoRemove: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#111827',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoRemoveText: { color: '#fff', fontWeight: '800', fontSize: 14, lineHeight: 16 },
+  addPhotoBtn: {
+    width: 88,
+    height: 88,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

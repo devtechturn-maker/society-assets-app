@@ -1,17 +1,18 @@
 import type { ReactNode } from 'react';
+import type { NavPortalKind } from '../../constants/activityHub';
+import { ActivityModule } from './ActivityModule';
+import { DirectoryModule } from './DirectoryModule';
 import { ContractsModule } from './ContractsModule';
 import { DashboardModule } from './DashboardModule';
 import { MemberDashboardModule } from './MemberDashboardModule';
 import { MemberProfileModule } from './MemberProfileModule';
 import { MemberMaintenanceModule } from './MemberMaintenanceModule';
-import { ExpensesModule } from './ExpensesModule';
+import { IncomeExpensesModule } from './IncomeExpensesModule';
 import { MaintenanceModule } from './MaintenanceModule';
 import { MembersModule } from './MembersModule';
-import { OtherIncomeModule } from './OtherIncomeModule';
 import { ReportsModule } from './ReportsModule';
 import { SettingsModule } from './SettingsModule';
 import { SupportModule } from './SupportModule';
-import { PollModule } from './PollModule';
 import { ComplaintModule } from './ComplaintModule';
 import { AmenityBookingModule } from './AmenityBookingModule';
 import { NoticeModule } from './NoticeModule';
@@ -43,6 +44,8 @@ export function ModuleRouter({
   onNavigateProfile,
   onLogout,
   onOpenNotice,
+  onNavigateFromActivity,
+  navPortal = 'society',
 }: {
   routePath: string;
   memberPortal?: boolean;
@@ -64,9 +67,20 @@ export function ModuleRouter({
   onNavigateProfile?: () => void;
   onLogout?: () => void;
   onOpenNotice?: (noticeId: string) => void;
+  onNavigateFromActivity?: (routePath: string) => void;
+  navPortal?: NavPortalKind;
 }): ReactNode {
   if (memberPortal) {
     switch (routePath) {
+      case 'activity':
+        return (
+          <ActivityModule
+            portal={navPortal}
+            onNavigate={(path) => onNavigateFromActivity?.(path)}
+          />
+        );
+      case 'directory':
+        return <DirectoryModule memberPortal />;
       case 'dashboard':
         return (
           <MemberDashboardModule
@@ -82,14 +96,8 @@ export function ModuleRouter({
             memberPortal
             userId={userId}
             initialGroupId={initialChatGroupId}
-            onInitialGroupConsumed={onChatGroupConsumed}
-          />
-        );
-      case 'polls':
-        return (
-          <PollModule
-            memberPortal
             initialPollId={initialPollId}
+            onInitialGroupConsumed={onChatGroupConsumed}
             onInitialPollConsumed={onPollConsumed}
           />
         );
@@ -139,14 +147,20 @@ export function ModuleRouter({
   }
 
   switch (routePath) {
+    case 'activity':
+      return (
+        <ActivityModule portal={navPortal} onNavigate={(path) => onNavigateFromActivity?.(path)} />
+      );
+    case 'directory':
+      return <DirectoryModule />;
     case 'dashboard':
       return <DashboardModule />;
     case 'maintenance':
       return <MaintenanceModule />;
+    case 'ledger':
     case 'expenses':
-      return <ExpensesModule />;
     case 'income':
-      return <OtherIncomeModule />;
+      return <IncomeExpensesModule />;
     case 'members':
       return <MembersModule />;
     case 'contracts':
@@ -161,14 +175,8 @@ export function ModuleRouter({
           userId={userId}
           canManageGroups={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
           initialGroupId={initialChatGroupId}
-          onInitialGroupConsumed={onChatGroupConsumed}
-        />
-      );
-    case 'polls':
-      return (
-        <PollModule
-          canManagePolls={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
           initialPollId={initialPollId}
+          onInitialGroupConsumed={onChatGroupConsumed}
           onInitialPollConsumed={onPollConsumed}
         />
       );
