@@ -7,6 +7,9 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://187.127.180.221:8080"
+      },
       "android": {
         "buildType": "apk"
       },
@@ -17,13 +20,54 @@
     "development-simulator": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://187.127.180.221:8080"
+      },
       "ios": {
         "simulator": true
       }
     },
-    "preview": {
-      "distribution": "internal"
+    "preview-apk": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://187.127.180.221:8080"
+      },
+      "android": {
+        "buildType": "apk"
+      }
     },
-    "production": {}
+    "preview": {
+      "distribution": "store",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://187.127.180.221:8080"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    },
+    "production": {
+      "distribution": "store",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://187.127.180.221:8080"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "preview": {
+      "ios": {},
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    },
+    "production": {
+      "ios": {},
+      "android": {
+        "track": "production"
+      }
+    }
   }
 }
