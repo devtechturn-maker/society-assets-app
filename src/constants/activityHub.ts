@@ -1,7 +1,7 @@
 import type { NavModule } from '../types/api';
 import type { UiIconName } from './uiIcons';
 
-export type NavPortalKind = 'member' | 'society' | 'treasurer';
+export type NavPortalKind = 'member' | 'society' | 'treasurer' | 'gatekeeper';
 
 export type ActivityTile = {
   title: string;

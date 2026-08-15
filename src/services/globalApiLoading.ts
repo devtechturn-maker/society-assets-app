@@ -2,11 +2,13 @@ import type { InternalAxiosRequestConfig } from 'axios';
 
 type LoadingListener = (visible: boolean, message: string) => void;
 
-const SHOW_DELAY_MS = 280;
+/** Avoid flicker on very fast API calls. */
+const API_SHOW_DELAY_MS = 280;
 const HIDE_DELAY_MS = 150;
 
 let pendingCount = 0;
-let manualMessage: string | null = null;
+let blockingTaskCount = 0;
+let blockingTaskMessage = 'Loading...';
 let overlayVisible = false;
 
 let showTimer: ReturnType<typeof setTimeout> | null = null;
@@ -29,12 +31,15 @@ function shouldTrack(config?: InternalAxiosRequestConfig): boolean {
 }
 
 function currentMessage(): string {
-  return manualMessage ?? 'Loading…';
+  return blockingTaskCount > 0 ? blockingTaskMessage : 'Loading...';
+}
+
+function wantsOverlay(): boolean {
+  return pendingCount > 0 || blockingTaskCount > 0;
 }
 
 function notify() {
-  const message = currentMessage();
-  listeners.forEach((listener) => listener(overlayVisible, message));
+  listeners.forEach((listener) => listener(overlayVisible, currentMessage()));
 }
 
 function clearShowTimer() {
@@ -52,30 +57,33 @@ function clearHideTimer() {
 }
 
 function scheduleOverlay() {
-  const wantsOverlay = pendingCount > 0 || manualMessage !== null;
-
-  if (wantsOverlay) {
+  if (wantsOverlay()) {
     clearHideTimer();
-    if (manualMessage !== null) {
-      clearShowTimer();
-      if (!overlayVisible) {
-        overlayVisible = true;
-      }
-      notify();
-      return;
-    }
+
     if (overlayVisible) {
       notify();
       return;
     }
+
+    // Post-API navigation / sign-out — show immediately.
+    if (blockingTaskCount > 0) {
+      clearShowTimer();
+      overlayVisible = true;
+      notify();
+      return;
+    }
+
+    // API in flight — brief delay to skip flicker on fast responses.
     if (showTimer) {
       return;
     }
     showTimer = setTimeout(() => {
       showTimer = null;
-      overlayVisible = true;
-      notify();
-    }, SHOW_DELAY_MS);
+      if (wantsOverlay()) {
+        overlayVisible = true;
+        notify();
+      }
+    }, API_SHOW_DELAY_MS);
     return;
   }
 
@@ -109,9 +117,33 @@ export function trackApiRequestEnd(config?: InternalAxiosRequestConfig): void {
   scheduleOverlay();
 }
 
-/** Block the UI for actions that are not a single axios call (e.g. sign out). */
+/**
+ * Keep the loader visible until async work finishes (e.g. save session + navigate).
+ * Use for steps after an API returns — axios interceptors only cover in-flight requests.
+ */
+export async function withBlockingLoader<T>(
+  message: string,
+  fn: () => Promise<T>
+): Promise<T> {
+  blockingTaskCount += 1;
+  blockingTaskMessage = message;
+  scheduleOverlay();
+  try {
+    return await fn();
+  } finally {
+    blockingTaskCount = Math.max(0, blockingTaskCount - 1);
+    scheduleOverlay();
+  }
+}
+
+/** @deprecated Prefer withBlockingLoader — clears immediately when work is done. */
 export function setBlockingMessage(message: string | null): void {
-  manualMessage = message;
+  if (message !== null) {
+    blockingTaskCount += 1;
+    blockingTaskMessage = message;
+  } else {
+    blockingTaskCount = Math.max(0, blockingTaskCount - 1);
+  }
   scheduleOverlay();
 }
 
@@ -123,7 +155,13 @@ export function subscribeGlobalLoading(listener: LoadingListener): () => void {
 
 export function attachGlobalLoadingInterceptors(axiosInstance: {
   interceptors: {
-    request: { use: (onFulfilled: (config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>) => void };
+    request: {
+      use: (
+        onFulfilled: (
+          config: InternalAxiosRequestConfig
+        ) => InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>
+      ) => void;
+    };
     response: {
       use: (
         onFulfilled: (response: { config: InternalAxiosRequestConfig }) => unknown,

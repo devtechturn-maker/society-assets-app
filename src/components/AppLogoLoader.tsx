@@ -10,58 +10,66 @@ import {
 } from 'react-native';
 import { AppLogo } from './AppLogo';
 import { APP_TAGLINE } from '../constants/branding';
+import { PremiumLoadingScreen } from './splash/PremiumLoadingScreen';
 
 export type AppLogoLoaderSize = 'sm' | 'md' | 'lg' | 'xl';
 
 type Props = {
   size?: AppLogoLoaderSize;
-  /** Glyph works best for buttons; primary for full-screen boot. */
-  logo?: 'glyph' | 'primary';
-  /** Pulse only — fits inside buttons without outer rings. */
+  /** Glyph for tiny buttons; splash = purple fill; primary = full wordmark. */
+  logo?: 'glyph' | 'primary' | 'splash';
+  /** Smaller pulse — fits inside buttons. */
   minimal?: boolean;
   label?: string;
   /** Label text color context. */
   tone?: 'onDark' | 'onLight';
   style?: StyleProp<ViewStyle>;
+  /** Override rendered logo size in pixels (splash / glyph / primary). */
+  logoPixelSize?: number;
 };
-
-const WIZARD_ACCENT = '#70088c';
-const GOLD_ACCENT = '#fbbf24';
 
 const SIZE_CONFIG: Record<
   AppLogoLoaderSize,
-  { glyph: number; primary: number; outer: number; inner: number; stroke: number }
+  { glyph: number; splash: number; primary: number }
 > = {
-  sm: { glyph: 22, primary: 72, outer: 44, inner: 34, stroke: 2 },
-  md: { glyph: 40, primary: 120, outer: 84, inner: 64, stroke: 2.5 },
-  lg: { glyph: 56, primary: 160, outer: 112, inner: 88, stroke: 3 },
-  xl: { glyph: 72, primary: 200, outer: 144, inner: 112, stroke: 3.5 },
+  sm: { glyph: 22, splash: 28, primary: 72 },
+  md: { glyph: 40, splash: 52, primary: 120 },
+  lg: { glyph: 56, splash: 72, primary: 160 },
+  xl: { glyph: 72, splash: 96, primary: 200 },
 };
+
+function logoPixelSize(
+  config: (typeof SIZE_CONFIG)[AppLogoLoaderSize],
+  logo: NonNullable<Props['logo']>
+): number {
+  if (logo === 'primary') return config.primary;
+  if (logo === 'glyph') return config.glyph;
+  return config.splash;
+}
 
 export function AppLogoLoader({
   size = 'md',
-  logo = 'glyph',
+  logo = 'splash',
   minimal = false,
   label,
   tone = 'onDark',
   style,
+  logoPixelSize: logoPixelSizeOverride,
 }: Props) {
   const pulse = useRef(new Animated.Value(0)).current;
-  const spinOuter = useRef(new Animated.Value(0)).current;
-  const spinInner = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const breathe = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, {
           toValue: 1,
-          duration: 850,
+          duration: minimal ? 700 : 1100,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(pulse, {
           toValue: 0,
-          duration: 850,
+          duration: minimal ? 700 : 1100,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
@@ -69,58 +77,24 @@ export function AppLogoLoader({
     );
 
     breathe.start();
-
-    if (minimal) {
-      return () => breathe.stop();
-    }
-
-    const outerSpin = Animated.loop(
-      Animated.timing(spinOuter, {
-        toValue: 1,
-        duration: 2200,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    );
-    const innerSpin = Animated.loop(
-      Animated.timing(spinInner, {
-        toValue: 1,
-        duration: 1600,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    );
-
-    outerSpin.start();
-    innerSpin.start();
-
-    return () => {
-      breathe.stop();
-      outerSpin.stop();
-      innerSpin.stop();
-    };
-  }, [minimal, pulse, spinInner, spinOuter]);
+    return () => breathe.stop();
+  }, [minimal, pulse]);
 
   const config = SIZE_CONFIG[size];
+  const renderedLogoSize = logoPixelSizeOverride ?? logoPixelSize(config, logo);
+  const stageSize = renderedLogoSize + (minimal ? 8 : 16);
+
   const logoScale = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.92, 1],
+    outputRange: minimal ? [0.94, 1] : [0.9, 1.06],
   });
   const logoOpacity = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.88, 1],
+    outputRange: minimal ? [0.82, 1] : [0.78, 1],
   });
-  const outerRotate = spinOuter.interpolate({
+  const logoFloat = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-  const innerRotate = spinInner.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['360deg', '0deg'],
-  });
-  const ringOpacity = pulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.45, 1],
+    outputRange: minimal ? [0, 0] : [0, -8],
   });
 
   return (
@@ -129,58 +103,19 @@ export function AppLogoLoader({
       accessibilityRole="progressbar"
       accessibilityLabel={label ?? 'Loading'}
     >
-      <View
-        style={[
-          styles.stage,
-          {
-            width: minimal ? config.glyph + 8 : config.outer,
-            height: minimal ? config.glyph + 8 : config.outer,
-          },
-        ]}
-      >
-        {!minimal ? (
-          <>
-            <Animated.View
-              style={[
-                styles.ring,
-                {
-                  width: config.outer,
-                  height: config.outer,
-                  borderRadius: config.outer / 2,
-                  borderWidth: config.stroke,
-                  opacity: ringOpacity,
-                  transform: [{ rotate: outerRotate }],
-                },
-                styles.ringOuter,
-              ]}
-            />
-            <Animated.View
-              style={[
-                styles.ring,
-                {
-                  width: config.inner,
-                  height: config.inner,
-                  borderRadius: config.inner / 2,
-                  borderWidth: config.stroke - 0.5,
-                  opacity: ringOpacity,
-                  transform: [{ rotate: innerRotate }],
-                },
-                styles.ringInner,
-              ]}
-            />
-          </>
-        ) : null}
-
+      <View style={[styles.stage, { width: stageSize, height: stageSize }]}>
         <Animated.View
           style={{
             opacity: logoOpacity,
-            transform: [{ scale: logoScale }],
+            transform: [{ scale: logoScale }, { translateY: logoFloat }],
           }}
         >
           {logo === 'primary' ? (
-            <AppLogo variant="primary" size={config.primary} />
+            <AppLogo variant="primary" size={renderedLogoSize} />
+          ) : logo === 'glyph' ? (
+            <AppLogo variant="glyph" size={renderedLogoSize} />
           ) : (
-            <AppLogo variant="glyph" size={config.glyph} framed={!minimal} />
+            <AppLogo variant="splash" size={renderedLogoSize} resizeMode="cover" />
           )}
         </Animated.View>
       </View>
@@ -197,19 +132,9 @@ export function AppLogoLoader({
   );
 }
 
-/** Full-screen branded boot loader (splash / session check). */
-export function AppBootLoader({
-  backgroundColor = '#0f2848',
-  label,
-}: {
-  backgroundColor?: string;
-  label?: string;
-}) {
-  return (
-    <View style={[styles.boot, { backgroundColor }]}>
-      <AppLogoLoader size="xl" logo="primary" label={label} />
-    </View>
-  );
+/** Full-screen branded boot loader (session check after splash). */
+export function AppBootLoader({ label = 'Loading...' }: { backgroundColor?: string; label?: string }) {
+  return <PremiumLoadingScreen label={label} />;
 }
 
 const styles = StyleSheet.create({
@@ -220,18 +145,6 @@ const styles = StyleSheet.create({
   stage: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  ring: {
-    position: 'absolute',
-    borderColor: 'transparent',
-  },
-  ringOuter: {
-    borderTopColor: WIZARD_ACCENT,
-    borderRightColor: 'rgba(112, 8, 140, 0.35)',
-  },
-  ringInner: {
-    borderBottomColor: GOLD_ACCENT,
-    borderLeftColor: 'rgba(251, 191, 36, 0.35)',
   },
   label: {
     marginTop: 18,
@@ -252,10 +165,5 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.55)',
     letterSpacing: 0.2,
     textAlign: 'center',
-  },
-  boot: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

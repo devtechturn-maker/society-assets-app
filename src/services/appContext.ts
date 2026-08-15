@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import type { LoginData } from '../types/api';
-import { isMemberRole } from './api';
+import { isMemberRole, isGateKeeperRole } from './api';
 
 export type AppViewContext = 'CHAIRMAN' | 'MEMBER';
 
@@ -87,6 +87,9 @@ export function canSwitchLoginRole(user: LoginData): boolean {
 
 /** Show role picker after login (including single-society staff with Office only). */
 export function requiresRoleSelection(user: LoginData): boolean {
+  if (isGateKeeperRole(user.role)) {
+    return false;
+  }
   const roles = getAvailableLoginRoles(user);
   if (roles.length > 1) {
     return true;
@@ -95,6 +98,9 @@ export function requiresRoleSelection(user: LoginData): boolean {
 }
 
 export async function resolveInitialAppViewContext(user: LoginData): Promise<AppViewContext> {
+  if (isGateKeeperRole(user.role)) {
+    return 'CHAIRMAN';
+  }
   if (isMemberRole(user.role)) {
     return 'MEMBER';
   }

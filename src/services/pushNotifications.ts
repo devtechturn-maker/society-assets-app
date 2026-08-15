@@ -5,6 +5,11 @@ import * as Notifications from 'expo-notifications';
 import { isRunningInExpoGo } from 'expo';
 import { AppState, Platform } from 'react-native';
 import { registerDevicePushToken, unregisterDevicePushToken } from './api';
+import {
+  playVisitorNotificationSound,
+  visitorAndroidChannelId,
+} from './visitorNotificationSounds';
+import { registerBackgroundVisitorNotificationTask } from './backgroundVisitorNotificationTask';
 
 export type AppPushNotification = {
   kind: 'chat';
@@ -49,6 +54,14 @@ export type AppPushNotification = {
   subject: string;
   preview: string;
   type: 'NOTICE_PUBLISHED';
+} | {
+  kind: 'visitor';
+  notificationId?: string;
+  visitorId: string;
+  visitorName: string;
+  flatNumber?: string;
+  preview: string;
+  type: 'VISITOR_ARRIVED' | 'VISITOR_APPROVED' | 'VISITOR_REJECTED';
 };
 
 /** @deprecated Use AppPushNotification */
@@ -62,12 +75,26 @@ export function configurePushNotifications(): void {
   if (initialized) return;
   initialized = true;
 
+  void registerBackgroundVisitorNotificationTask();
+
   Notifications.setNotificationHandler({
-    handleNotification: async () => {
+    handleNotification: async (notification) => {
+      const data = notification.request.content.data as Record<string, unknown> | undefined;
+      const type = typeof data?.type === 'string' ? data.type : '';
+      const isVisitor = type.startsWith('VISITOR_');
       const isForeground = AppState.currentState === 'active';
+
+      // Foreground: play bundled WAV here.
+      // Background: backgroundVisitorNotificationTask plays it (OS tray sound needs native rebuild).
+      if (isVisitor && isForeground) {
+        void playVisitorNotificationSound(type);
+      }
+
       return {
         shouldShowAlert: !isForeground,
-        shouldPlaySound: true,
+        // Prefer our spoken WAV; avoid default OS beep on top in foreground.
+        // Background/killed: OS uses channelId + sound from the push (after native rebuild).
+        shouldPlaySound: isVisitor ? !isForeground : true,
         shouldSetBadge: true,
         shouldShowBanner: !isForeground,
         shouldShowList: true,
@@ -78,53 +105,82 @@ export function configurePushNotifications(): void {
 
 async function ensureAndroidChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
+
+  const base = {
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250] as number[],
+    lightColor: '#70088c',
+    sound: 'default' as string | null,
+    enableVibrate: true,
+  };
+
   await Notifications.setNotificationChannelAsync('chat', {
+    ...base,
     name: 'Society Assets · Group Chat',
     description: 'Chat messages and group updates',
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#70088c',
-    sound: 'default',
   });
   await Notifications.setNotificationChannelAsync('polls', {
+    ...base,
     name: 'Society Assets · Polls',
     description: 'New polls and poll result updates',
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#70088c',
-    sound: 'default',
   });
   await Notifications.setNotificationChannelAsync('complaints', {
+    ...base,
     name: 'Society Assets · Complaints',
     description: 'Member complaints and status updates',
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#70088c',
-    sound: 'default',
   });
   await Notifications.setNotificationChannelAsync('amenities', {
+    ...base,
     name: 'Society Assets · Amenities',
     description: 'Amenity booking updates',
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#70088c',
-    sound: 'default',
   });
   await Notifications.setNotificationChannelAsync('rules', {
+    ...base,
     name: 'Society Assets · Rules',
     description: 'Society rules published by the chairman',
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#70088c',
-    sound: 'default',
   });
   await Notifications.setNotificationChannelAsync('notices', {
+    ...base,
     name: 'Society Assets · Notices',
     description: 'Society notices published by the chairman',
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
+  });
+
+  // v2 channel ids force fresh Android channels (sound is immutable after first create).
+  await Notifications.setNotificationChannelAsync(visitorAndroidChannelId('VISITOR_ARRIVED'), {
+    name: 'Visitors · Arrival',
+    description: 'Spoken alert when a new visitor is waiting at the gate',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 300, 200, 300],
     lightColor: '#70088c',
-    sound: 'default',
+    sound: 'visitor_arrived.wav',
+    enableVibrate: true,
+  });
+  await Notifications.setNotificationChannelAsync(visitorAndroidChannelId('VISITOR_APPROVED'), {
+    name: 'Visitors · Approved',
+    description: 'Spoken alert when a resident approves a visitor',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 200, 100, 200],
+    lightColor: '#70088c',
+    sound: 'visitor_approved.wav',
+    enableVibrate: true,
+  });
+  await Notifications.setNotificationChannelAsync(visitorAndroidChannelId('VISITOR_REJECTED'), {
+    name: 'Visitors · Rejected',
+    description: 'Spoken alert when a resident rejects a visitor',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 400, 200, 400],
+    lightColor: '#70088c',
+    sound: 'visitor_rejected.wav',
+    enableVibrate: true,
+  });
+  await Notifications.setNotificationChannelAsync(visitorAndroidChannelId(), {
+    name: 'Society Assets · Visitors',
+    description: 'Visitor arrivals and approval updates at the gate',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 300, 200, 300],
+    lightColor: '#70088c',
+    sound: 'visitor_arrived.wav',
+    enableVibrate: true,
   });
 }
 
@@ -263,6 +319,9 @@ type PushData = {
   amenityType?: string;
   ruleId?: string;
   noticeId?: string;
+  visitorId?: string;
+  visitorName?: string;
+  flatNumber?: string;
   notificationId?: string;
 };
 
@@ -369,6 +428,34 @@ function parseAppPushNotification(
       type: data.type,
     };
   }
+  if (
+    data?.type === 'VISITOR_ARRIVED' ||
+    data?.type === 'VISITOR_APPROVED' ||
+    data?.type === 'VISITOR_REJECTED'
+  ) {
+    const visitorId = data.visitorId ? String(data.visitorId) : '';
+    if (!visitorId) return null;
+    const visitorName =
+      (data.visitorName && String(data.visitorName).trim()) ||
+      (content.subtitle && String(content.subtitle).trim()) ||
+      'Visitor';
+    const preview =
+      (content.body && String(content.body).trim()) ||
+      (data.type === 'VISITOR_ARRIVED'
+        ? 'Tap to approve or reject this visitor'
+        : data.type === 'VISITOR_APPROVED'
+          ? 'Resident approved this visitor'
+          : 'Resident rejected this visitor');
+    return {
+      kind: 'visitor',
+      notificationId: readNotificationId(data),
+      visitorId,
+      visitorName,
+      flatNumber: data.flatNumber ? String(data.flatNumber) : undefined,
+      preview,
+      type: data.type,
+    };
+  }
   return parseChatPushNotification(content);
 }
 
@@ -439,6 +526,7 @@ export function openNotificationResponse(
     onOpenAmenity?: (bookingId?: string) => void;
     onOpenRule?: (ruleId?: string) => void;
     onOpenNotice?: (noticeId?: string) => void;
+    onOpenVisitor?: (visitorId?: string, type?: AppPushNotification['type']) => void;
   }
 ): boolean {
   const parsed = parseAppPushFromResponse(response);
@@ -466,6 +554,10 @@ export function openNotificationResponse(
     handlers.onOpenNotice?.(parsed.noticeId);
     return true;
   }
+  if (parsed.kind === 'visitor') {
+    handlers.onOpenVisitor?.(parsed.visitorId, parsed.type);
+    return true;
+  }
   handlers.onOpenChat?.(parsed.groupId);
   return true;
 }
@@ -484,6 +576,7 @@ export async function resolveInitialNotificationTargets(): Promise<{
   bookingId?: string;
   ruleId?: string;
   noticeId?: string;
+  visitorId?: string;
 }> {
   if (!isRemotePushAvailable()) return {};
   const response = await Notifications.getLastNotificationResponseAsync();
@@ -494,6 +587,7 @@ export async function resolveInitialNotificationTargets(): Promise<{
   if (parsed.kind === 'amenity') return { bookingId: parsed.bookingId };
   if (parsed.kind === 'rule') return { ruleId: parsed.ruleId };
   if (parsed.kind === 'notice') return { noticeId: parsed.noticeId };
+  if (parsed.kind === 'visitor') return { visitorId: parsed.visitorId };
   return { groupId: parsed.groupId };
 }
 
@@ -510,6 +604,7 @@ export function addNotificationResponseListener(handlers: {
   onOpenAmenity?: (bookingId?: string) => void;
   onOpenRule?: (ruleId?: string) => void;
   onOpenNotice?: (noticeId?: string) => void;
+  onOpenVisitor?: (visitorId?: string, type?: AppPushNotification['type']) => void;
 }): Notifications.Subscription {
   if (!isRemotePushAvailable()) {
     return { remove: () => undefined };
@@ -528,6 +623,9 @@ export function addNotificationReceivedListener(
   return Notifications.addNotificationReceivedListener((notification) => {
     const parsed = parseAppPushNotification(extractNotificationContent(notification));
     if (parsed) {
+      if (parsed.kind === 'visitor' && AppState.currentState === 'active') {
+        void playVisitorNotificationSound(parsed.type);
+      }
       onReceived(parsed);
     }
   });

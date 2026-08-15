@@ -51,6 +51,7 @@ function notificationGlyph(type: string): string {
   if (type.startsWith('AMENITY')) return '📅';
   if (type.startsWith('RULE')) return '📖';
   if (type.startsWith('NOTICE')) return '📢';
+  if (type.startsWith('VISITOR')) return '🚪';
   return '🔔';
 }
 

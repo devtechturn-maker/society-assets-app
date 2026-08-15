@@ -12,7 +12,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { AppLogoLoader } from '../components/AppLogoLoader';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppAlert } from '../context/AppAlertContext';
@@ -21,6 +20,7 @@ import { AppLogo } from '../components/AppLogo';
 import { PhoneVerifiedChip, SelectableOptionCard } from '../components/wizard';
 import { PRIMARY_LOGO_ASPECT } from '../constants/branding';
 import { completeSmsLoginOtp, requestSmsLoginOtp, verifySmsLoginOtp } from '../services/api';
+import { withBlockingLoader } from '../services/globalApiLoading';
 import { initializeAppViewContext, clearAppViewContext, requiresRoleSelection } from '../services/appContext';
 import { saveSession } from '../services/storage';
 import { colors } from '../theme/colors';
@@ -81,6 +81,7 @@ function formatRoleLabel(role: string): string {
   if (normalized === 'MEMBER') return 'Member';
   if (normalized === 'CHAIRMAN') return 'Chairman';
   if (normalized === 'TREASURER') return 'Treasurer';
+  if (normalized === 'GATEKEEPER') return 'Gate Keeper';
   return normalized.charAt(0) + normalized.slice(1).toLowerCase();
 }
 
@@ -214,7 +215,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
         setSuccessMessage(null);
         return;
       }
-      await finishLogin(result);
+      await withBlockingLoader('Loading...', () => finishLogin(result));
     } catch (e: unknown) {
       if (__DEV__) {
         console.warn('[Login]', e);
@@ -236,7 +237,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
     setLoading(true);
     try {
       const data = await completeSmsLoginOtp(phone, selectionToken, account);
-      await finishLogin(data);
+      await withBlockingLoader('Loading...', () => finishLogin(data));
     } catch (e: unknown) {
       if (__DEV__) {
         console.warn('[Login]', e);
@@ -251,7 +252,9 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
 
   function backToPhone() {
     dismissKeyboard();
+    setLoading(false);
     setStep('phone');
+    setPhone('');
     setOtp('');
     setAccounts([]);
     setSelectionToken('');
@@ -262,6 +265,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
 
   function backToOtp() {
     dismissKeyboard();
+    setLoading(false);
     setStep('otp');
     setAccounts([]);
     setSelectionToken('');
@@ -286,7 +290,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
       <CreateSocietyWizard
         phone={phone}
         selectionToken={selectionToken}
-        onCreated={(data) => void finishLogin(data)}
+        onCreated={(data) => void withBlockingLoader('Loading...', () => finishLogin(data))}
         onBack={() => {
           setStep('onboard');
           setInlineError(null);
@@ -300,7 +304,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
       <JoinSocietyWizard
         phone={phone}
         selectionToken={selectionToken}
-        onJoined={(data) => void finishLogin(data)}
+        onJoined={(data) => void withBlockingLoader('Loading...', () => finishLogin(data))}
         onBack={() => {
           setStep('onboard');
           setInlineError(null);
@@ -325,13 +329,13 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         >
-          <Pressable style={styles.page} onPress={dismissKeyboard} accessible={false}>
+          <View style={styles.page}>
             <View style={styles.contentBlock} pointerEvents="box-none">
             <View style={[styles.logoSlot, { minHeight: logoHeight, marginBottom: 18 }]}>
               <AppLogo variant="primary" size={logoWidth} />
             </View>
 
-              <Pressable style={styles.authCard} onPress={dismissKeyboard} accessible={false}>
+              <View style={styles.authCard}>
                 <View style={styles.cardBody}>
                   <Text style={styles.cardTitle}>{cardTitle}</Text>
                   <Text style={styles.cardSubtitle}>{subtitle}</Text>
@@ -368,15 +372,9 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
                         onPress={handleRequestOtp}
                         disabled={loading === true}
                       >
-                        {loading ? (
-                          <View style={styles.button}>
-                            <AppLogoLoader size="sm" minimal />
-                          </View>
-                        ) : (
-                          <View style={styles.button}>
-                            <Text style={styles.buttonText}>Send SMS code</Text>
-                          </View>
-                        )}
+                        <View style={styles.button}>
+                          <Text style={styles.buttonText}>Send SMS code</Text>
+                        </View>
                       </Pressable>
                     </>
                   ) : null}
@@ -438,29 +436,23 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
                         onPress={handleVerifyOtp}
                         disabled={loading === true}
                       >
-                        {loading ? (
-                          <View style={styles.button}>
-                            <AppLogoLoader size="sm" minimal />
-                          </View>
-                        ) : (
-                          <View style={styles.button}>
-                            <Text style={styles.buttonText}>Verify code</Text>
-                          </View>
-                        )}
+                        <View style={styles.button}>
+                          <Text style={styles.buttonText}>Verify code</Text>
+                        </View>
                       </Pressable>
 
                       <View style={styles.otpActions}>
                         <Pressable
                           style={({ pressed }) => [styles.textLink, pressed && styles.plansLinkPressed]}
-                          onPress={handleResendOtp}
-                          disabled={loading}
+                          onPress={() => void handleResendOtp()}
+                          hitSlop={8}
                         >
                           <Text style={styles.textLinkText}>Resend code</Text>
                         </Pressable>
                         <Pressable
                           style={({ pressed }) => [styles.textLink, pressed && styles.plansLinkPressed]}
                           onPress={backToPhone}
-                          disabled={loading}
+                          hitSlop={8}
                         >
                           <Text style={styles.textLinkText}>Use a different number</Text>
                         </Pressable>
@@ -546,10 +538,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
                       ) : null}
 
                       {loading ? (
-                        <View style={styles.loadingRow}>
-                          <AppLogoLoader size="sm" tone="onLight" />
-                          <Text style={styles.loadingText}>Opening society…</Text>
-                        </View>
+                        <Text style={styles.loadingText}>Opening society…</Text>
                       ) : null}
 
                       <View style={styles.otpActions}>
@@ -575,9 +564,9 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
                     <Text style={styles.plansLinkText}>View plans & register →</Text>
                   </Pressable>
                 </View>
-              </Pressable>
+              </View>
             </View>
-          </Pressable>
+          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
@@ -847,7 +836,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   textLink: {
-    paddingVertical: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
   textLinkText: {
     fontSize: 12,

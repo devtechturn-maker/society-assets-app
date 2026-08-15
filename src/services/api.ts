@@ -25,6 +25,10 @@ import type {
   MemberExcelValidation,
   SocietyMember,
   DirectoryEntry,
+  MemberVehicleRecord,
+  FamilyMemberPayload,
+  VehiclePayload,
+  MemberFamilyMember,
   SocietySubscriptionStatus,
   PublicSubscriptionPlan,
   UpgradeQuote,
@@ -50,6 +54,13 @@ import type {
   ComplaintSummary,
   AppNotification,
   NotificationPage,
+  VisitorSummary,
+  VisitorDetail,
+  VisitorHistoryPage,
+  GateKeeperDashboard,
+  ChairmanVisitorDashboard,
+  GateKeeperAssignment,
+  ResidentSearchResult,
 } from '../types/api';
 import type { NotificationAudience } from '../utils/notificationAudience';
 import { encryptPasswordForLogin } from '../crypto/rsaEncrypt';
@@ -107,7 +118,7 @@ client.interceptors.response.use(
 );
 
 const SOCIETY_STAFF_ROLES = new Set(['CHAIRMAN', 'TREASURER', 'USER', 'AUDITOR']);
-const SOCIETY_APP_ROLES = new Set([...SOCIETY_STAFF_ROLES, 'MEMBER']);
+const SOCIETY_APP_ROLES = new Set([...SOCIETY_STAFF_ROLES, 'MEMBER', 'GATEKEEPER']);
 
 export function isSocietyStaffRole(role: string): boolean {
   return SOCIETY_STAFF_ROLES.has((role ?? '').toUpperCase());
@@ -115,6 +126,10 @@ export function isSocietyStaffRole(role: string): boolean {
 
 export function isMemberRole(role: string): boolean {
   return (role ?? '').toUpperCase() === 'MEMBER';
+}
+
+export function isGateKeeperRole(role: string): boolean {
+  return (role ?? '').toUpperCase() === 'GATEKEEPER';
 }
 
 export function isTreasurerRole(role: string): boolean {
@@ -126,8 +141,14 @@ export function isSocietyRole(role: string): boolean {
   return SOCIETY_APP_ROLES.has((role ?? '').toUpperCase());
 }
 
-async function getData<T>(url: string): Promise<T> {
-  const { data } = await client.get<ApiResponse<T>>(url);
+async function getData<T>(
+  url: string,
+  options?: { skipGlobalLoader?: boolean; timeoutMs?: number }
+): Promise<T> {
+  const { data } = await client.get<ApiResponse<T>>(url, {
+    timeout: options?.timeoutMs,
+    headers: options?.skipGlobalLoader ? { 'X-Skip-Global-Loader': '1' } : undefined,
+  });
   return data.data;
 }
 
@@ -140,10 +161,10 @@ export async function fetchPublicPlans(): Promise<PublicSubscriptionPlan[]> {
 function assertMobileLoginData(payload: LoginData): LoginData {
   const role = (payload.role ?? '').toUpperCase();
   if (role === 'PRODUCT_OWNER') {
-    throw new Error('Product owner accounts use the web dashboard. This app is for society users only.');
+    throw new Error('This account type cannot sign in on the mobile app.');
   }
   if (!isSocietyRole(role)) {
-    throw new Error('This account cannot use the society app. Use the web app or contact your administrator.');
+    throw new Error('This account cannot sign in. Contact your society office for help.');
   }
   if (!payload.societyId) {
     throw new Error('No society linked to this account.');
@@ -176,13 +197,14 @@ export async function verifySmsLoginOtp(phone: string, otp: string): Promise<Sms
 export async function completeSmsLoginOtp(
   phone: string,
   selectionToken: string,
-  account: Pick<LoginAccountOption, 'memberId' | 'userId'>
+  account: Pick<LoginAccountOption, 'memberId' | 'userId' | 'societyId'>
 ): Promise<LoginData> {
   const { data } = await client.post<ApiResponse<LoginData>>('/auth/login/complete-sms-otp', {
     phone: phone.trim(),
     selectionToken: selectionToken.trim(),
     memberId: account.memberId,
     userId: account.userId,
+    societyId: account.societyId,
     clientType: MOBILE_CLIENT_TYPE,
   });
   return assertMobileLoginData(data.data);
@@ -304,18 +326,7 @@ export async function verifyLoginOtp(email: string, otp: string): Promise<LoginD
     otp: otp.trim(),
     clientType: MOBILE_CLIENT_TYPE,
   });
-  const payload = data.data;
-  const role = (payload.role ?? '').toUpperCase();
-  if (role === 'PRODUCT_OWNER') {
-    throw new Error('Product owner accounts use the web dashboard. This app is for society users only.');
-  }
-  if (!isSocietyRole(role)) {
-    throw new Error('This account cannot use the society app. Use the web app or contact your administrator.');
-  }
-  if (!payload.societyId) {
-    throw new Error('No society linked to this account.');
-  }
-  return payload;
+  return assertMobileLoginData(data.data);
 }
 
 /** @deprecated Use requestLoginOtp + verifyLoginOtp */
@@ -326,23 +337,13 @@ export async function login(email: string, password: string): Promise<LoginData>
     encryptedPassword,
     clientType: MOBILE_CLIENT_TYPE,
   });
-  const payload = data.data;
-  const role = (payload.role ?? '').toUpperCase();
-  if (role === 'PRODUCT_OWNER') {
-    throw new Error('Product owner accounts use the web dashboard. This app is for society users only.');
-  }
-  if (!isSocietyRole(role)) {
-    throw new Error('This account cannot use the society app. Use the web app or contact your administrator.');
-  }
-  if (!payload.societyId) {
-    throw new Error('No society linked to this account.');
-  }
-  return payload;
+  return assertMobileLoginData(data.data);
 }
 
 export const fetchSocietyModules = () => getData<NavModule[]>('/modules/society');
 export const fetchTreasurerModules = () => getData<NavModule[]>('/modules/treasurer');
 export const fetchMemberModules = () => getData<NavModule[]>('/modules/member');
+export const fetchGatekeeperModules = () => getData<NavModule[]>('/modules/gatekeeper');
 export const fetchOverview = () => getData<SocietyOverview>('/society/dashboard/overview');
 export const fetchMemberOverview = () => getData<MemberOverview>('/member/overview');
 export const fetchMemberMaintenanceDue = () => getData<MemberMaintenanceDue>('/member/maintenance/due');
@@ -472,8 +473,46 @@ export const fetchSocietyJoinCode = () =>
   getData<{ societyId: string; societyName: string; joinCode: string }>('/society/join-code');
 export const fetchMemberDirectory = () => getData<DirectoryEntry[]>('/member/directory');
 
-export const fetchSubscriptionStatus = () =>
-  getData<SocietySubscriptionStatus>('/society/subscription/status');
+export const fetchMemberFamilyMembers = () =>
+  getData<MemberFamilyMember[]>('/member/family-members');
+
+export async function createMemberFamilyMember(payload: FamilyMemberPayload): Promise<MemberFamilyMember> {
+  const { data } = await client.post<ApiResponse<MemberFamilyMember>>('/member/family-members', payload);
+  return data.data;
+}
+
+export async function updateMemberFamilyMember(
+  id: string,
+  payload: FamilyMemberPayload
+): Promise<MemberFamilyMember> {
+  const { data } = await client.put<ApiResponse<MemberFamilyMember>>(`/member/family-members/${id}`, payload);
+  return data.data;
+}
+
+export async function deleteMemberFamilyMember(id: string): Promise<void> {
+  await client.delete(`/member/family-members/${id}`);
+}
+
+export const fetchMemberVehicles = () => getData<MemberVehicleRecord[]>('/member/vehicles');
+
+export async function createMemberVehicle(payload: VehiclePayload): Promise<MemberVehicleRecord> {
+  const { data } = await client.post<ApiResponse<MemberVehicleRecord>>('/member/vehicles', payload);
+  return data.data;
+}
+
+export async function updateMemberVehicle(id: string, payload: VehiclePayload): Promise<MemberVehicleRecord> {
+  const { data } = await client.put<ApiResponse<MemberVehicleRecord>>(`/member/vehicles/${id}`, payload);
+  return data.data;
+}
+
+export async function deleteMemberVehicle(id: string): Promise<void> {
+  await client.delete(`/member/vehicles/${id}`);
+}
+
+export const fetchSubscriptionStatus = (options?: {
+  skipGlobalLoader?: boolean;
+  timeoutMs?: number;
+}) => getData<SocietySubscriptionStatus>('/society/subscription/status', options);
 
 export async function createDurationPlanCheckout(months: number): Promise<{
   societyId: string;
@@ -1171,6 +1210,7 @@ export async function markNotificationReadByTarget(params: {
   amenityBookingId?: string;
   ruleId?: string;
   noticeId?: string;
+  visitorId?: string;
 }): Promise<AppNotification> {
   const { data } = await client.post<ApiResponse<AppNotification>>('/notifications/read-by-target', null, {
     params,
@@ -1216,6 +1256,191 @@ export async function verifyMemberEmailOtp(otp: string): Promise<{ message: stri
     { otp }
   );
   return data.data;
+}
+
+// --- Visitor & Gate Keeper ---
+
+export async function fetchGateKeeperDashboard(): Promise<GateKeeperDashboard> {
+  return getData<GateKeeperDashboard>('/gatekeeper/dashboard');
+}
+
+export async function fetchChairmanVisitorDashboard(): Promise<ChairmanVisitorDashboard> {
+  return getData<ChairmanVisitorDashboard>('/society/visitor-dashboard');
+}
+
+export async function searchResidentsForVisitor(q: string): Promise<ResidentSearchResult[]> {
+  return getData<ResidentSearchResult[]>(`/gatekeeper/visitors/residents/search${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+}
+
+export async function createVisitorEntry(
+  payload: {
+    visitorName: string;
+    mobileNumber: string;
+    vehicleNumber?: string;
+    visitorCount?: number;
+    purpose: string;
+    flatNumber: string;
+    residentMemberId: string;
+    expectedDurationMinutes?: number;
+    remarks?: string;
+  },
+  photo?: { uri: string; fileName: string; mimeType: string } | null
+): Promise<VisitorDetail> {
+  if (photo) {
+    const formData = new FormData();
+    formData.append('visitorName', payload.visitorName);
+    formData.append('mobileNumber', payload.mobileNumber);
+    if (payload.vehicleNumber) formData.append('vehicleNumber', payload.vehicleNumber);
+    formData.append('visitorCount', String(payload.visitorCount ?? 1));
+    formData.append('purpose', payload.purpose);
+    formData.append('flatNumber', payload.flatNumber);
+    formData.append('residentMemberId', payload.residentMemberId);
+    if (payload.expectedDurationMinutes != null) {
+      formData.append('expectedDurationMinutes', String(payload.expectedDurationMinutes));
+    }
+    if (payload.remarks) formData.append('remarks', payload.remarks);
+
+    const safeName = (photo.fileName || `visitor-${Date.now()}.jpg`).replace(/\s+/g, '_');
+    const mimeType =
+      photo.mimeType && photo.mimeType.startsWith('image/') ? photo.mimeType : 'image/jpeg';
+    formData.append('photo', {
+      uri: photo.uri,
+      name: /\.(jpe?g|png|webp)$/i.test(safeName) ? safeName : `${safeName}.jpg`,
+      type: mimeType,
+    } as unknown as Blob);
+
+    const { data } = await client.post<ApiResponse<VisitorDetail>>(
+      '/gatekeeper/visitors/with-photo',
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000,
+      }
+    );
+    return data.data;
+  }
+
+  const { data } = await client.post<ApiResponse<VisitorDetail>>('/gatekeeper/visitors', payload);
+  return data.data;
+}
+
+export async function fetchPendingVisitors(): Promise<VisitorSummary[]> {
+  return getData<VisitorSummary[]>('/gatekeeper/visitors/pending');
+}
+
+export async function fetchGateKeeperVisitorHistory(params?: {
+  status?: string;
+  search?: string;
+  residentMemberId?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  size?: number;
+}): Promise<VisitorHistoryPage> {
+  const query = new URLSearchParams();
+  if (params?.status) query.set('status', params.status);
+  if (params?.search) query.set('search', params.search);
+  if (params?.residentMemberId) query.set('residentMemberId', params.residentMemberId);
+  if (params?.from) query.set('from', params.from);
+  if (params?.to) query.set('to', params.to);
+  if (params?.page != null) query.set('page', String(params.page));
+  if (params?.size != null) query.set('size', String(params.size));
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return getData<VisitorHistoryPage>(`/gatekeeper/visitors/history${suffix}`);
+}
+
+export async function fetchChairmanVisitorHistory(params?: {
+  status?: string;
+  search?: string;
+  residentMemberId?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  size?: number;
+}): Promise<VisitorHistoryPage> {
+  const query = new URLSearchParams();
+  if (params?.status) query.set('status', params.status);
+  if (params?.search) query.set('search', params.search);
+  if (params?.residentMemberId) query.set('residentMemberId', params.residentMemberId);
+  if (params?.from) query.set('from', params.from);
+  if (params?.to) query.set('to', params.to);
+  if (params?.page != null) query.set('page', String(params.page));
+  if (params?.size != null) query.set('size', String(params.size));
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return getData<VisitorHistoryPage>(`/society/visitors/history${suffix}`);
+}
+
+export async function checkInVisitor(visitorId: string): Promise<VisitorDetail> {
+  const { data } = await client.put<ApiResponse<VisitorDetail>>(`/gatekeeper/visitors/${visitorId}/check-in`);
+  return data.data;
+}
+
+export async function checkOutVisitor(visitorId: string): Promise<VisitorDetail> {
+  const { data } = await client.put<ApiResponse<VisitorDetail>>(`/gatekeeper/visitors/${visitorId}/check-out`);
+  return data.data;
+}
+
+export async function fetchMemberPendingVisitors(): Promise<VisitorSummary[]> {
+  const page = await getData<VisitorHistoryPage>('/member/visitors/pending');
+  return page.items ?? [];
+}
+
+export async function fetchMemberVisitorHistory(params?: {
+  status?: string;
+  search?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  size?: number;
+}): Promise<VisitorHistoryPage> {
+  const query = new URLSearchParams();
+  if (params?.status) query.set('status', params.status);
+  if (params?.search) query.set('search', params.search);
+  if (params?.from) query.set('from', params.from);
+  if (params?.to) query.set('to', params.to);
+  if (params?.page != null) query.set('page', String(params.page));
+  if (params?.size != null) query.set('size', String(params.size));
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return getData<VisitorHistoryPage>(`/member/visitors/history${suffix}`);
+}
+
+export async function fetchMemberVisitorDetail(visitorId: string): Promise<VisitorDetail> {
+  return getData<VisitorDetail>(`/member/visitors/${visitorId}`);
+}
+
+export async function approveVisitor(visitorId: string): Promise<VisitorDetail> {
+  const { data } = await client.put<ApiResponse<VisitorDetail>>(`/member/visitors/${visitorId}/approve`);
+  return data.data;
+}
+
+export async function rejectVisitor(visitorId: string, reason?: string): Promise<VisitorDetail> {
+  const { data } = await client.put<ApiResponse<VisitorDetail>>(`/member/visitors/${visitorId}/reject`, { reason });
+  return data.data;
+}
+
+export async function fetchGateKeeperAssignments(): Promise<GateKeeperAssignment[]> {
+  return getData<GateKeeperAssignment[]>('/society/gatekeepers');
+}
+
+export async function assignGateKeeper(payload: { name: string; phone: string }): Promise<GateKeeperAssignment> {
+  const { data } = await client.post<ApiResponse<GateKeeperAssignment>>('/society/gatekeeper/assign', payload);
+  return data.data;
+}
+
+export async function removeGateKeeper(assignmentId: string): Promise<void> {
+  await client.delete(`/society/gatekeeper/remove/${assignmentId}`);
+}
+
+export async function setGateKeeperActive(assignmentId: string, active: boolean): Promise<GateKeeperAssignment> {
+  const { data } = await client.put<ApiResponse<GateKeeperAssignment>>(
+    `/society/gatekeeper/${assignmentId}/active`,
+    { active }
+  );
+  return data.data;
+}
+
+export async function resetGateKeeperPassword(assignmentId: string): Promise<void> {
+  await client.post(`/society/gatekeeper/${assignmentId}/reset-password`);
 }
 
 export { isEmailNotVerifiedError };

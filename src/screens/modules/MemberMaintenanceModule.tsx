@@ -68,7 +68,9 @@ export function MemberMaintenanceModule() {
         />
         {loading ? <ListLoading /> : null}
         {error ? <ListError message={error} /> : null}
-        {data?.length === 0 ? <ListEmpty message="No maintenance records yet." /> : null}
+        {data?.length === 0 ? (
+          <ListEmpty icon="wallet" message="No maintenance records yet." />
+        ) : null}
         {data?.map((row) => {
           const isDownloading = downloadingId === row.expenseId;
           return (
@@ -78,19 +80,18 @@ export function MemberMaintenanceModule() {
                 accessibilityLabel="Download maintenance receipt"
                 disabled={isDownloading}
                 onPress={() => downloadReceipt(row.expenseId)}
-                style={[
+                style={({ pressed }) => [
                   styles.receiptBtn,
                   {
-                    borderColor: theme.divider,
-                    backgroundColor: theme.cardBg,
-                    opacity: isDownloading ? 0.7 : 1,
+                    backgroundColor: theme.accent,
+                    opacity: isDownloading || pressed ? 0.85 : 1,
                   },
                 ]}
               >
                 {isDownloading ? (
-                  <ActivityIndicator size="small" color={theme.accent} />
+                  <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={[styles.receiptBtnText, { color: theme.accent }]}>Download receipt</Text>
+                  <Text style={styles.receiptBtnText}>Download Receipt</Text>
                 )}
               </Pressable>
             </ExpenseRowCard>
@@ -102,19 +103,19 @@ export function MemberMaintenanceModule() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: 12, paddingBottom: 32 },
+  scroll: { padding: 16, paddingBottom: 32 },
   receiptBtn: {
-    marginTop: 8,
+    marginTop: 10,
     alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minWidth: 148,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minWidth: 156,
     alignItems: 'center',
   },
   receiptBtnText: {
+    color: '#fff',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

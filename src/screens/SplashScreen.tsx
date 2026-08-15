@@ -1,24 +1,58 @@
 import { useEffect, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import {
+  Animated,
+  Easing,
+  Platform,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as ExpoSplashScreen from 'expo-splash-screen';
 import { AppLogo } from '../components/AppLogo';
-import { useTheme } from '../theme/ThemeContext';
+import { SplashBackgroundArt } from '../components/splash/SplashBackgroundArt';
+import { SPLASH_COLORS, splashLogoSize } from '../components/splash/splashTheme';
 
 /** Minimum branded splash time on cold start / full reload. */
 export const SPLASH_DURATION_MS = 2500;
 
+const BREATHE_DURATION_MS = 2200;
+const BREATHE_SCALE_MIN = 0.97;
+const BREATHE_SCALE_MAX = 1.05;
+
 type Props = {
   onFinish: () => void;
-  /** When true, splash may dismiss after the minimum duration (session + assets ready). */
   appReady?: boolean;
 };
 
-/** Branded splash: same image as native splash, shown at full opacity immediately. */
 export function SplashScreen({ onFinish, appReady = false }: Props) {
-  const { theme } = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
+  const logoSize = splashLogoSize(screenWidth);
+  const cornerRadius = logoSize / 4;
   const finished = useRef(false);
   const startedAt = useRef(Date.now());
+  const breathe = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathe, {
+          toValue: 1,
+          duration: BREATHE_DURATION_MS,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(breathe, {
+          toValue: 0,
+          duration: BREATHE_DURATION_MS,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [breathe]);
 
   useEffect(() => {
     if (!appReady) {
@@ -26,6 +60,18 @@ export function SplashScreen({ onFinish, appReady = false }: Props) {
     }
     ExpoSplashScreen.hideAsync().catch(() => undefined);
   }, [appReady]);
+
+  // Hard failsafe: never leave the OS splash / branded splash forever.
+  useEffect(() => {
+    const failsafe = setTimeout(() => {
+      ExpoSplashScreen.hideAsync().catch(() => undefined);
+      if (!finished.current) {
+        finished.current = true;
+        onFinish();
+      }
+    }, SPLASH_DURATION_MS + 6000);
+    return () => clearTimeout(failsafe);
+  }, [onFinish]);
 
   useEffect(() => {
     if (!appReady || finished.current) {
@@ -45,15 +91,28 @@ export function SplashScreen({ onFinish, appReady = false }: Props) {
     return () => clearTimeout(timer);
   }, [appReady, onFinish]);
 
+  const logoScale = breathe.interpolate({
+    inputRange: [0, 1],
+    outputRange: [BREATHE_SCALE_MIN, BREATHE_SCALE_MAX],
+  });
+
   return (
-    <View style={[styles.root, { backgroundColor: theme.splashBg }]}>
-      <StatusBar style="light" backgroundColor={theme.splashBg} />
+    <View style={styles.root}>
+      <StatusBar style="dark" backgroundColor={SPLASH_COLORS.background} />
+      <SplashBackgroundArt />
 
-      <View style={styles.center}>
-        <AppLogo variant="splash" size={300} />
+      <View style={styles.logoStage} pointerEvents="none">
+        <Animated.View style={{ transform: [{ scale: logoScale }] }}>
+          <AppLogo
+            variant="splashScreen"
+            size={logoSize}
+            roundedSquare
+            cornerRadius={cornerRadius}
+            resizeMode="cover"
+            style={styles.logoShadow}
+          />
+        </Animated.View>
       </View>
-
-      <Text style={styles.footerBrand}>SOCIETY ASSETS</Text>
     </View>
   );
 }
@@ -61,21 +120,24 @@ export function SplashScreen({ onFinish, appReady = false }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: SPLASH_COLORS.background,
   },
-  center: {
-    flex: 1,
+  logoStage: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  footerBrand: {
-    position: 'absolute',
-    bottom: 48,
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-    color: 'rgba(255, 255, 255, 0.72)',
-    fontSize: 11,
-    fontWeight: '300',
-    letterSpacing: 4.5,
+  logoShadow: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#70088c',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.24,
+        shadowRadius: 14,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
 });

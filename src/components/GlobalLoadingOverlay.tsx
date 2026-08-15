@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Modal, StyleSheet, View } from 'react-native';
-import { AppLogoLoader } from './AppLogoLoader';
+import { Modal, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { PremiumLoaderIndicator } from './splash/PremiumLoaderIndicator';
+import { globalLoaderSizes, SPLASH_COLORS } from './splash/splashTheme';
 import { subscribeGlobalLoading } from '../services/globalApiLoading';
-import { useTheme } from '../theme/ThemeContext';
 
-/** Full-screen branded loader for in-flight API work and blocking actions. */
+/** Small centred loader over a light scrim — not a full-screen splash layout. */
 export function GlobalLoadingOverlay() {
-  const { theme } = useTheme();
+  const { width } = useWindowDimensions();
+  const { ringSize, logoSize } = globalLoaderSizes(width);
   const [visible, setVisible] = useState(false);
-  const [message, setMessage] = useState('Loading…');
+  const [message, setMessage] = useState('Loading...');
 
   useEffect(() => subscribeGlobalLoading((nextVisible, nextMessage) => {
     setVisible(nextVisible);
@@ -17,9 +18,16 @@ export function GlobalLoadingOverlay() {
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-      <View style={[styles.backdrop, { backgroundColor: theme.pageBg }]}>
-        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
-          <AppLogoLoader size="lg" tone="onLight" label={message} />
+      <View style={styles.backdrop}>
+        <View style={styles.card}>
+          <PremiumLoaderIndicator
+            label={message}
+            compact
+            ringSize={ringSize}
+            logoSize={logoSize}
+            logoVariant="splashScreen"
+            logoRoundedSquare
+          />
         </View>
       </View>
     </Modal>
@@ -31,20 +39,20 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    backgroundColor: 'rgba(248, 237, 247, 0.55)',
   },
   card: {
-    width: '100%',
-    maxWidth: 320,
+    paddingHorizontal: 28,
+    paddingVertical: 24,
     borderRadius: 20,
-    borderWidth: 1,
-    paddingVertical: 28,
-    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
     alignItems: 'center',
-    shadowColor: '#0f172a',
+    shadowColor: '#70088c',
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 20,
     elevation: 8,
+    borderWidth: 1,
+    borderColor: SPLASH_COLORS.lavenderLight,
   },
 });

@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-logo.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#70088c"
     },
@@ -16,7 +16,8 @@
       "bundleIdentifier": "com.devtechturn.societyassets",
       "infoPlist": {
         "UIBackgroundModes": [
-          "remote-notification"
+          "remote-notification",
+          "audio"
         ],
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -51,15 +52,20 @@
           "icon": "./assets/notification-icon.png",
           "color": "#70088c",
           "defaultChannel": "chat",
-          "sounds": []
+          "sounds": [
+            "./assets/sounds/visitor_arrived.wav",
+            "./assets/sounds/visitor_approved.wav",
+            "./assets/sounds/visitor_rejected.wav"
+          ]
         }
       ],
       [
         "expo-splash-screen",
         {
           "backgroundColor": "#70088c",
-          "image": "./assets/splash-logo.png",
-          "imageWidth": 300
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "imageWidth": 280
         }
       ]
     ],

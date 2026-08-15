@@ -4,7 +4,7 @@
  *
  * - PC / iOS Simulator: http://localhost:8080
  * - Android emulator:   http://10.0.2.2:8080  (set in .env)
- * - Physical phone:     http://192.168.1.39:8080 (set in .env)
+ * - Physical phone:     http://172.20.10.3:8080 (set in .env)
  */
 import Constants from 'expo-constants';
 

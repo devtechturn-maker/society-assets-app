@@ -8,6 +8,7 @@ type Props = {
   path?: string;
   localUri?: string;
   style?: object;
+  resizeMode?: 'cover' | 'contain' | 'stretch' | 'repeat' | 'center';
 };
 
 function cachePathFor(path: string): string {
@@ -15,7 +16,7 @@ function cachePathFor(path: string): string {
   return `${FileSystem.cacheDirectory}chat-${safe}.img`;
 }
 
-export function AuthenticatedImage({ path, localUri, style }: Props) {
+export function AuthenticatedImage({ path, localUri, style, resizeMode = 'cover' }: Props) {
   const [uri, setUri] = useState<string | null>(localUri ?? null);
   const [failed, setFailed] = useState(false);
 
@@ -78,7 +79,7 @@ export function AuthenticatedImage({ path, localUri, style }: Props) {
     );
   }
 
-  return <Image source={{ uri }} style={[styles.image, style]} resizeMode="cover" />;
+  return <Image source={{ uri }} style={[styles.image, style]} resizeMode={resizeMode} />;
 }
 
 const styles = StyleSheet.create({

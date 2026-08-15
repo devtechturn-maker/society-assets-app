@@ -19,6 +19,9 @@ import type { AmenityBookingDetail, AmenityBookingSummary } from '../../types/ap
 import { AMENITY_TYPE_OPTIONS } from '../../constants/amenityTypes';
 import { useTheme } from '../../theme/ThemeContext';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
+import { SectionCard } from '../../components/dashboard/SectionCard';
+import { Badge } from '../../components/dashboard/Badge';
+import { UiIcon } from '../../components/UiIcon';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useHardwareBack } from '../../hooks/useHardwareBack';
 
@@ -300,22 +303,28 @@ export function AmenityBookingModule({
   return (
     <View style={[styles.root, { backgroundColor: theme.pageBg }]}>
       <View style={styles.listHead}>
-        <Text style={[styles.title, { color: theme.text }]}>Amenity bookings</Text>
-        <Text style={[styles.meta, { color: theme.textMuted }]}>
-          {memberPortal
-            ? 'Book shared facilities and see what others have reserved.'
-            : 'View amenity bookings made by members.'}
-        </Text>
-      </View>
-
-      {memberPortal ? (
-        <Pressable
-          style={[styles.createBar, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}
-          onPress={() => setScreen('create')}
+        <SectionCard
+          title="Amenity bookings"
+          subtitle={
+            memberPortal
+              ? 'Book shared facilities and see what others have reserved.'
+              : 'View amenity bookings made by members.'
+          }
         >
-          <Text style={[styles.createBarText, { color: theme.accent }]}>+ Book Amenity</Text>
-        </Pressable>
-      ) : null}
+          {memberPortal ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.createBar,
+                { backgroundColor: theme.accent, opacity: pressed ? 0.88 : 1 },
+              ]}
+              onPress={() => setScreen('create')}
+            >
+              <UiIcon name="plus" size={16} color="#fff" />
+              <Text style={styles.createBarText}>Book Amenity</Text>
+            </Pressable>
+          ) : null}
+        </SectionCard>
+      </View>
 
       {loading ? (
         <ActivityIndicator style={{ marginTop: 24 }} color={theme.accent} />
@@ -328,19 +337,30 @@ export function AmenityBookingModule({
           contentContainerStyle={bookings.length === 0 ? styles.emptyList : styles.listPad}
           ListEmptyComponent={
             <ListEmpty
+              icon="calendar"
               title="No bookings yet"
               subtitle={
                 memberPortal
-                  ? 'Tap + Book Amenity to reserve a clubhouse, gym, pool, or other facility.'
+                  ? 'Tap Book Amenity to reserve a clubhouse, gym, pool, or other facility.'
                   : 'Member bookings will appear here.'
               }
             />
           }
           renderItem={({ item }) => (
             <Pressable
-              style={[styles.row, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}
+              style={({ pressed }) => [
+                styles.row,
+                {
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.cardBorder,
+                  opacity: pressed ? 0.92 : 1,
+                },
+              ]}
               onPress={() => void openBooking(item.bookingId)}
             >
+              <View style={[styles.rowIconHalo, { backgroundColor: theme.accentSoft }]}>
+                <UiIcon name="calendar" size={18} color={theme.accent} />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.rowTitle, { color: theme.text }]}>{item.amenityLabel}</Text>
                 <Text style={[styles.rowMeta, { color: theme.textMuted }]}>{formatSlot(item)}</Text>
@@ -350,9 +370,10 @@ export function AmenityBookingModule({
                   </Text>
                 ) : null}
               </View>
-              <Text style={[styles.status, { color: item.status === 'CANCELLED' ? theme.textMuted : theme.accent }]}>
-                {item.status === 'CANCELLED' ? 'Cancelled' : 'Confirmed'}
-              </Text>
+              <Badge
+                label={item.status === 'CANCELLED' ? 'Cancelled' : 'Confirmed'}
+                tone={item.status === 'CANCELLED' ? 'neutral' : 'success'}
+              />
             </Pressable>
           )}
         />
@@ -364,8 +385,8 @@ export function AmenityBookingModule({
 const styles = StyleSheet.create({
   root: { flex: 1 },
   pad: { padding: 16, paddingBottom: 32, gap: 10 },
-  listPad: { padding: 16, paddingBottom: 32, gap: 10 },
-  emptyList: { flexGrow: 1, padding: 16 },
+  listPad: { paddingHorizontal: 16, paddingBottom: 32, gap: 10 },
+  emptyList: { flexGrow: 1, paddingHorizontal: 16, paddingBottom: 24 },
   backLink: { fontWeight: '700', marginBottom: 8 },
   title: { fontSize: 22, fontWeight: '800' },
   meta: { fontSize: 14, lineHeight: 20, marginTop: 4 },
@@ -400,26 +421,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 4,
-    gap: 4,
   },
   createBar: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    paddingVertical: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
     borderRadius: 14,
-    borderWidth: 1,
   },
-  createBarText: { fontWeight: '800', fontSize: 15 },
+  createBarText: { color: '#fff', fontWeight: '800', fontSize: 15 },
   row: {
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  rowTitle: { fontSize: 16, fontWeight: '700' },
+  rowIconHalo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowTitle: { fontSize: 15, fontWeight: '700' },
   rowMeta: { fontSize: 13, marginTop: 2 },
   status: { fontSize: 12, fontWeight: '800' },
 });
