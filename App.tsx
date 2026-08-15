@@ -13,7 +13,7 @@ import { SplashScreen } from './src/screens/SplashScreen';
 import { PlanPurchaseScreen } from './src/screens/PlanPurchaseScreen';
 import { RoleSelectionScreen } from './src/screens/RoleSelectionScreen';
 import { loadStoredSession, setSessionInvalidHandler } from './src/services/session';
-import { fetchSubscriptionStatus } from './src/services/api';
+import { fetchSubscriptionStatus, isGateKeeperRole } from './src/services/api';
 import { performAppLogout } from './src/services/authLogout';
 import { getAppViewContext, canSwitchLoginRole, requiresRoleSelection, clearAppViewContext } from './src/services/appContext';
 import { AppAlertProvider } from './src/context/AppAlertContext';
@@ -50,7 +50,8 @@ function AppRoot() {
   const [assetsReady, setAssetsReady] = useState(false);
   const [pendingRoleSelection, setPendingRoleSelection] = useState(false);
 
-  const appReady = sessionReady && assetsReady;
+  /** Splash must not wait on network — only local assets. Session restore runs after. */
+  const splashReady = assetsReady;
 
   const finishSplash = useCallback(() => {
     setShowSplash(false);
@@ -58,6 +59,11 @@ function AppRoot() {
 
   useEffect(() => {
     let cancelled = false;
+    const safety = setTimeout(() => {
+      if (!cancelled) {
+        setAssetsReady(true);
+      }
+    }, 4000);
     preloadBrandAssets()
       .catch(() => undefined)
       .finally(() => {
@@ -67,6 +73,7 @@ function AppRoot() {
       });
     return () => {
       cancelled = true;
+      clearTimeout(safety);
     };
   }, []);
 
@@ -78,6 +85,12 @@ function AppRoot() {
 
   useEffect(() => {
     let cancelled = false;
+    const safety = setTimeout(() => {
+      if (!cancelled) {
+        setSessionReady(true);
+      }
+    }, 10000);
+
     loadStoredSession()
       .then(async (u) => {
         if (cancelled) {
@@ -85,7 +98,10 @@ function AppRoot() {
         }
         if (u?.token) {
           try {
-            const sub = await fetchSubscriptionStatus();
+            const sub = await fetchSubscriptionStatus({
+              skipGlobalLoader: true,
+              timeoutMs: 8000,
+            });
             if (!cancelled) {
               setSubscriptionStatus(sub);
               setUser(u);
@@ -94,15 +110,11 @@ function AppRoot() {
             }
           } catch {
             if (!cancelled) {
+              // Offline / wrong API host — still open the app with stored session.
               setUser(u);
               const storedContext = await getAppViewContext();
               setPendingRoleSelection(requiresRoleSelection(u) && !storedContext);
-              setSubscriptionStatus({
-                status: 'EXPIRED',
-                canAccessApp: false,
-                renewRequired: true,
-                message: 'Could not verify subscription.',
-              });
+              setSubscriptionStatus(null);
             }
           }
         } else {
@@ -120,6 +132,7 @@ function AppRoot() {
       });
     return () => {
       cancelled = true;
+      clearTimeout(safety);
     };
   }, []);
 
@@ -175,13 +188,13 @@ function AppRoot() {
   }
 
   if (showSplash || !assetsReady) {
-    return <SplashScreen onFinish={finishSplash} appReady={appReady} />;
+    return <SplashScreen onFinish={finishSplash} appReady={splashReady} />;
   }
 
   return (
     <View style={[styles.root, { backgroundColor: theme.pageBg }]}>
       {!sessionReady ? (
-        <AppBootLoader backgroundColor={theme.splashBg} label="Loading…" />
+        <AppBootLoader label="Loading..." />
       ) : user && subscriptionStatus && !subscriptionStatus.canAccessApp ? (
         <PlanPurchaseScreen
           status={subscriptionStatus}
@@ -192,7 +205,7 @@ function AppRoot() {
             setSubscriptionStatus(next.canAccessApp ? null : next);
           }}
         />
-      ) : user && user.firstLogin ? (
+      ) : user && user.firstLogin && !isGateKeeperRole(user.role) ? (
         <FirstLoginPasswordScreen
           user={user}
           onPasswordChanged={(updated) => {

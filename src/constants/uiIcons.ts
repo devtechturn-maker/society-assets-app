@@ -1,4 +1,4 @@
-/** Monochrome Icons8 ios-glyphs slugs — user-interface style from icons8.com */
+/** App icon name → bundled Ionicons glyph (see `UiIcon`). */
 export type UiIconName =
   | 'home'
   | 'grid'
@@ -32,9 +32,13 @@ export type UiIconName =
   | 'email'
   | 'clock'
   | 'plus'
-  | 'share';
+  | 'share'
+  | 'bell';
 
-/** https://icons8.com/icons/set/user-interface (ios-glyphs style) */
+/**
+ * Legacy Icons8 slug map — kept for reference only.
+ * Runtime icons use Ionicons via `UiIcon` (bundled; no network).
+ */
 export const ICONS8_SLUGS: Record<UiIconName, string> = {
   home: 'home',
   grid: 'grid',
@@ -69,6 +73,7 @@ export const ICONS8_SLUGS: Record<UiIconName, string> = {
   clock: 'clock',
   plus: 'plus',
   share: 'share',
+  bell: 'appointment-reminders',
 };
 
 export function iconFromPrimeIcon(icon: string): UiIconName {
@@ -86,6 +91,7 @@ export function iconFromPrimeIcon(icon: string): UiIconName {
   if (icon.includes('megaphone')) return 'megaphone';
   if (icon.includes('building')) return 'building';
   if (icon.includes('comment')) return 'comments';
+  if (icon.includes('bell')) return 'bell';
   if (icon.includes('user')) return 'user';
   if (icon.includes('question')) return 'help';
   if (icon.includes('info')) return 'info';
@@ -132,6 +138,8 @@ export function iconForRoutePath(routePath: string): UiIconName {
       return 'building';
     case 'help':
       return 'help';
+    case 'notifications':
+      return 'bell';
     case 'about-us':
       return 'info';
     default:

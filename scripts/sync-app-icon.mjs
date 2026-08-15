@@ -90,6 +90,11 @@ await sharp(trimmed).resize(320, 320, { fit: 'inside' }).png({ compressionLevel:
 await (await logoOnBrandBackground(trimmed, 512, 0.9)).toFile(logoOut);
 await (await logoOnBrandBackground(trimmed, 256, 0.92)).toFile(notificationLogoOut);
 
+/** Compact splash centre icon (128×128 purple tile). */
+await (await logoOnBrandBackground(trimmed, 128, 0.72)).toFile(
+  path.join(assets, 'splash-screen-logo.png')
+);
+
 /** Splash + launcher icons */
 await (await logoOnBrandBackground(trimmed, 400, 0.88)).toFile(splashOut);
 await copyFile(splashOut, splashIconOut);

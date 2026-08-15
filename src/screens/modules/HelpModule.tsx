@@ -100,7 +100,7 @@ export function HelpModule({ memberPortal = false }: Props) {
         subtitle={
           memberPortal
             ? 'Quick answers for members using the Society Assets mobile app.'
-            : 'Quick answers for chairmen managing your society on web and mobile.'
+            : 'Quick answers for chairmen managing your society in the mobile app.'
         }
       >
         {sections.map((section) => (

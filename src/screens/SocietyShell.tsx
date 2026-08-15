@@ -23,16 +23,22 @@ import {
   fetchOverview,
   fetchSocietyModules,
   fetchTreasurerModules,
+  fetchGatekeeperModules,
+  fetchGateKeeperDashboard,
   isMemberRole,
   isTreasurerRole,
+  isGateKeeperRole,
 } from '../services/api';
-import type { LoginData, NavModule } from '../types/api';
+import type { AppNotification, LoginData, NavModule } from '../types/api';
 import { APPEARANCE_MODULE } from '../constants/appearanceModule';
 import {
   FALLBACK_MEMBER_NAV_SOURCE,
   FALLBACK_SOCIETY_NAV_SOURCE,
+  FALLBACK_GATEKEEPER_NAV_SOURCE,
+  GATEKEEPER_SIDE_MENU_ITEMS,
   FALLBACK_TREASURER_NAV_SOURCE,
   prepareBottomTabModules,
+  splitTabBarModules,
   ACTIVITY_HUB_ROUTE_PATHS,
   MEMBER_SIDE_MENU_ITEMS,
   SOCIETY_SIDE_MENU_ITEMS,
@@ -55,15 +61,16 @@ import {
   type AppPushNotification,
 } from '../services/pushNotifications';
 import * as Notifications from 'expo-notifications';
-import { ModuleRouter } from './modules/ModuleRouter';
 import { pushTypeMatchesAudience, type NotificationAudience } from '../utils/notificationAudience';
 import { subscribeMemberProfileNavigation } from '../services/memberProfileNavigation';
 import { useAppAlert } from '../context/AppAlertContext';
 import { mergeLoginUserPatch, userDisplayName } from '../utils/userDisplayName';
+import { AppLogo } from '../components/AppLogo';
 import { AppLogoLoader } from '../components/AppLogoLoader';
 import { ProfileSideMenu } from '../components/ProfileSideMenu';
 import { SocietyJoinCodeHeader } from '../components/society/SocietyJoinCodeHeader';
 import { runHardwareBackHandlers } from '../services/hardwareBackNavigation';
+import { ModuleRouter } from './modules/ModuleRouter';
 
 type Props = {
   user: LoginData;
@@ -92,11 +99,21 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
   const [appContext, setAppContextState] = useState<AppViewContext>('CHAIRMAN');
   const [contextReady, setContextReady] = useState(false);
   const canSwitchView = canSwitchAppView(user);
-  const memberPortal = isMemberPortalView(sessionUser, appContext);
+  const gatekeeperPortal = isGateKeeperRole(sessionUser.role ?? user.role ?? '');
+  const memberPortal = !gatekeeperPortal && isMemberPortalView(sessionUser, appContext);
   const treasurerPortal =
     !memberPortal && isTreasurerRole(sessionUser.role ?? user.role ?? '');
-  const navPortal: NavPortalKind = memberPortal ? 'member' : treasurerPortal ? 'treasurer' : 'society';
+  const navPortal: NavPortalKind = gatekeeperPortal
+    ? 'gatekeeper'
+    : memberPortal
+      ? 'member'
+      : treasurerPortal
+        ? 'treasurer'
+        : 'society';
   const notificationAudience = useMemo((): NotificationAudience | null => {
+    if (gatekeeperPortal) {
+      return 'GATEKEEPER';
+    }
     if (canSwitchView) {
       return appContext;
     }
@@ -104,7 +121,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
       return 'MEMBER';
     }
     return null;
-  }, [canSwitchView, sessionUser.role, appContext]);
+  }, [canSwitchView, gatekeeperPortal, sessionUser.role, appContext]);
 
   useEffect(() => {
     setSessionUser(user);
@@ -139,6 +156,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
   const [initialRuleId, setInitialRuleId] = useState<string | null>(null);
   const [initialNoticeId, setInitialNoticeId] = useState<string | null>(null);
   const [initialBookingId, setInitialBookingId] = useState<string | null>(null);
+  const [initialVisitorId, setInitialVisitorId] = useState<string | null>(null);
   const [bannerNotification, setBannerNotification] = useState<AppPushNotification | null>(null);
   const inbox = useNotificationInbox(user.userId, notificationAudience);
 
@@ -211,6 +229,13 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
 
   const loadMeta = useCallback(async () => {
     try {
+      if (gatekeeperPortal) {
+        const [mods, dashboard] = await Promise.all([fetchGatekeeperModules(), fetchGateKeeperDashboard()]);
+        const merged = prepareBottomTabModules(mods, 'gatekeeper');
+        if (merged.length > 0) setModules(merged);
+        if (dashboard.societyName) setSocietyName(dashboard.societyName);
+        return;
+      }
       if (memberPortal) {
         const [mods, overview] = await Promise.all([fetchMemberModules(), fetchMemberOverview()]);
         const merged = prepareBottomTabModules(mods, 'member');
@@ -242,7 +267,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
         /* defaults */
       }
     }
-  }, [memberPortal, treasurerPortal, navPortal]);
+  }, [gatekeeperPortal, memberPortal, treasurerPortal, navPortal]);
 
   useEffect(() => {
     if (!contextReady) {
@@ -254,18 +279,20 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
   useEffect(() => {
     setModules(
       prepareBottomTabModules(
-        memberPortal
-          ? [...FALLBACK_MEMBER_NAV_SOURCE]
-          : treasurerPortal
-            ? [...FALLBACK_TREASURER_NAV_SOURCE, APPEARANCE_MODULE]
-            : [...FALLBACK_SOCIETY_NAV_SOURCE, APPEARANCE_MODULE],
+        gatekeeperPortal
+          ? [...FALLBACK_GATEKEEPER_NAV_SOURCE]
+          : memberPortal
+            ? [...FALLBACK_MEMBER_NAV_SOURCE]
+            : treasurerPortal
+              ? [...FALLBACK_TREASURER_NAV_SOURCE, APPEARANCE_MODULE]
+              : [...FALLBACK_SOCIETY_NAV_SOURCE, APPEARANCE_MODULE],
         navPortal
       )
     );
     setActivePath('dashboard');
     setSideMenuOpen(false);
     lastTabPathRef.current = 'dashboard';
-  }, [memberPortal, treasurerPortal, navPortal]);
+  }, [gatekeeperPortal, memberPortal, treasurerPortal, navPortal]);
 
   const openChatFromNotification = useCallback((groupId?: string) => {
     setActivePath('chat');
@@ -313,6 +340,88 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
     }
   }, []);
 
+  const openVisitorFromNotification = useCallback(
+    (visitorId?: string, type?: AppPushNotification['type']) => {
+      if (!visitorId) {
+        return;
+      }
+      if (gatekeeperPortal) {
+        setActivePath('visitor-history');
+        setInitialVisitorId(visitorId);
+        return;
+      }
+      setActivePath('visitors');
+      setInitialVisitorId(visitorId);
+    },
+    [gatekeeperPortal]
+  );
+
+  const openVisitorsScreen = useCallback((visitorId?: string) => {
+    lastTabPathRef.current = 'dashboard';
+    setActivePath('visitors');
+    if (visitorId) {
+      setInitialVisitorId(visitorId);
+    }
+  }, []);
+
+  const handleNotificationPress = useCallback(
+    (item: AppNotification) => {
+      void inbox.handleOpenNotification(item).then((opened) => {
+        if (!opened) {
+          return;
+        }
+        if (gatekeeperPortal) {
+          if (opened.visitorId || opened.type.startsWith('VISITOR')) {
+            openVisitorFromNotification(opened.visitorId, opened.type as AppPushNotification['type']);
+          }
+          return;
+        }
+        if (opened.pollId || opened.type.startsWith('POLL')) {
+          openPollFromNotification(opened.pollId, opened.groupId);
+          return;
+        }
+        if (opened.complaintId || opened.type.startsWith('COMPLAINT')) {
+          openComplaintFromNotification(opened.complaintId);
+          return;
+        }
+        if (opened.amenityBookingId || opened.type.startsWith('AMENITY')) {
+          openAmenityFromNotification(opened.amenityBookingId);
+          return;
+        }
+        if (opened.ruleId || opened.type.startsWith('RULE')) {
+          openRuleFromNotification(opened.ruleId);
+          return;
+        }
+        if (opened.noticeId || opened.type.startsWith('NOTICE')) {
+          openNoticeFromNotification(opened.noticeId);
+          return;
+        }
+        if (opened.visitorId || opened.type.startsWith('VISITOR')) {
+          openVisitorFromNotification(opened.visitorId, opened.type as AppPushNotification['type']);
+          return;
+        }
+        if (opened.groupId || opened.type.startsWith('GROUP')) {
+          openChatFromNotification(opened.groupId);
+        }
+      });
+    },
+    [
+      gatekeeperPortal,
+      inbox.handleOpenNotification,
+      openAmenityFromNotification,
+      openChatFromNotification,
+      openComplaintFromNotification,
+      openNoticeFromNotification,
+      openPollFromNotification,
+      openRuleFromNotification,
+      openVisitorFromNotification,
+    ]
+  );
+
+  useEffect(() => {
+    inbox.setListActive(inbox.panelOpen);
+  }, [inbox.panelOpen, inbox.setListActive]);
+
   useEffect(() => {
     registerPushNotificationsWithBackend();
 
@@ -349,6 +458,10 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
         openNoticeFromNotification(parsed.noticeId);
         return;
       }
+      if (parsed.kind === 'visitor') {
+        openVisitorFromNotification(parsed.visitorId, parsed.type);
+        return;
+      }
       openChatFromNotification(parsed.groupId);
     })();
 
@@ -375,6 +488,9 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
       onOpenNotice: (noticeId) => {
         openNoticeFromNotification(noticeId);
       },
+      onOpenVisitor: (visitorId, type) => {
+        openVisitorFromNotification(visitorId, type);
+      },
     });
     const receivedSubscription = addNotificationReceivedListener((notification) => {
       if (
@@ -400,6 +516,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
     openRuleFromNotification,
     openNoticeFromNotification,
     openAmenityFromNotification,
+    openVisitorFromNotification,
     inbox.markPushNotificationAsRead,
     inbox.refreshUnreadCount,
   ]);
@@ -408,25 +525,31 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
     onLogout();
   }
 
-  const toggleSideMenu = useCallback(() => {
-    setSideMenuOpen((open) => !open);
-  }, []);
-
   const openSideMenuRoute = useCallback((routePath: string) => {
     if (routePath === '__switch_role__') {
       setSideMenuOpen(false);
       onSwitchRole?.();
       return;
     }
-    const sideRoutes = new Set(['profile', 'appearance', 'about-us', 'about-society', 'help', 'subscription']);
+    const sideRoutes = new Set([
+      'profile',
+      'appearance',
+      'about-us',
+      ...(gatekeeperPortal ? [] : ['about-society']),
+      'help',
+      'subscription',
+    ]);
     if (!sideRoutes.has(activePathRef.current)) {
       lastTabPathRef.current = activePathRef.current;
     }
     setActivePath(routePath);
     setSideMenuOpen(false);
-  }, [onSwitchRole]);
+  }, [gatekeeperPortal, onSwitchRole]);
 
   const sideMenuItems = useMemo(() => {
+    if (gatekeeperPortal) {
+      return [...GATEKEEPER_SIDE_MENU_ITEMS];
+    }
     const base = memberPortal ? MEMBER_SIDE_MENU_ITEMS : SOCIETY_SIDE_MENU_ITEMS;
     if (canSwitchView && onSwitchRole) {
       return [
@@ -435,22 +558,48 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
       ];
     }
     return base;
-  }, [memberPortal, canSwitchView, onSwitchRole]);
-
-  const openProfileScreen = useCallback(() => {
-    openSideMenuRoute(memberPortal ? 'profile' : 'appearance');
-  }, [memberPortal, openSideMenuRoute]);
-
-  const navigateFromActivity = useCallback((routePath: string) => {
-    setSideMenuOpen(false);
-    lastTabPathRef.current = 'activity';
-    setActivePath(routePath);
-  }, []);
+  }, [gatekeeperPortal, memberPortal, canSwitchView, onSwitchRole]);
 
   const selectTab = useCallback((routePath: string) => {
     setSideMenuOpen(false);
     setActivePath(routePath);
     lastTabPathRef.current = routePath;
+  }, []);
+
+  const openProfileScreen = useCallback(() => {
+    openSideMenuRoute(memberPortal ? 'profile' : gatekeeperPortal ? 'profile' : 'appearance');
+  }, [gatekeeperPortal, memberPortal, openSideMenuRoute]);
+
+  const { scrollableTabs, profileTab } = useMemo(
+    () => splitTabBarModules(modules, navPortal),
+    [modules, navPortal]
+  );
+
+  const profileRoute = profileTab.routePath;
+  const profileRelatedRoutes = useMemo(
+    () =>
+      new Set([
+        profileRoute,
+        'about-us',
+        ...(gatekeeperPortal ? [] : ['about-society']),
+        'help',
+        'subscription',
+      ]),
+    [gatekeeperPortal, profileRoute]
+  );
+  const profileTabActive = sideMenuOpen || profileRelatedRoutes.has(activePath);
+
+  const toggleProfileMenu = useCallback(() => {
+    if (!sideMenuOpen && !profileRelatedRoutes.has(activePathRef.current)) {
+      lastTabPathRef.current = activePathRef.current;
+    }
+    setSideMenuOpen((open) => !open);
+  }, [profileRelatedRoutes, sideMenuOpen]);
+
+  const navigateFromActivity = useCallback((routePath: string) => {
+    setSideMenuOpen(false);
+    lastTabPathRef.current = 'activity';
+    setActivePath(routePath);
   }, []);
 
   if (!contextReady) {
@@ -492,6 +641,10 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
               openNoticeFromNotification(item.noticeId);
               return;
             }
+            if (item.kind === 'visitor') {
+              openVisitorFromNotification(item.visitorId, item.type);
+              return;
+            }
             openChatFromNotification(item.groupId);
           });
         }}
@@ -508,34 +661,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
         onClose={inbox.closePanel}
         onLoadMore={() => void inbox.loadMore()}
         onMarkAllRead={() => void inbox.handleMarkAllRead()}
-        onPressNotification={(item) => {
-          void inbox.handleOpenNotification(item).then((opened) => {
-            if (!opened) return;
-            if (opened.pollId || opened.type.startsWith('POLL')) {
-              openPollFromNotification(opened.pollId, opened.groupId);
-              return;
-            }
-            if (opened.complaintId || opened.type.startsWith('COMPLAINT')) {
-              openComplaintFromNotification(opened.complaintId);
-              return;
-            }
-            if (opened.amenityBookingId || opened.type.startsWith('AMENITY')) {
-              openAmenityFromNotification(opened.amenityBookingId);
-              return;
-            }
-            if (opened.ruleId || opened.type.startsWith('RULE')) {
-              openRuleFromNotification(opened.ruleId);
-              return;
-            }
-            if (opened.noticeId || opened.type.startsWith('NOTICE')) {
-              openNoticeFromNotification(opened.noticeId);
-              return;
-            }
-            if (opened.groupId || opened.type.startsWith('GROUP')) {
-              openChatFromNotification(opened.groupId);
-            }
-          });
-        }}
+        onPressNotification={handleNotificationPress}
       />
 
       <ProfileSideMenu
@@ -550,39 +676,29 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
 
       <LinearGradient colors={[...theme.headerGradient]} style={styles.hero}>
         <View style={styles.heroRow}>
-          <Pressable
-            onPress={toggleSideMenu}
-            accessibilityLabel="Open menu"
-            style={({ pressed }) => [styles.heroSide, pressed ? styles.avatarPressed : null]}
-          >
-            <View
-              style={[
-                styles.avatar,
-                { borderColor: theme.accentGold, backgroundColor: theme.accentSoft },
-              ]}
-            >
-              <Text style={styles.avatarText}>{societyInitials(avatarLabel)}</Text>
-            </View>
-          </Pressable>
-          <View style={styles.heroCenter}>
+          <View style={styles.heroBrand}>
             <AppLogo variant="glyph" size={34} framed />
           </View>
-          <View style={[styles.heroSide, styles.heroActions]}>
+          <View style={styles.heroTrailing}>
             <NotificationBellButton unreadCount={inbox.unreadCount} onPress={inbox.openPanel} />
           </View>
         </View>
         <Text style={styles.kicker}>
-          {memberPortal
-            ? `${societyName} · Flat ${sessionUser.memberProfile?.flatNumber ?? '—'}`
-            : societyName}
+          {gatekeeperPortal
+            ? `Gate Security · ${societyName}`
+            : memberPortal
+              ? `${societyName} · Flat ${sessionUser.memberProfile?.flatNumber ?? '—'}`
+              : societyName}
         </Text>
-        {!memberPortal ? <SocietyJoinCodeHeader /> : null}
+        {!memberPortal && !gatekeeperPortal ? <SocietyJoinCodeHeader /> : null}
       </LinearGradient>
 
       <View style={styles.content}>
         <ModuleRouter
           routePath={activePath}
           memberPortal={memberPortal}
+          gatekeeperPortal={gatekeeperPortal}
+          societyId={sessionUser.societyId}
           userId={sessionUser.userId}
           userRole={sessionUser.role}
           initialChatGroupId={initialChatGroupId}
@@ -597,6 +713,8 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
           onNoticeConsumed={() => setInitialNoticeId(null)}
           initialBookingId={initialBookingId}
           onBookingConsumed={() => setInitialBookingId(null)}
+          initialVisitorId={initialVisitorId}
+          onVisitorConsumed={() => setInitialVisitorId(null)}
           onUserUpdated={(patch) => {
             handleUserUpdated(patch);
             void updateStoredUser(patch).then((next) => {
@@ -607,8 +725,12 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
           }}
           onNavigateProfile={openProfileScreen}
           onOpenNotice={(noticeId) => openNoticeFromNotification(noticeId)}
+          onOpenVisitors={openVisitorsScreen}
           onLogout={() => void logout()}
           onNavigateFromActivity={navigateFromActivity}
+          onNavigateSideRoute={openSideMenuRoute}
+          profileDisplayName={avatarLabel}
+          societyName={societyName}
           navPortal={navPortal}
         />
       </View>
@@ -616,40 +738,93 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
       <View
         style={[styles.bottomBar, { backgroundColor: theme.bottomBarBg, borderTopColor: theme.bottomBarBorder }]}
       >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.bottomScrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          {modules.map((m) => {
-            const active =
-              m.routePath === 'activity'
-                ? activePath === 'activity' || ACTIVITY_HUB_ROUTE_PATHS.has(activePath)
-                : activePath === m.routePath;
-            const tabIconColor = active ? theme.accentGold : theme.textMuted;
-            const tabIconName =
-              m.routePath === 'activity' ? 'grid' : iconFromPrimeIcon(m.icon) || iconForRoutePath(m.routePath);
-            return (
-              <Pressable
-                key={m.code}
-                style={[styles.tab, active ? { backgroundColor: theme.accentSoft } : null]}
-                onPress={() => selectTab(m.routePath)}
-              >
-                <UiIcon name={tabIconName} size={22} color={tabIconColor} />
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    active ? { color: theme.accentGold, fontWeight: '700' } : { color: theme.textMuted },
+        <View style={styles.bottomBarRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.bottomScrollWrap}
+            contentContainerStyle={styles.bottomScrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {scrollableTabs.map((m) => {
+              const active =
+                m.routePath === 'activity'
+                  ? activePath === 'activity' || ACTIVITY_HUB_ROUTE_PATHS.has(activePath)
+                  : activePath === m.routePath;
+              const tabIconColor = active ? theme.accentGold : theme.textMuted;
+              const tabIconName =
+                m.routePath === 'activity'
+                  ? 'grid'
+                  : iconFromPrimeIcon(m.icon) || iconForRoutePath(m.routePath);
+              return (
+                <Pressable
+                  key={m.code}
+                  style={({ pressed }) => [
+                    styles.tab,
+                    active ? [styles.tabActivePill, { backgroundColor: theme.accentSoft }] : null,
+                    pressed ? styles.tabPressed : null,
                   ]}
-                  numberOfLines={1}
+                  onPress={() => selectTab(m.routePath)}
                 >
-                  {tabLabel(m.title)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+                  <View style={styles.tabIconWrap}>
+                    <UiIcon name={tabIconName} size={22} color={tabIconColor} />
+                  </View>
+                  <Text
+                    style={[
+                      styles.tabLabel,
+                      active ? { color: theme.accentGold, fontWeight: '700' } : { color: theme.textMuted },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {tabLabel(m.title)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.tab,
+              styles.profileTab,
+              profileTabActive ? [styles.tabActivePill, { backgroundColor: theme.accentSoft }] : null,
+              { borderLeftColor: theme.bottomBarBorder },
+              pressed ? styles.tabPressed : null,
+            ]}
+            onPress={toggleProfileMenu}
+            accessibilityLabel="Open profile menu"
+          >
+            <View
+              style={[
+                styles.profileTabAvatar,
+                {
+                  borderColor: profileTabActive ? theme.accentGold : theme.cardBorder,
+                  backgroundColor: profileTabActive ? theme.accentSoft : theme.chipBg,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.profileTabAvatarText,
+                  { color: profileTabActive ? theme.accentGold : theme.textMuted },
+                ]}
+              >
+                {societyInitials(avatarLabel)}
+              </Text>
+            </View>
+            <Text
+              style={[
+                styles.tabLabel,
+                profileTabActive
+                  ? { color: theme.accentGold, fontWeight: '700' }
+                  : { color: theme.textMuted },
+              ]}
+              numberOfLines={1}
+            >
+              {tabLabel(profileTab.title)}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
     </View>
@@ -660,64 +835,68 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   boot: { alignItems: 'center', justifyContent: 'center', gap: 16 },
   hero: {
-    paddingTop: 44,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    paddingTop: 48,
+    paddingHorizontal: 18,
+    paddingBottom: 18,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#16061c',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.28,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   heroRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  heroSide: {
-    width: 44,
-    alignItems: 'center',
+  heroBrand: {
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
-  heroCenter: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarPressed: { opacity: 0.85 },
-  avatarText: { color: '#fff', fontWeight: '800', fontSize: 15 },
-  kicker: {
-    color: '#94a3b8',
-    fontSize: 10,
-    marginTop: 6,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  heroActions: {
+  heroTrailing: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
+    gap: 12,
+  },
+  avatarPressed: { opacity: 0.85 },
+  kicker: {
+    color: 'rgba(243, 232, 251, 0.78)',
+    fontSize: 11,
+    marginTop: 10,
+    letterSpacing: 0.7,
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
   content: { flex: 1 },
   bottomBar: {
     borderTopWidth: 1,
-    paddingBottom: 8,
-    paddingTop: 6,
+    paddingBottom: 10,
+    paddingTop: 8,
     ...Platform.select({
       ios: {
-        paddingBottom: 16,
+        paddingBottom: 18,
         paddingTop: 10,
       },
     }),
   },
+  bottomBarRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  bottomScrollWrap: {
+    flex: 1,
+  },
   bottomScrollContent: {
     paddingHorizontal: 8,
-    gap: 4,
+    gap: 6,
     flexDirection: 'row',
     alignItems: 'stretch',
     ...Platform.select({
@@ -726,22 +905,68 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  tab: {
-    minWidth: 72,
+  profileTab: {
+    borderLeftWidth: 1,
+    minWidth: 80,
     maxWidth: 96,
+  },
+  profileTabAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    gap: 2,
-    ...Platform.select({
-      ios: {
-        paddingVertical: 8,
-        minHeight: 52,
-      },
-    }),
+  },
+  profileTabAvatarText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  tab: {
+    minWidth: 76,
+    maxWidth: 104,
+    minHeight: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    gap: 3,
+  },
+  tabActivePill: {
+    borderRadius: 999,
+  },
+  tabPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }],
+  },
+  tabIconWrap: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 28,
+    height: 28,
+  },
+  tabBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#0f172a',
+  },
+  tabBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
+    lineHeight: 11,
   },
   tabGlyph: { fontSize: 18 },
-  tabLabel: { fontSize: 10, textAlign: 'center' },
+  tabLabel: { fontSize: 10, textAlign: 'center', letterSpacing: 0.15 },
 });

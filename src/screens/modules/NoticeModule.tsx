@@ -13,6 +13,8 @@ import { createNotice, fetchNoticeDetail, fetchNotices } from '../../services/ap
 import type { NoticeDetail, NoticeSummary } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { ListEmpty } from '../../components/dashboard/ListStates';
+import { SectionCard } from '../../components/dashboard/SectionCard';
+import { UiIcon } from '../../components/UiIcon';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useHardwareBack } from '../../hooks/useHardwareBack';
 
@@ -197,35 +199,58 @@ export function NoticeModule({
         />
       }
     >
-      <View style={styles.headRow}>
-        <View style={styles.headText}>
-          <Text style={[styles.title, { color: theme.text }]}>Society Notices</Text>
-          <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            {canManageNotices
-              ? 'Publish notices for your society. Members are notified automatically.'
-              : 'Notices published by the chairman for your society.'}
-          </Text>
-        </View>
-        {canManageNotices ? (
-          <Pressable style={[styles.addBtn, { backgroundColor: theme.accent }]} onPress={() => setScreen('create')}>
-            <Text style={styles.addBtnText}>+ Add</Text>
-          </Pressable>
+      <SectionCard
+        title="Society Notices"
+        subtitle={
+          canManageNotices
+            ? 'Publish notices for your society. Members are notified automatically.'
+            : 'Notices published by the chairman for your society.'
+        }
+        headerRight={
+          canManageNotices ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.addBtn,
+                { backgroundColor: theme.accent, opacity: pressed ? 0.88 : 1 },
+              ]}
+              onPress={() => setScreen('create')}
+            >
+              <Text style={styles.addBtnText}>+ Add</Text>
+            </Pressable>
+          ) : null
+        }
+      >
+        {loading ? <ActivityIndicator color={theme.accent} style={styles.loader} /> : null}
+        {!loading && notices.length === 0 ? (
+          <ListEmpty icon="megaphone" message="No notices published yet." />
         ) : null}
-      </View>
+      </SectionCard>
 
-      {loading ? <ActivityIndicator color={theme.accent} style={styles.loader} /> : null}
-      {!loading && notices.length === 0 ? <ListEmpty message="No notices published yet." /> : null}
       {notices.map((notice) => (
         <Pressable
           key={notice.noticeId}
-          style={[styles.card, { borderColor: theme.divider, backgroundColor: theme.cardBg }]}
+          style={({ pressed }) => [
+            styles.card,
+            {
+              borderColor: theme.cardBorder,
+              backgroundColor: theme.cardBg,
+              opacity: pressed ? 0.92 : 1,
+            },
+          ]}
           onPress={() => openNotice(notice)}
         >
-          <Text style={[styles.cardTitle, { color: theme.text }]}>{notice.subject}</Text>
-          <Text style={[styles.cardMeta, { color: theme.textSoft }]} numberOfLines={2}>
-            {notice.description}
-          </Text>
-          <Text style={[styles.cardTime, { color: theme.textMuted }]}>{formatWhen(notice.createdAt)}</Text>
+          <View style={[styles.cardIconHalo, { backgroundColor: theme.accentSoft }]}>
+            <UiIcon name="megaphone" size={18} color={theme.accent} />
+          </View>
+          <View style={styles.cardBody}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>{notice.subject}</Text>
+            <Text style={[styles.cardMeta, { color: theme.textSoft }]} numberOfLines={2}>
+              {notice.description}
+            </Text>
+            <Text style={[styles.cardTime, { color: theme.textMuted }]}>
+              {formatWhen(notice.createdAt)}
+            </Text>
+          </View>
         </Pressable>
       ))}
     </ScrollView>
@@ -233,16 +258,30 @@ export function NoticeModule({
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: 12, paddingBottom: 32 },
-  headRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 },
-  headText: { flex: 1 },
+  scroll: { padding: 16, paddingBottom: 32 },
   title: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
   subtitle: { fontSize: 13, lineHeight: 18 },
-  addBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  addBtn: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 },
   addBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   loader: { marginVertical: 24 },
-  card: { borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 10, gap: 4 },
-  cardTitle: { fontSize: 16, fontWeight: '700' },
+  card: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  cardIconHalo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardBody: { flex: 1, gap: 4 },
+  cardTitle: { fontSize: 15, fontWeight: '700' },
   cardMeta: { fontSize: 13, lineHeight: 18 },
   cardTime: { fontSize: 12, marginTop: 2 },
   backBtn: { marginBottom: 12 },
@@ -250,17 +289,17 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', marginBottom: 6, marginTop: 12 },
   input: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
   },
   textArea: { minHeight: 120, textAlignVertical: 'top' },
-  primaryBtn: { marginTop: 20, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
+  primaryBtn: { marginTop: 20, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
   primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   disabled: { opacity: 0.6 },
   meta: { fontSize: 12, marginBottom: 12 },
-  detailBox: { borderWidth: 1, borderRadius: 12, padding: 14 },
+  detailBox: { borderWidth: 1, borderRadius: 16, padding: 14 },
   detailLabel: { fontSize: 13, fontWeight: '700', marginBottom: 8 },
   detailBody: { fontSize: 15, lineHeight: 22 },
 });

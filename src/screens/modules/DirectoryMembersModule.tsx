@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { AddMemberModal } from '../../components/members/AddMemberModal';
 import { EditMemberModal } from '../../components/members/EditMemberModal';
 import { ListEmpty, ListError, ListLoading } from '../../components/dashboard/ListStates';
+import { DirectoryListItem } from '../../components/directory/DirectoryListItem';
 import { UiIcon } from '../../components/UiIcon';
 import type { UiIconName } from '../../constants/uiIcons';
 import { fetchMemberDirectory, fetchMembers } from '../../services/api';
@@ -22,6 +23,7 @@ import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useHardwareBack } from '../../hooks/useHardwareBack';
 import { useTheme } from '../../theme/ThemeContext';
 import type { DirectoryEntry, SocietyMember } from '../../types/api';
+import { DirectorySectionShell } from './DirectoryHubModule';
 
 export type DirectoryMemberRow = DirectoryEntry & Partial<SocietyMember>;
 
@@ -79,6 +81,12 @@ function sortMembers(members: DirectoryMemberRow[]): DirectoryMemberRow[] {
   );
 }
 
+function isVacantMember(member: DirectoryMemberRow): boolean {
+  const name = member.name.trim().toLowerCase();
+  const ownership = (member.ownershipLabel ?? '').trim().toLowerCase();
+  return name === '' || name === 'vacant' || ownership === 'vacant' || name.includes('vacant');
+}
+
 function DetailRow({
   icon,
   title,
@@ -93,8 +101,8 @@ function DetailRow({
   const { theme } = useTheme();
   const content = (
     <View style={[styles.detailRow, { borderBottomColor: theme.divider }]}>
-      <View style={[styles.detailIconWrap, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-        <UiIcon name={icon} size={22} color={theme.text} />
+      <View style={[styles.detailIconWrap, { backgroundColor: theme.accentSoft }]}>
+        <UiIcon name={icon} size={20} color={theme.accent} />
       </View>
       <View style={styles.detailCopy}>
         <Text style={[styles.detailTitle, { color: theme.text }]}>{title}</Text>
@@ -228,14 +236,6 @@ export function DirectoryMembersModule({ onBack, memberPortal = false, canManage
 
   const sortedMembers = useMemo(() => sortMembers(filtered), [filtered]);
 
-  useHardwareBack(
-    useCallback(() => {
-      onBack();
-      return true;
-    }, [onBack]),
-    selected === null
-  );
-
   async function dialMember(phone: string) {
     const digits = phone.replace(/\s+/g, '');
     if (!digits) return;
@@ -254,29 +254,35 @@ export function DirectoryMembersModule({ onBack, memberPortal = false, canManage
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.pageBg }]}>
-      <LinearGradient colors={[...theme.headerGradient]} style={styles.listHero}>
-        <View style={styles.listTopRow}>
-          <Pressable onPress={onBack} hitSlop={12} style={styles.headerIconBtn}>
-            <UiIcon name="chevron-left" size={22} color="#fff" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Members</Text>
-          <View style={styles.listTopActions}>
-            <Pressable
-              onPress={() => setSearchOpen((open) => !open)}
-              hitSlop={10}
-              style={styles.headerIconBtn}
-            >
-              <UiIcon name="search" size={22} color="#fff" />
-            </Pressable>
-          </View>
+    <DirectorySectionShell
+      title="Members"
+      onBack={onBack}
+      headerRight={
+        <Pressable
+          onPress={() => setSearchOpen((open) => !open)}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Search members"
+          style={({ pressed }) => [
+            styles.searchIconBtn,
+            { backgroundColor: theme.accentSoft, opacity: pressed ? 0.85 : 1 },
+          ]}
+        >
+          <UiIcon name="search" size={18} color={theme.accent} />
+        </Pressable>
+      }
+    >
+      <View style={[styles.statsRow, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
+        <View style={[styles.statPill, { backgroundColor: theme.accentSoft }]}>
+          <Text style={[styles.statLabel, { color: theme.textMuted }]}>Members</Text>
+          <Text style={[styles.statValue, { color: theme.accent }]}>{members.length}</Text>
         </View>
-
-        <View style={styles.statsBar}>
-          <Text style={styles.statsText}>Members : {members.length}</Text>
-          <Text style={styles.statsText}>Population : 0</Text>
+        <View style={[styles.statDivider, { backgroundColor: theme.divider }]} />
+        <View style={[styles.statPill, { backgroundColor: theme.accentSoft }]}>
+          <Text style={[styles.statLabel, { color: theme.textMuted }]}>Population</Text>
+          <Text style={[styles.statValue, { color: theme.accent }]}>0</Text>
         </View>
-      </LinearGradient>
+      </View>
 
       {searchOpen ? (
         <View style={[styles.searchWrap, { backgroundColor: theme.cardBg, borderBottomColor: theme.divider }]}>
@@ -307,46 +313,35 @@ export function DirectoryMembersModule({ onBack, memberPortal = false, canManage
       ) : (
         <ScrollView
           style={styles.listScroll}
+          contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={loader.refreshing} onRefresh={loader.refresh} />}
           keyboardShouldPersistTaps="handled"
         >
           {filtered.length === 0 ? (
-            <ListEmpty message={search ? 'No matches found.' : 'No members yet.'} />
+            <ListEmpty
+              icon="users"
+              message={search ? 'No matches found.' : 'No members yet.'}
+            />
           ) : (
             sortedMembers.map((member) => {
+              const vacant = isVacantMember(member);
               const ownership = member.ownershipLabel ?? (member.isTreasurer ? 'Treasurer' : 'Owner');
               return (
-                <Pressable
+                <DirectoryListItem
                   key={member.id}
-                  style={({ pressed }) => [
-                    styles.memberRow,
-                    { backgroundColor: theme.cardBg, borderBottomColor: theme.divider },
-                    pressed ? styles.rowPressed : null,
-                  ]}
+                  title={member.name.trim() || 'Vacant'}
+                  meta={formatFlatLabel(member.flatNumber)}
+                  roleLabel={vacant ? 'Vacant' : ownership}
+                  secondaryMeta={`Last Login: ${formatLastLogin(member.lastLoginAt)}`}
+                  avatarInitial={vacant ? '—' : memberInitial(member.name)}
+                  muted={vacant}
                   onPress={() => setSelected(member)}
-                >
-                  <View style={[styles.memberAvatar, { backgroundColor: theme.accentSoft }]}>
-                    <Text style={[styles.memberAvatarText, { color: theme.accent }]}>{memberInitial(member.name)}</Text>
-                  </View>
-                  <View style={styles.memberBody}>
-                    <Text style={[styles.memberName, { color: theme.text }]}>{member.name}</Text>
-                    <Text style={[styles.memberFlat, { color: theme.text }]}>{formatFlatLabel(member.flatNumber)}</Text>
-                    <Text style={[styles.memberRole, { color: theme.accent }]}>{ownership}</Text>
-                    <Text style={[styles.memberLogin, { color: theme.textMuted }]}>
-                      Last Login: {formatLastLogin(member.lastLoginAt)}
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={(event) => {
-                      event.stopPropagation();
-                      void dialMember(member.phone ?? '');
-                    }}
-                    hitSlop={10}
-                    style={styles.callBtn}
-                  >
-                    <UiIcon name="phone" size={20} color={theme.textMuted} />
-                  </Pressable>
-                </Pressable>
+                  onCall={
+                    vacant || !(member.phone ?? '').trim()
+                      ? undefined
+                      : () => void dialMember(member.phone ?? '')
+                  }
+                />
               );
             })
           )}
@@ -373,55 +368,50 @@ export function DirectoryMembersModule({ onBack, memberPortal = false, canManage
           }}
         />
       ) : null}
-    </View>
+    </DirectorySectionShell>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  listHero: {
-    paddingTop: 8,
-    paddingBottom: 0,
-  },
-  listTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    minHeight: 48,
-  },
-  listTopActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerIconBtn: {
+  searchIconBtn: {
     width: 40,
     height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerIconText: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '600',
-  },
-  headerTitle: {
-    flex: 1,
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  statsBar: {
+  statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderRadius: 14,
     paddingVertical: 10,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 8,
   },
-  statsText: {
-    color: '#fff',
-    fontSize: 13,
+  statPill: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    gap: 2,
+  },
+  statDivider: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch',
+    marginVertical: 4,
+  },
+  statLabel: {
+    fontSize: 11,
     fontWeight: '600',
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '800',
   },
   searchWrap: {
     paddingHorizontal: 16,
@@ -430,60 +420,18 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     fontSize: 15,
   },
   listScroll: { flex: 1 },
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  listContent: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 12,
+    paddingTop: 8,
+    paddingBottom: 88,
   },
   rowPressed: { opacity: 0.88 },
-  memberAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  memberAvatarText: {
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  memberBody: {
-    flex: 1,
-    gap: 2,
-  },
-  memberName: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  memberFlat: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  memberRole: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  memberLogin: {
-    fontSize: 11,
-    marginTop: 4,
-  },
-  callBtn: {
-    paddingTop: 4,
-    paddingLeft: 8,
-  },
-  callIcon: {
-    fontSize: 20,
-  },
   fab: {
     position: 'absolute',
     right: 20,
@@ -494,16 +442,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    shadowColor: '#70088c',
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
-  fabText: {
-    color: '#fff',
-    fontSize: 32,
-    lineHeight: 34,
-    fontWeight: '300',
+  headerIconBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   detailHero: {
     paddingTop: 8,
@@ -549,8 +497,7 @@ const styles = StyleSheet.create({
   detailIconWrap: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },

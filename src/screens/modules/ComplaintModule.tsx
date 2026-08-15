@@ -22,10 +22,12 @@ import {
 } from '../../services/api';
 import type { ComplaintDetail, ComplaintSummary } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
+import { Badge } from '../../components/dashboard/Badge';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useHardwareBack } from '../../hooks/useHardwareBack';
 import { AuthenticatedImage } from '../../components/chat/AuthenticatedImage';
+import { UiIcon } from '../../components/UiIcon';
 import {
   pickPhotoFromCamera,
   pickPhotoFromLibrary,
@@ -58,11 +60,24 @@ function formatWhen(iso: string | null | undefined): string {
 }
 
 function statusLabel(status: string): string {
-  return status.replace(/_/g, ' ');
+  return STATUSES.find((s) => s.value === status)?.label ?? status.replace(/_/g, ' ');
 }
 
 function categoryLabel(category: string): string {
   return CATEGORIES.find((c) => c.value === category)?.label ?? category;
+}
+
+function statusBadgeTone(status: string): 'info' | 'warn' | 'neutral' | 'success' {
+  switch (status) {
+    case 'OPEN':
+      return 'warn';
+    case 'IN_PROGRESS':
+      return 'info';
+    case 'RESOLVED':
+      return 'success';
+    default:
+      return 'neutral';
+  }
 }
 
 const BOTTOM_TAB_BAR_HEIGHT = 62;
@@ -546,9 +561,18 @@ export function ComplaintModule({
   return (
     <View style={[styles.root, { backgroundColor: theme.pageBg }]}>
       {memberPortal ? (
-        <Pressable style={[styles.createBar, { backgroundColor: theme.cardBg }]} onPress={() => setScreen('create')}>
-          <Text style={[styles.createBarText, { color: theme.accent }]}>+ New Complaint</Text>
-        </Pressable>
+        <View style={styles.createBarWrap}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.createBar,
+              { backgroundColor: theme.accent, opacity: pressed ? 0.88 : 1 },
+            ]}
+            onPress={() => setScreen('create')}
+          >
+            <UiIcon name="plus" size={16} color="#fff" />
+            <Text style={styles.createBarText}>New Complaint</Text>
+          </Pressable>
+        </View>
       ) : null}
       <FlatList
         data={complaints}
@@ -556,25 +580,39 @@ export function ComplaintModule({
         contentContainerStyle={styles.listPad}
         ListEmptyComponent={
           <ListEmpty
-            message={
+            icon="flag"
+            title={memberPortal ? 'No complaints yet' : 'No member complaints yet'}
+            subtitle={
               memberPortal
-                ? 'No complaints yet. Tap above to report an issue.'
-                : 'No member complaints yet.'
+                ? 'Tap above to report an issue.'
+                : undefined
             }
           />
         }
         renderItem={({ item }) => (
           <Pressable
-            style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}
+            style={({ pressed }) => [
+              styles.card,
+              {
+                backgroundColor: theme.cardBg,
+                borderColor: theme.cardBorder,
+                opacity: pressed ? 0.92 : 1,
+              },
+            ]}
             onPress={() => void openComplaint(item.complaintId)}
           >
-            <Text style={[styles.cardSubject, { color: theme.text }]}>{item.subject}</Text>
+            <View style={styles.cardTop}>
+              <Text style={[styles.cardSubject, { color: theme.text }]} numberOfLines={2}>
+                {item.subject}
+              </Text>
+              <Badge label={statusLabel(item.status)} tone={statusBadgeTone(item.status)} />
+            </View>
             <Text style={[styles.meta, { color: theme.textMuted }]}>
-              {categoryLabel(item.category)} · {statusLabel(item.status)}
+              {categoryLabel(item.category)}
               {item.createdAt ? ` · ${formatWhen(item.createdAt)}` : ''}
             </Text>
             {item.memberName ? (
-              <Text style={[styles.badge, { color: theme.accent }]}>
+              <Text style={[styles.memberLine, { color: theme.accent }]}>
                 {item.memberName} · {item.flatNumber}
               </Text>
             ) : null}
@@ -594,7 +632,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   backLink: { fontWeight: '700', marginBottom: 8 },
   title: { fontSize: 20, fontWeight: '800', marginBottom: 8 },
-  meta: { fontSize: 13, marginBottom: 8 },
+  meta: { fontSize: 13, marginBottom: 0 },
   input: {
     borderRadius: 12,
     paddingHorizontal: 14,
@@ -608,11 +646,31 @@ const styles = StyleSheet.create({
   chip: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1 },
   primaryBtn: { borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
   primaryBtnText: { color: '#fff', fontWeight: '800' },
-  createBar: { padding: 14, alignItems: 'center' },
-  createBarText: { fontWeight: '800' },
-  card: { borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 10 },
-  cardSubject: { fontSize: 16, fontWeight: '700' },
-  badge: { marginTop: 6, fontSize: 12, fontWeight: '700' },
+  createBarWrap: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
+  createBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  createBarText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  card: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+    gap: 8,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  cardSubject: { flex: 1, fontSize: 16, fontWeight: '700' },
+  memberLine: { marginTop: 2, fontSize: 12, fontWeight: '700' },
   detailBox: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 6 },
   photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
   photoThumbWrap: { position: 'relative' },

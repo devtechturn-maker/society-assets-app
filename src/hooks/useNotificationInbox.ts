@@ -44,6 +44,7 @@ export function useNotificationInbox(userId: string, audience: NotificationAudie
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const nextOffsetRef = useRef(0);
+  const listActiveRef = useRef(false);
   const panelOpenRef = useRef(false);
   const audienceRef = useRef(audience);
 
@@ -107,10 +108,21 @@ export function useNotificationInbox(userId: string, audience: NotificationAudie
   }, [userId, audience, refreshUnreadCount]);
 
   useEffect(() => {
-    if (panelOpen) {
+    if (panelOpen || listActiveRef.current) {
       void loadInitial();
     }
   }, [audience, panelOpen, loadInitial]);
+
+  const setListActive = useCallback(
+    (active: boolean) => {
+      const wasActive = listActiveRef.current;
+      listActiveRef.current = active;
+      if (active && !wasActive) {
+        void loadInitial();
+      }
+    },
+    [loadInitial]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -128,7 +140,7 @@ export function useNotificationInbox(userId: string, audience: NotificationAudie
           return;
         }
         setUnreadCount(event.unreadCount);
-        if (panelOpenRef.current) {
+        if (panelOpenRef.current || listActiveRef.current) {
           setNotifications((current) => upsertNotification(current, event.notification));
         }
       },
@@ -178,6 +190,7 @@ export function useNotificationInbox(userId: string, audience: NotificationAudie
           amenityBookingId: push.kind === 'amenity' ? push.bookingId : undefined,
           ruleId: push.kind === 'rule' ? push.ruleId : undefined,
           noticeId: push.kind === 'notice' ? push.noticeId : undefined,
+          visitorId: push.kind === 'visitor' ? push.visitorId : undefined,
         });
         applyRead(updated);
       } catch {
@@ -228,6 +241,8 @@ export function useNotificationInbox(userId: string, audience: NotificationAudie
     hasMore,
     openPanel,
     closePanel,
+    setListActive,
+    loadInitial,
     loadMore,
     handleMarkAllRead,
     handleOpenNotification,

@@ -22,10 +22,20 @@ import { AboutUsModule } from './AboutUsModule';
 import { ChatModule } from './ChatModule';
 import { AppearanceModule } from './AppearanceModule';
 import { SubscriptionModule } from './SubscriptionModule';
+import { GateKeeperDashboardModule } from './GateKeeperDashboardModule';
+import { GateKeeperProfileModule } from './GateKeeperProfileModule';
+import { VisitorEntryModule } from './VisitorEntryModule';
+import { VisitorHistoryModule } from './VisitorHistoryModule';
+import { MemberVisitorModule } from './MemberVisitorModule';
+import { SocietyVisitorAdminModule } from './SocietyVisitorAdminModule';
+import { NotificationsModule } from './NotificationsModule';
+import type { AppNotification } from '../../types/api';
 
 export function ModuleRouter({
   routePath,
   memberPortal = false,
+  gatekeeperPortal = false,
+  societyId,
   userId,
   userRole,
   initialChatGroupId,
@@ -40,15 +50,23 @@ export function ModuleRouter({
   onNoticeConsumed,
   initialBookingId,
   onBookingConsumed,
+  initialVisitorId,
+  onVisitorConsumed,
   onUserUpdated,
   onNavigateProfile,
   onLogout,
   onOpenNotice,
+  onOpenVisitors,
   onNavigateFromActivity,
+  onNavigateSideRoute,
   navPortal = 'society',
+  profileDisplayName,
+  societyName,
+  notificationInbox,
 }: {
   routePath: string;
   memberPortal?: boolean;
+  societyId?: string | null;
   userId?: string;
   userRole?: string;
   initialChatGroupId?: string | null;
@@ -63,13 +81,67 @@ export function ModuleRouter({
   onNoticeConsumed?: () => void;
   initialBookingId?: string | null;
   onBookingConsumed?: () => void;
+  initialVisitorId?: string | null;
+  onVisitorConsumed?: () => void;
+  gatekeeperPortal?: boolean;
   onUserUpdated?: (patch: Partial<import('../../types/api').LoginData>) => void;
   onNavigateProfile?: () => void;
   onLogout?: () => void;
   onOpenNotice?: (noticeId: string) => void;
+  onOpenVisitors?: (visitorId?: string) => void;
   onNavigateFromActivity?: (routePath: string) => void;
+  onNavigateSideRoute?: (routePath: string) => void;
   navPortal?: NavPortalKind;
+  profileDisplayName?: string;
+  societyName?: string;
+  notificationInbox?: {
+    notifications: AppNotification[];
+    unreadCount: number;
+    loading: boolean;
+    loadingMore: boolean;
+    hasMore: boolean;
+    onRefresh: () => void;
+    onLoadMore: () => void;
+    onMarkAllRead: () => void;
+    onPressNotification: (item: AppNotification) => void;
+  };
 }): ReactNode {
+  if (gatekeeperPortal) {
+    switch (routePath) {
+      case 'dashboard':
+        return <GateKeeperDashboardModule />;
+      case 'visitor-entry':
+        return <VisitorEntryModule />;
+      case 'visitor-history':
+        return <VisitorHistoryModule gateKeeper />;
+      case 'notifications':
+        return notificationInbox ? <NotificationsModule {...notificationInbox} /> : null;
+      case 'about-society':
+        return (
+          <AboutSocietyModule
+            memberPortal
+            initialRuleId={initialRuleId}
+            onInitialRuleConsumed={onRuleConsumed}
+          />
+        );
+      case 'help':
+        return <HelpModule memberPortal />;
+      case 'about-us':
+        return <AboutUsModule />;
+      case 'profile':
+        return (
+          <GateKeeperProfileModule
+            displayName={profileDisplayName ?? 'Gate keeper'}
+            societyName={societyName}
+            onNavigate={(path) => onNavigateSideRoute?.(path)}
+            onLogout={onLogout}
+          />
+        );
+      default:
+        return <GateKeeperDashboardModule />;
+    }
+  }
+
   if (memberPortal) {
     switch (routePath) {
       case 'activity':
@@ -86,6 +158,7 @@ export function ModuleRouter({
           <MemberDashboardModule
             onOpenProfile={() => onNavigateProfile?.()}
             onOpenNotice={onOpenNotice}
+            onOpenVisitors={onOpenVisitors}
           />
         );
       case 'maintenance':
@@ -94,6 +167,7 @@ export function ModuleRouter({
         return (
           <ChatModule
             memberPortal
+            societyId={societyId}
             userId={userId}
             initialGroupId={initialChatGroupId}
             initialPollId={initialPollId}
@@ -131,6 +205,13 @@ export function ModuleRouter({
             memberPortal
             initialBookingId={initialBookingId}
             onInitialBookingConsumed={onBookingConsumed}
+          />
+        );
+      case 'visitors':
+        return (
+          <MemberVisitorModule
+            initialVisitorId={initialVisitorId}
+            onInitialVisitorConsumed={onVisitorConsumed}
           />
         );
       case 'profile':
@@ -172,6 +253,7 @@ export function ModuleRouter({
     case 'chat':
       return (
         <ChatModule
+          societyId={societyId}
           userId={userId}
           canManageGroups={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
           initialGroupId={initialChatGroupId}
@@ -221,6 +303,8 @@ export function ModuleRouter({
       return <AppearanceModule onLogout={onLogout} />;
     case 'subscription':
       return <SubscriptionModule />;
+    case 'visitor-admin':
+      return <SocietyVisitorAdminModule />;
     default:
       return <SupportModule />;
   }

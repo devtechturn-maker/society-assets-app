@@ -41,7 +41,7 @@ export function ProfileSideMenu({
   onLogout,
 }: Props) {
   const { theme } = useTheme();
-  const slideX = useRef(new Animated.Value(-PANEL_WIDTH)).current;
+  const slideX = useRef(new Animated.Value(PANEL_WIDTH)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export function ProfileSideMenu({
       return;
     }
     Animated.parallel([
-      Animated.timing(slideX, { toValue: -PANEL_WIDTH, duration: 200, useNativeDriver: true }),
+      Animated.timing(slideX, { toValue: PANEL_WIDTH, duration: 200, useNativeDriver: true }),
       Animated.timing(backdropOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
     ]).start();
   }, [visible, slideX, backdropOpacity]);
@@ -107,7 +107,7 @@ export function ProfileSideMenu({
                     {item.label}
                   </Text>
                   <UiIcon
-                    name="chevron-right"
+                    name="chevron-left"
                     size={18}
                     color={active ? theme.accentGold : theme.textMuted}
                   />
@@ -143,6 +143,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     flexDirection: 'row',
+    justifyContent: 'flex-end',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -154,11 +155,11 @@ const styles = StyleSheet.create({
   panel: {
     width: PANEL_WIDTH,
     height: '100%',
-    borderRightWidth: 1,
+    borderLeftWidth: 1,
     shadowColor: '#000',
     shadowOpacity: 0.18,
     shadowRadius: 16,
-    shadowOffset: { width: 4, height: 0 },
+    shadowOffset: { width: -4, height: 0 },
     elevation: 12,
     flexDirection: 'column',
   },

@@ -73,7 +73,11 @@ export function ChatNotificationBanner({ notification, onPress, onDismiss }: Pro
           ? notification.amenityLabel
           : notification.kind === 'rule'
             ? notification.subject
-            : notification.groupName;
+            : notification.kind === 'notice'
+              ? notification.subject
+              : notification.kind === 'visitor'
+                ? notification.visitorName
+                : notification.groupName;
   const glyph =
     notification.kind === 'poll'
       ? '📊'
@@ -83,7 +87,11 @@ export function ChatNotificationBanner({ notification, onPress, onDismiss }: Pro
           ? '📅'
           : notification.kind === 'rule'
             ? '📖'
-            : '💬';
+            : notification.kind === 'notice'
+              ? '📢'
+              : notification.kind === 'visitor'
+                ? '🚪'
+                : '💬';
 
   return (
     <Animated.View

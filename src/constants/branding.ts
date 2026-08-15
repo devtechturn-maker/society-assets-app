@@ -10,6 +10,12 @@ export const brandLogos = {
   primary: require('../../assets/logo.png'),
   /** Matches native splash (`splash-logo.png`, ~78 KB). */
   splash: require('../../assets/splash-logo.png'),
+  /** Compact centre logo for in-app splash screen (128×128). */
+  splashScreen: require('../../assets/splash-screen-logo.png'),
+  /** Bottom skyline + waves — extracted from splash design reference video. */
+  splashBottomArt: require('../../assets/splash-bottom-art.png'),
+  /** Top corner wisps — extracted from splash design reference video. */
+  splashTopArt: require('../../assets/splash-top-art.png'),
 } as const;
 
 const primaryMeta = Image.resolveAssetSource(brandLogos.primary);

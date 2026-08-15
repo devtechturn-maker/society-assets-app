@@ -361,6 +361,45 @@ export interface DirectoryEntry {
   isTreasurer?: boolean;
 }
 
+export type FamilyRelationship = 'SPOUSE' | 'CHILD' | 'PARENT' | 'OTHER';
+export type MemberVehicleType = 'TWO_WHEELER' | 'FOUR_WHEELER' | 'OTHER';
+
+export interface MemberFamilyMember {
+  id: string;
+  name: string;
+  relationship: FamilyRelationship;
+  phone?: string | null;
+  age?: number | null;
+  adult: boolean;
+  createdAt: string;
+}
+
+export interface MemberVehicleRecord {
+  id: string;
+  vehicleType: MemberVehicleType;
+  registrationNumber: string;
+  makeModel?: string | null;
+  color?: string | null;
+  parkingSlot?: string | null;
+  createdAt: string;
+}
+
+export interface FamilyMemberPayload {
+  name: string;
+  relationship: FamilyRelationship;
+  phone?: string;
+  age?: number;
+  adult?: boolean;
+}
+
+export interface VehiclePayload {
+  vehicleType: MemberVehicleType;
+  registrationNumber: string;
+  makeModel?: string;
+  color?: string;
+  parkingSlot?: string;
+}
+
 export interface MemberUploadResult {
   added: number;
   skipped: number;
@@ -448,6 +487,9 @@ export interface ChatMessage {
   senderRole: string;
   senderFlat?: string;
   mine: boolean;
+  /** Client-only optimistic fields (not from API). */
+  clientId?: string;
+  localStatus?: 'sending' | 'sent' | 'failed';
 }
 
 export interface ChatGroupSummary {
@@ -589,13 +631,14 @@ export interface AppNotification {
   title: string;
   subtitle: string;
   body: string;
-  audienceRole?: 'CHAIRMAN' | 'MEMBER';
+  audienceRole?: 'CHAIRMAN' | 'MEMBER' | 'GATEKEEPER';
   groupId?: string;
   pollId?: string;
   complaintId?: string;
   amenityBookingId?: string;
   ruleId?: string;
   noticeId?: string;
+  visitorId?: string;
   societyId?: string;
   read: boolean;
   readAt: string | null;
@@ -606,4 +649,74 @@ export interface NotificationPage {
   items: AppNotification[];
   hasMore: boolean;
   nextOffset: number;
+}
+
+export interface VisitorSummary {
+  id: string;
+  visitorName: string;
+  mobileNumber: string;
+  flatNumber: string;
+  residentName: string;
+  vehicleNumber?: string | null;
+  visitorCount: number;
+  purpose: string;
+  status: string;
+  photoPath?: string | null;
+  photoUrl?: string | null;
+  memberPhotoUrl?: string | null;
+  createdAt: string;
+  approvedAt?: string | null;
+  entryTime?: string | null;
+  exitTime?: string | null;
+}
+
+export interface VisitorDetail extends VisitorSummary {
+  expectedDurationMinutes?: number | null;
+  remarks?: string | null;
+  rejectionReason?: string | null;
+  approvalExpiresAt?: string | null;
+  residentMemberId?: string;
+  durationMinutes?: number;
+}
+
+export interface VisitorHistoryPage {
+  items: VisitorSummary[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface GateKeeperDashboard {
+  societyName?: string;
+  todayTotal: number;
+  pendingApproval: number;
+  approved: number;
+  rejected: number;
+  recent: VisitorSummary[];
+}
+
+export interface ChairmanVisitorDashboard {
+  todayTotal: number;
+  approved: number;
+  rejected: number;
+  pending: number;
+  checkedIn: number;
+  recentLogs: VisitorSummary[];
+}
+
+export interface GateKeeperAssignment {
+  id: string;
+  userId: string;
+  displayName: string;
+  phone: string;
+  active: boolean;
+  assignedAt: string;
+}
+
+export interface ResidentSearchResult {
+  memberId: string;
+  flatNumber: string;
+  name: string;
+  phone?: string | null;
 }

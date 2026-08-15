@@ -32,7 +32,8 @@ export async function pickPhotoFromCamera(): Promise<PickedPhoto | null> {
   }
   const result = await ImagePicker.launchCameraAsync({
     mediaTypes: ['images'],
-    quality: 0.85,
+    quality: 0.55,
+    exif: false,
   });
   if (result.canceled || !result.assets?.length) return null;
   return normalizeAsset(result.assets[0]);
@@ -46,7 +47,8 @@ export async function pickPhotoFromLibrary(): Promise<PickedPhoto | null> {
   }
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
-    quality: 0.85,
+    quality: 0.55,
+    exif: false,
   });
   if (result.canceled || !result.assets?.length) return null;
   return normalizeAsset(result.assets[0]);
