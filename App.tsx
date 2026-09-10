@@ -8,6 +8,7 @@ import { FirstLoginPasswordScreen } from './src/screens/FirstLoginPasswordScreen
 import { ForgotPasswordScreen } from './src/screens/ForgotPasswordScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { PlansScreen } from './src/screens/PlansScreen';
+import { ProfileCompletionScreen } from './src/screens/ProfileCompletionScreen';
 import { SocietyShell } from './src/screens/SocietyShell';
 import { SplashScreen } from './src/screens/SplashScreen';
 import { PlanPurchaseScreen } from './src/screens/PlanPurchaseScreen';
@@ -24,6 +25,7 @@ import {
   isRemotePushAvailable,
 } from './src/services/pushNotifications';
 import { preloadBrandAssets } from './src/utils/preloadBrandAssets';
+import { needsMemberProfileCompletion } from './src/utils/profileCompletion';
 
 ExpoSplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -209,6 +211,13 @@ function AppRoot() {
         <FirstLoginPasswordScreen
           user={user}
           onPasswordChanged={(updated) => {
+            setUser(updated);
+          }}
+        />
+      ) : user && needsMemberProfileCompletion(user) ? (
+        <ProfileCompletionScreen
+          user={user}
+          onCompleted={(updated) => {
             setUser(updated);
           }}
         />
