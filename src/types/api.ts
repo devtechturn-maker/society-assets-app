@@ -143,7 +143,12 @@ export interface LoginData {
     email: string;
   };
   canSwitchToMemberView?: boolean;
+  email?: string;
   emailVerified?: boolean;
+  /** True when member must capture/verify email before using the app. */
+  profileCompletionRequired?: boolean;
+  /** True when stored email is a phone-login placeholder, not a real inbox. */
+  emailNeedsCapture?: boolean;
   firstName?: string;
   lastName?: string;
 }
@@ -158,6 +163,8 @@ export interface MemberProfile {
   phone: string;
   emailVerified: boolean;
   emailVerificationRequired: boolean;
+  profileCompletionRequired?: boolean;
+  emailNeedsCapture?: boolean;
   societyName: string;
 }
 

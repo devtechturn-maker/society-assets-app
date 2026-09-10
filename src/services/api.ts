@@ -1243,18 +1243,42 @@ export async function requestMemberEmailVerificationOtp(): Promise<{
   message: string;
   email: string;
   expiresInMinutes: number;
+  token?: string;
 }> {
   const { data } = await client.post<
-    ApiResponse<{ message: string; email: string; expiresInMinutes: number }>
+    ApiResponse<{ message: string; email: string; expiresInMinutes: number; token?: string }>
   >('/member/profile/request-email-verification-otp');
   return data.data;
 }
 
-export async function verifyMemberEmailOtp(otp: string): Promise<{ message: string; emailVerified: boolean }> {
-  const { data } = await client.post<ApiResponse<{ message: string; emailVerified: boolean }>>(
-    '/member/profile/verify-email-otp',
-    { otp }
-  );
+export async function completeMemberEmail(email: string): Promise<{
+  message: string;
+  email: string;
+  expiresInMinutes: number;
+  token?: string;
+}> {
+  const { data } = await client.post<
+    ApiResponse<{ message: string; email: string; expiresInMinutes: number; token?: string }>
+  >('/member/profile/complete-email', { email });
+  return data.data;
+}
+
+export async function verifyMemberEmailOtp(otp: string): Promise<{
+  message: string;
+  emailVerified: boolean;
+  profileCompletionRequired?: boolean;
+  email?: string;
+  token?: string;
+}> {
+  const { data } = await client.post<
+    ApiResponse<{
+      message: string;
+      emailVerified: boolean;
+      profileCompletionRequired?: boolean;
+      email?: string;
+      token?: string;
+    }>
+  >('/member/profile/verify-email-otp', { otp });
   return data.data;
 }
 

@@ -210,6 +210,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
     if (!contextReady || !memberPortal) {
       return;
     }
+    // Belt-and-suspenders: App root gates unverified members; keep soft redirect if session is stale.
     if (isMemberRole(sessionUser.role) && sessionUser.emailVerified === false) {
       lastTabPathRef.current = 'dashboard';
       setActivePath('profile');

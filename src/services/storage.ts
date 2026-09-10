@@ -53,5 +53,8 @@ export async function updateStoredUser(patch: Partial<LoginData>): Promise<Login
   }
   const next = mergeLoginUserPatch(current, patch);
   await SecureStore.setItemAsync(USER_KEY, JSON.stringify(next));
+  if (typeof patch.token === 'string' && patch.token.length > 0) {
+    await SecureStore.setItemAsync(TOKEN_KEY, patch.token);
+  }
   return next;
 }
