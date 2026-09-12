@@ -1,4 +1,4 @@
-import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
+import { AudioPlayer, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
 const VISITOR_SOUND_BY_TYPE: Record<string, number> = {
   VISITOR_ARRIVED: require('../../assets/sounds/visitor_arrived.wav'),
@@ -7,20 +7,36 @@ const VISITOR_SOUND_BY_TYPE: Record<string, number> = {
 };
 
 let audioModeReady = false;
-let activeSound: Audio.Sound | null = null;
+let activePlayer: AudioPlayer | null = null;
+let activeSubscription: { remove: () => void } | null = null;
 
 async function ensureAudioMode(): Promise<void> {
   if (audioModeReady) return;
-  await Audio.setAudioModeAsync({
-    allowsRecordingIOS: false,
-    playsInSilentModeIOS: true,
-    staysActiveInBackground: true,
-    interruptionModeIOS: InterruptionModeIOS.DuckOthers,
-    interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-    shouldDuckAndroid: true,
-    playThroughEarpieceAndroid: false,
+  await setAudioModeAsync({
+    playsInSilentMode: true,
+    shouldPlayInBackground: true,
+    interruptionMode: 'duckOthers',
   });
   audioModeReady = true;
+}
+
+function releaseActivePlayer(): void {
+  if (activeSubscription) {
+    try {
+      activeSubscription.remove();
+    } catch {
+      /* ignore */
+    }
+    activeSubscription = null;
+  }
+  if (!activePlayer) return;
+  try {
+    activePlayer.pause();
+    activePlayer.remove();
+  } catch {
+    /* ignore */
+  }
+  activePlayer = null;
 }
 
 /** Play bundled visitor alert WAV (works in Expo Go + native builds when app receives the push). */
@@ -31,30 +47,24 @@ export async function playVisitorNotificationSound(type?: string | null): Promis
 
   try {
     await ensureAudioMode();
-    if (activeSound) {
-      try {
-        await activeSound.stopAsync();
-        await activeSound.unloadAsync();
-      } catch {
-        /* ignore */
-      }
-      activeSound = null;
-    }
+    releaseActivePlayer();
 
-    const { sound } = await Audio.Sound.createAsync(source, {
-      shouldPlay: true,
-      volume: 1,
-    });
-    activeSound = sound;
-    sound.setOnPlaybackStatusUpdate((status) => {
-      if (!status.isLoaded) return;
-      if (status.didJustFinish) {
-        void sound.unloadAsync().catch(() => undefined);
-        if (activeSound === sound) {
-          activeSound = null;
+    const player = createAudioPlayer(source, { updateInterval: 200 });
+    activePlayer = player;
+    player.volume = 1;
+    activeSubscription = player.addListener('playbackStatusUpdate', (status) => {
+      if (!status.didJustFinish) return;
+      if (activePlayer === player) {
+        releaseActivePlayer();
+      } else {
+        try {
+          player.remove();
+        } catch {
+          /* ignore */
         }
       }
     });
+    player.play();
   } catch (error) {
     if (__DEV__) {
       console.warn('[push] visitor sound playback failed', error);

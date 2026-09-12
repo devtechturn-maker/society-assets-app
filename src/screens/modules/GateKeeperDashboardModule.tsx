@@ -9,34 +9,12 @@ import {
   View,
 } from 'react-native';
 import { fetchGateKeeperDashboard } from '../../services/api';
-import type { GateKeeperDashboard, VisitorSummary } from '../../types/api';
+import type { GateKeeperDashboard } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { ListError } from '../../components/dashboard/ListStates';
 import { KpiGrid } from '../../components/dashboard/KpiGrid';
 import { SectionCard } from '../../components/dashboard/SectionCard';
-import { VisitorAvatar } from '../../components/visitor/VisitorAvatar';
-import { visitorStatusLabel, visitorStatusTone } from '../../utils/visitorStatus';
-
-function RecentVisitorRow({ visitor }: { visitor: VisitorSummary }) {
-  const { theme } = useTheme();
-  const tone = visitorStatusTone(visitor.status);
-  return (
-    <View style={[styles.row, { backgroundColor: theme.chipBg, borderColor: theme.cardBorder }]}>
-      <VisitorAvatar visitor={visitor} memberPortal={false} size={44} />
-      <View style={styles.rowMain}>
-        <Text style={[styles.rowTitle, { color: theme.text }]} numberOfLines={1}>
-          {visitor.visitorName}
-        </Text>
-        <Text style={[styles.rowMeta, { color: theme.textMuted }]}>
-          Flat {visitor.flatNumber} · {visitor.mobileNumber}
-        </Text>
-      </View>
-      <View style={[styles.statusPill, { backgroundColor: tone.bg, borderColor: tone.border }]}>
-        <Text style={[styles.statusText, { color: tone.text }]}>{visitorStatusLabel(visitor.status)}</Text>
-      </View>
-    </View>
-  );
-}
+import { RecentVisitorRow } from '../../components/visitor/RecentVisitorRow';
 
 export function GateKeeperDashboardModule() {
   const { theme } = useTheme();

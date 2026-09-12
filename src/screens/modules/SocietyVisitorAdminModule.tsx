@@ -18,15 +18,14 @@ import {
   resetGateKeeperPassword,
   setGateKeeperActive,
 } from '../../services/api';
-import type { ChairmanVisitorDashboard, GateKeeperAssignment, VisitorSummary } from '../../types/api';
+import type { ChairmanVisitorDashboard, GateKeeperAssignment } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { KpiGrid } from '../../components/dashboard/KpiGrid';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { ListError } from '../../components/dashboard/ListStates';
-import { VisitorAvatar } from '../../components/visitor/VisitorAvatar';
 import { VisitorHistoryModule } from './VisitorHistoryModule';
-import { visitorStatusLabel, visitorStatusTone } from '../../utils/visitorStatus';
+import { RecentVisitorRow } from '../../components/visitor/RecentVisitorRow';
 
 type Tab = 'overview' | 'history' | 'gatekeepers';
 
@@ -35,28 +34,6 @@ const TABS: { id: Tab; label: string; icon: keyof typeof Ionicons.glyphMap }[] =
   { id: 'history', label: 'History', icon: 'time-outline' },
   { id: 'gatekeepers', label: 'Gate keepers', icon: 'shield-checkmark-outline' },
 ];
-
-function RecentVisitorRow({ visitor }: { visitor: VisitorSummary }) {
-  const { theme } = useTheme();
-  const tone = visitorStatusTone(visitor.status);
-
-  return (
-    <View style={[styles.recentRow, { backgroundColor: theme.chipBg, borderColor: theme.cardBorder }]}>
-      <VisitorAvatar visitor={visitor} photoPortal="society" size={44} expandable />
-      <View style={styles.recentMain}>
-        <Text style={[styles.recentName, { color: theme.text }]} numberOfLines={1}>
-          {visitor.visitorName}
-        </Text>
-        <Text style={[styles.recentMeta, { color: theme.textMuted }]}>
-          Flat {visitor.flatNumber} · {visitor.mobileNumber}
-        </Text>
-      </View>
-      <View style={[styles.statusPill, { backgroundColor: tone.bg, borderColor: tone.border }]}>
-        <Text style={[styles.statusText, { color: tone.text }]}>{visitorStatusLabel(visitor.status)}</Text>
-      </View>
-    </View>
-  );
-}
 
 function GateKeeperCard({
   assignment,
@@ -254,7 +231,9 @@ export function SocietyVisitorAdminModule() {
             </Text>
           </View>
         ) : (
-          dashboard.recentLogs.map((visitor) => <RecentVisitorRow key={visitor.id} visitor={visitor} />)
+          dashboard.recentLogs.map((visitor) => (
+            <RecentVisitorRow key={visitor.id} visitor={visitor} photoPortal="society" />
+          ))
         )}
       </SectionCard>
 

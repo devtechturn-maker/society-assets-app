@@ -10,11 +10,11 @@ Spoken WAV files used for visitor push notifications.
 
 ## How playback works
 
-1. **App open (foreground):** plays WAV via `expo-av` in the notification handler.
+1. **App open (foreground):** plays WAV via `expo-audio` in the notification handler.
 2. **App in background (still in memory):** plays WAV via `BACKGROUND-VISITOR-NOTIFICATION-TASK`.
 3. **App fully killed / locked tray sound:** OS plays the channel sound from the native build.
 
-For (2) and (3) you **must rebuild** the native app after adding sounds + `expo-task-manager` + `expo-av`:
+For (2) and (3) you **must rebuild** the native app after adding sounds + `expo-task-manager` + `expo-audio`:
 
 ```bash
 npx expo run:android

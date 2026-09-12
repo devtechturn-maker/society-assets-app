@@ -3,6 +3,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { API_BASE_URL } from '../config/env';
 import { clearSession, getToken } from './storage';
 import { notifySessionInvalid } from './session';
+import { cachedGet } from './requestCache';
 import type {
   ApiResponse,
   ExpenseCategoryReportRow,
@@ -344,9 +345,14 @@ export const fetchSocietyModules = () => getData<NavModule[]>('/modules/society'
 export const fetchTreasurerModules = () => getData<NavModule[]>('/modules/treasurer');
 export const fetchMemberModules = () => getData<NavModule[]>('/modules/member');
 export const fetchGatekeeperModules = () => getData<NavModule[]>('/modules/gatekeeper');
-export const fetchOverview = () => getData<SocietyOverview>('/society/dashboard/overview');
-export const fetchMemberOverview = () => getData<MemberOverview>('/member/overview');
-export const fetchMemberMaintenanceDue = () => getData<MemberMaintenanceDue>('/member/maintenance/due');
+export const fetchOverview = () =>
+  cachedGet('overview:society', () => getData<SocietyOverview>('/society/dashboard/overview'));
+export const fetchMemberOverview = () =>
+  cachedGet('overview:member', () => getData<MemberOverview>('/member/overview'));
+export const fetchMemberMaintenanceDue = () =>
+  cachedGet('maintenance:due', () => getData<MemberMaintenanceDue>('/member/maintenance/due'));
+export const fetchGateKeeperDashboard = () =>
+  cachedGet('overview:gatekeeper', () => getData<GateKeeperDashboard>('/gatekeeper/dashboard'));
 export const fetchMemberMaintenanceHistory = () =>
   getData<RecentExpense[]>('/member/maintenance');
 
@@ -1284,12 +1290,10 @@ export async function verifyMemberEmailOtp(otp: string): Promise<{
 
 // --- Visitor & Gate Keeper ---
 
-export async function fetchGateKeeperDashboard(): Promise<GateKeeperDashboard> {
-  return getData<GateKeeperDashboard>('/gatekeeper/dashboard');
-}
-
 export async function fetchChairmanVisitorDashboard(): Promise<ChairmanVisitorDashboard> {
-  return getData<ChairmanVisitorDashboard>('/society/visitor-dashboard');
+  return cachedGet('overview:chairman-visitor', () =>
+    getData<ChairmanVisitorDashboard>('/society/visitor-dashboard')
+  );
 }
 
 export async function searchResidentsForVisitor(q: string): Promise<ResidentSearchResult[]> {
