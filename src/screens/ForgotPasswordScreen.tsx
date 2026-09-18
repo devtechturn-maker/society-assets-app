@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,15 +17,14 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useAppAlert } from '../context/AppAlertContext';
 import { LoginCityscape } from '../components/LoginCityscape';
+import { AppLogo } from '../components/AppLogo';
+import { PRIMARY_LOGO_ASPECT } from '../constants/branding';
 import {
   requestPasswordResetOtp,
   resetPasswordWithToken,
   verifyPasswordResetOtp,
 } from '../services/api';
 import { colors } from '../theme/colors';
-
-const LOGO = require('../../assets/primary-logo.png');
-const LOGO_ASPECT = 1536 / 1024;
 
 type Props = {
   onBackToLogin: () => void;
@@ -47,10 +45,10 @@ function useLoginLogoSize(screenWidth: number, screenHeight: number) {
   const maxLogoHeight = Math.min(screenHeight * 0.32, 220);
   const maxLogoWidth = screenWidth - 48;
   let logoWidth = Math.min(maxLogoWidth, 200);
-  let logoHeight = logoWidth * LOGO_ASPECT;
+  let logoHeight = logoWidth * PRIMARY_LOGO_ASPECT;
   if (logoHeight > maxLogoHeight) {
     logoHeight = maxLogoHeight;
-    logoWidth = logoHeight / LOGO_ASPECT;
+    logoWidth = logoHeight / PRIMARY_LOGO_ASPECT;
   }
   return { logoWidth, logoHeight };
 }
@@ -212,12 +210,7 @@ export function ForgotPasswordScreen({ onBackToLogin, onPasswordReset }: Props) 
         >
           <View style={styles.page}>
             <View style={styles.contentBlock}>
-              <Image
-                source={LOGO}
-                style={{ width: logoWidth, height: logoHeight, marginBottom: 14 }}
-                resizeMode="contain"
-                accessibilityLabel="Society Assets"
-              />
+              <AppLogo variant="primary" size={logoWidth} style={{ marginBottom: 14 }} />
 
               <View style={styles.authCard}>
                 <View style={styles.cardBody}>
@@ -538,7 +531,7 @@ const styles = StyleSheet.create({
     height: 46,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#70088c',
+    backgroundColor: '#0f172a',
   },
   buttonDisabled: { opacity: 0.85 },
   buttonText: {
@@ -557,7 +550,7 @@ const styles = StyleSheet.create({
   inlineLink: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#70088c',
+    color: '#0f172a',
     textDecorationLine: 'underline',
   },
 });

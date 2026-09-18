@@ -1,11 +1,12 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-type Tone = 'info' | 'warn' | 'neutral';
+type Tone = 'info' | 'warn' | 'neutral' | 'success';
 
 const toneStyles: Record<Tone, { bg: string; text: string }> = {
   info: { bg: '#e0f2fe', text: '#0369a1' },
   warn: { bg: '#ffedd5', text: '#c2410c' },
   neutral: { bg: '#f1f5f9', text: '#475569' },
+  success: { bg: '#dcfce7', text: '#047857' },
 };
 
 type Props = {

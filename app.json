@@ -6,30 +6,33 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash-logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#70088c"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.devtechturn.societyassets",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "UIBackgroundModes": [
-          "remote-notification"
+          "remote-notification",
+          "audio"
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSExceptionDomains": {
+            "187.127.180.221": {
+              "NSExceptionAllowsInsecureHTTPLoads": true,
+              "NSIncludesSubdomains": true
+            }
+          }
+        }
       }
     },
     "android": {
       "package": "com.devtechturn.societyassets",
-      "versionCode": 2,
+      "versionCode": 5,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#70088c"
+        "backgroundColor": "#0f172a"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize"
     },
@@ -51,17 +54,34 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#70088c",
+          "color": "#0f172a",
           "defaultChannel": "chat",
-          "sounds": []
+          "sounds": [
+            "./assets/sounds/visitor_arrived.wav",
+            "./assets/sounds/visitor_approved.wav",
+            "./assets/sounds/visitor_rejected.wav"
+          ]
         }
       ],
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#70088c",
-          "image": "./assets/splash-logo.png",
-          "imageWidth": 300
+          "backgroundColor": "#0f172a",
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "imageWidth": 280
+        }
+      ],
+      "expo-sharing",
+      "expo-status-bar",
+      "expo-asset",
+      "expo-font",
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": true,
+          "enableBackgroundRecording": false,
+          "microphonePermission": false
         }
       ]
     ],

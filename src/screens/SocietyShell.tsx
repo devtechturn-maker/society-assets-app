@@ -1,39 +1,48 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
+  BackHandler,
+  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { clearSession, updateStoredUser } from '../services/storage';
 import {
   canSwitchAppView,
   isMemberPortalView,
   resolveInitialAppViewContext,
-  setAppViewContext,
   type AppViewContext,
 } from '../services/appContext';
 import {
   fetchMemberModules,
   fetchMemberOverview,
-  fetchMaintenanceSettings,
   fetchOverview,
   fetchSocietyModules,
+  fetchTreasurerModules,
+  fetchGatekeeperModules,
+  fetchGateKeeperDashboard,
   isMemberRole,
+  isTreasurerRole,
+  isGateKeeperRole,
 } from '../services/api';
-import type { LoginData, NavModule } from '../types/api';
+import type { AppNotification, LoginData, NavModule } from '../types/api';
 import { APPEARANCE_MODULE } from '../constants/appearanceModule';
 import {
-  FALLBACK_MEMBER_MODULES,
-  FALLBACK_SOCIETY_MODULES,
-  mergeMemberPortalModules,
-  moduleGlyph,
+  FALLBACK_MEMBER_NAV_SOURCE,
+  FALLBACK_SOCIETY_NAV_SOURCE,
+  FALLBACK_GATEKEEPER_NAV_SOURCE,
+  FALLBACK_TREASURER_NAV_SOURCE,
+  prepareBottomTabModules,
+  splitTabBarModules,
+  buildMoreMenuItems,
+  ACTIVITY_HUB_ROUTE_PATHS,
 } from '../constants/fallbackModules';
+import { iconFromPrimeIcon, iconForRoutePath } from '../constants/uiIcons';
+import { UiIcon } from '../components/UiIcon';
+import type { NavPortalKind } from '../constants/activityHub';
 import { useTheme } from '../theme/ThemeContext';
 import { ChatNotificationBanner } from '../components/ChatNotificationBanner';
 import {
@@ -46,29 +55,26 @@ import {
   addNotificationResponseListener,
   parseAppPushFromResponse,
   registerPushNotificationsWithBackend,
-  unregisterPushNotificationsFromBackend,
   type AppPushNotification,
 } from '../services/pushNotifications';
 import * as Notifications from 'expo-notifications';
-import { ModuleRouter } from './modules/ModuleRouter';
 import { pushTypeMatchesAudience, type NotificationAudience } from '../utils/notificationAudience';
 import { subscribeMemberProfileNavigation } from '../services/memberProfileNavigation';
 import { useAppAlert } from '../context/AppAlertContext';
 import { mergeLoginUserPatch, userDisplayName } from '../utils/userDisplayName';
-import { setMaintenanceSettingsRequiredHandler } from '../services/maintenanceSettingsGate';
+import { AppLogo } from '../components/AppLogo';
+import { AppLogoLoader } from '../components/AppLogoLoader';
+import { MoreBottomMenu } from '../components/MoreBottomMenu';
+import { SocietyJoinCodeHeader } from '../components/society/SocietyJoinCodeHeader';
+import { runHardwareBackHandlers } from '../services/hardwareBackNavigation';
+import { ModuleRouter } from './modules/ModuleRouter';
 
 type Props = {
   user: LoginData;
   onLogout: () => void;
   onUserUpdated?: (user: LoginData) => void;
+  onSwitchRole?: () => void;
 };
-
-function societyInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return 'SA';
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
 
 function tabLabel(title: string): string {
   const trimmed = title.trim();
@@ -76,33 +82,28 @@ function tabLabel(title: string): string {
   return `${trimmed.slice(0, 10)}…`;
 }
 
-function formatRole(role: string | undefined): string {
-  switch ((role ?? '').trim().toUpperCase()) {
-    case 'CHAIRMAN':
-      return 'Chairman';
-    case 'TREASURER':
-      return 'Treasurer';
-    case 'AUDITOR':
-      return 'Auditor';
-    case 'USER':
-      return 'Staff';
-    case 'MEMBER':
-      return 'Member';
-    default:
-      return role?.trim() || 'User';
-  }
-}
-
-export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
-  const { theme, toggleMode, mode } = useTheme();
-  const { alert, toast } = useAppAlert();
+export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Props) {
+  const { theme } = useTheme();
+  const { toast } = useAppAlert();
   const [sessionUser, setSessionUser] = useState(user);
   const [appContext, setAppContextState] = useState<AppViewContext>('CHAIRMAN');
   const [contextReady, setContextReady] = useState(false);
-  const [maintenanceConfigured, setMaintenanceConfigured] = useState(true);
-  const canSwitchView = canSwitchAppView(user);
-  const memberPortal = isMemberPortalView(sessionUser, appContext);
+  const canSwitchView = canSwitchAppView(sessionUser);
+  const gatekeeperPortal = isGateKeeperRole(sessionUser.role ?? user.role ?? '');
+  const memberPortal = !gatekeeperPortal && isMemberPortalView(sessionUser, appContext);
+  const treasurerPortal =
+    !memberPortal && isTreasurerRole(sessionUser.role ?? user.role ?? '');
+  const navPortal: NavPortalKind = gatekeeperPortal
+    ? 'gatekeeper'
+    : memberPortal
+      ? 'member'
+      : treasurerPortal
+        ? 'treasurer'
+        : 'society';
   const notificationAudience = useMemo((): NotificationAudience | null => {
+    if (gatekeeperPortal) {
+      return 'GATEKEEPER';
+    }
     if (canSwitchView) {
       return appContext;
     }
@@ -110,7 +111,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
       return 'MEMBER';
     }
     return null;
-  }, [canSwitchView, sessionUser.role, appContext]);
+  }, [canSwitchView, gatekeeperPortal, sessionUser.role, appContext]);
 
   useEffect(() => {
     setSessionUser(user);
@@ -119,16 +120,69 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
   const handleUserUpdated = useCallback((patch: Partial<LoginData>) => {
     setSessionUser((current) => mergeLoginUserPatch(current, patch));
   }, []);
-  const [modules, setModules] = useState<NavModule[]>(
-    memberPortal ? [...FALLBACK_MEMBER_MODULES] : [...FALLBACK_SOCIETY_MODULES, APPEARANCE_MODULE]
+  const [modules, setModules] = useState<NavModule[]>(() =>
+    prepareBottomTabModules(
+      memberPortal
+        ? [...FALLBACK_MEMBER_NAV_SOURCE]
+        : treasurerPortal
+          ? [...FALLBACK_TREASURER_NAV_SOURCE, APPEARANCE_MODULE]
+          : [...FALLBACK_SOCIETY_NAV_SOURCE, APPEARANCE_MODULE],
+      navPortal
+    )
   );
   const [activePath, setActivePath] = useState('dashboard');
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [bottomBarHeight, setBottomBarHeight] = useState(72);
+  const activePathRef = useRef(activePath);
+  const lastTabPathRef = useRef('dashboard');
+
+  useEffect(() => {
+    activePathRef.current = activePath;
+  }, [activePath]);
+
   const [societyName, setSocietyName] = useState('Society');
   const [initialChatGroupId, setInitialChatGroupId] = useState<string | null>(null);
   const [initialPollId, setInitialPollId] = useState<string | null>(null);
   const [initialComplaintId, setInitialComplaintId] = useState<string | null>(null);
+  const [initialRuleId, setInitialRuleId] = useState<string | null>(null);
+  const [initialNoticeId, setInitialNoticeId] = useState<string | null>(null);
+  const [initialBookingId, setInitialBookingId] = useState<string | null>(null);
+  const [initialVisitorId, setInitialVisitorId] = useState<string | null>(null);
   const [bannerNotification, setBannerNotification] = useState<AppPushNotification | null>(null);
   const inbox = useNotificationInbox(user.userId, notificationAudience);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (runHardwareBackHandlers()) {
+        return true;
+      }
+      if (moreMenuOpen) {
+        setMoreMenuOpen(false);
+        return true;
+      }
+      if (inbox.panelOpen) {
+        inbox.closePanel();
+        return true;
+      }
+      if (ACTIVITY_HUB_ROUTE_PATHS.has(activePathRef.current)) {
+        setActivePath('activity');
+        lastTabPathRef.current = 'activity';
+        return true;
+      }
+      if (activePathRef.current === 'activity') {
+        setActivePath('dashboard');
+        lastTabPathRef.current = 'dashboard';
+        return true;
+      }
+      if (activePathRef.current !== 'dashboard') {
+        setActivePath('dashboard');
+        lastTabPathRef.current = 'dashboard';
+        return true;
+      }
+      return false;
+    });
+    return () => subscription.remove();
+  }, [moreMenuOpen, inbox.panelOpen, inbox.closePanel]);
 
   useEffect(() => {
     let cancelled = false;
@@ -147,7 +201,9 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
     if (!contextReady || !memberPortal) {
       return;
     }
+    // Belt-and-suspenders: App root gates unverified members; keep soft redirect if session is stale.
     if (isMemberRole(sessionUser.role) && sessionUser.emailVerified === false) {
+      lastTabPathRef.current = 'dashboard';
       setActivePath('profile');
     }
   }, [contextReady, memberPortal, sessionUser.role, sessionUser.emailVerified]);
@@ -157,6 +213,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
       return;
     }
     return subscribeMemberProfileNavigation(() => {
+      lastTabPathRef.current = activePathRef.current;
       setActivePath('profile');
       toast('Please verify your email first.', 'error');
     });
@@ -164,15 +221,29 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
 
   const loadMeta = useCallback(async () => {
     try {
+      if (gatekeeperPortal) {
+        const [mods, dashboard] = await Promise.all([fetchGatekeeperModules(), fetchGateKeeperDashboard()]);
+        const merged = prepareBottomTabModules(mods, 'gatekeeper');
+        if (merged.length > 0) setModules(merged);
+        if (dashboard.societyName) setSocietyName(dashboard.societyName);
+        return;
+      }
       if (memberPortal) {
         const [mods, overview] = await Promise.all([fetchMemberModules(), fetchMemberOverview()]);
-        const merged = mergeMemberPortalModules(mods);
+        const merged = prepareBottomTabModules(mods, 'member');
+        if (merged.length > 0) setModules(merged);
+        if (overview.societyName) setSocietyName(overview.societyName);
+        return;
+      }
+      if (treasurerPortal) {
+        const [mods, overview] = await Promise.all([fetchTreasurerModules(), fetchOverview()]);
+        const merged = prepareBottomTabModules([...mods, APPEARANCE_MODULE], 'treasurer');
         if (merged.length > 0) setModules(merged);
         if (overview.societyName) setSocietyName(overview.societyName);
         return;
       }
       const [mods, overview] = await Promise.all([fetchSocietyModules(), fetchOverview()]);
-      const merged = [...mods, APPEARANCE_MODULE].sort((a, b) => a.sortOrder - b.sortOrder);
+      const merged = prepareBottomTabModules([...mods, APPEARANCE_MODULE], 'society');
       if (merged.length > 0) setModules(merged);
       if (overview.societyName) setSocietyName(overview.societyName);
     } catch {
@@ -188,7 +259,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
         /* defaults */
       }
     }
-  }, [memberPortal]);
+  }, [gatekeeperPortal, memberPortal, treasurerPortal, navPortal]);
 
   useEffect(() => {
     if (!contextReady) {
@@ -198,47 +269,22 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
   }, [loadMeta, contextReady]);
 
   useEffect(() => {
-    if (!contextReady || memberPortal) {
-      return;
-    }
-
-    const redirectToMaintenanceSetup = () => {
-      setActivePath('settings');
-      alert('Maintenance setup required', 'Please set your maintenance settings first.', { variant: 'warning' });
-    };
-
-    setMaintenanceSettingsRequiredHandler(redirectToMaintenanceSetup);
-    fetchMaintenanceSettings()
-      .then((settings) => {
-        const configured = settings.configured === true;
-        setMaintenanceConfigured(configured);
-        if (!configured) {
-          redirectToMaintenanceSetup();
-        }
-      })
-      .catch(() => undefined);
-
-    return () => setMaintenanceSettingsRequiredHandler(null);
-  }, [contextReady, memberPortal, alert]);
-
-  const selectModule = useCallback(
-    (routePath: string) => {
-      if (!memberPortal && !maintenanceConfigured && routePath !== 'settings') {
-        setActivePath('settings');
-        alert('Maintenance setup required', 'Please set your maintenance settings first.', { variant: 'warning' });
-        return;
-      }
-      setActivePath(routePath);
-    },
-    [memberPortal, maintenanceConfigured, alert]
-  );
-
-  useEffect(() => {
     setModules(
-      memberPortal ? [...FALLBACK_MEMBER_MODULES] : [...FALLBACK_SOCIETY_MODULES, APPEARANCE_MODULE]
+      prepareBottomTabModules(
+        gatekeeperPortal
+          ? [...FALLBACK_GATEKEEPER_NAV_SOURCE]
+          : memberPortal
+            ? [...FALLBACK_MEMBER_NAV_SOURCE]
+            : treasurerPortal
+              ? [...FALLBACK_TREASURER_NAV_SOURCE, APPEARANCE_MODULE]
+              : [...FALLBACK_SOCIETY_NAV_SOURCE, APPEARANCE_MODULE],
+        navPortal
+      )
     );
     setActivePath('dashboard');
-  }, [memberPortal]);
+    setMoreMenuOpen(false);
+    lastTabPathRef.current = 'dashboard';
+  }, [gatekeeperPortal, memberPortal, treasurerPortal, navPortal]);
 
   const openChatFromNotification = useCallback((groupId?: string) => {
     setActivePath('chat');
@@ -247,8 +293,11 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
     }
   }, []);
 
-  const openPollFromNotification = useCallback((pollId?: string) => {
-    setActivePath('polls');
+  const openPollFromNotification = useCallback((pollId?: string, groupId?: string) => {
+    setActivePath('chat');
+    if (groupId) {
+      setInitialChatGroupId(groupId);
+    }
     if (pollId) {
       setInitialPollId(pollId);
     }
@@ -260,6 +309,110 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
       setInitialComplaintId(complaintId);
     }
   }, []);
+
+  const openRuleFromNotification = useCallback((ruleId?: string) => {
+    setActivePath('about-society');
+    if (ruleId) {
+      setInitialRuleId(ruleId);
+    }
+  }, []);
+
+  const openNoticeFromNotification = useCallback((noticeId?: string) => {
+    setActivePath('notices');
+    lastTabPathRef.current = 'notices';
+    if (noticeId) {
+      setInitialNoticeId(noticeId);
+    }
+  }, []);
+
+  const openAmenityFromNotification = useCallback((bookingId?: string) => {
+    setActivePath('amenities');
+    if (bookingId) {
+      setInitialBookingId(bookingId);
+    }
+  }, []);
+
+  const openVisitorFromNotification = useCallback(
+    (visitorId?: string, type?: AppPushNotification['type']) => {
+      if (!visitorId) {
+        return;
+      }
+      if (gatekeeperPortal) {
+        setActivePath('visitor-history');
+        setInitialVisitorId(visitorId);
+        return;
+      }
+      setActivePath('visitors');
+      setInitialVisitorId(visitorId);
+    },
+    [gatekeeperPortal]
+  );
+
+  const openVisitorsScreen = useCallback((visitorId?: string) => {
+    lastTabPathRef.current = 'dashboard';
+    setActivePath('visitors');
+    if (visitorId) {
+      setInitialVisitorId(visitorId);
+    }
+  }, []);
+
+  const handleNotificationPress = useCallback(
+    (item: AppNotification) => {
+      void inbox.handleOpenNotification(item).then((opened) => {
+        if (!opened) {
+          return;
+        }
+        if (gatekeeperPortal) {
+          if (opened.visitorId || opened.type.startsWith('VISITOR')) {
+            openVisitorFromNotification(opened.visitorId, opened.type as AppPushNotification['type']);
+          }
+          return;
+        }
+        if (opened.pollId || opened.type.startsWith('POLL')) {
+          openPollFromNotification(opened.pollId, opened.groupId);
+          return;
+        }
+        if (opened.complaintId || opened.type.startsWith('COMPLAINT')) {
+          openComplaintFromNotification(opened.complaintId);
+          return;
+        }
+        if (opened.amenityBookingId || opened.type.startsWith('AMENITY')) {
+          openAmenityFromNotification(opened.amenityBookingId);
+          return;
+        }
+        if (opened.ruleId || opened.type.startsWith('RULE')) {
+          openRuleFromNotification(opened.ruleId);
+          return;
+        }
+        if (opened.noticeId || opened.type.startsWith('NOTICE')) {
+          openNoticeFromNotification(opened.noticeId);
+          return;
+        }
+        if (opened.visitorId || opened.type.startsWith('VISITOR')) {
+          openVisitorFromNotification(opened.visitorId, opened.type as AppPushNotification['type']);
+          return;
+        }
+        if (opened.groupId || opened.type.startsWith('GROUP')) {
+          openChatFromNotification(opened.groupId);
+        }
+      });
+    },
+    [
+      gatekeeperPortal,
+      inbox.handleOpenNotification,
+      openAmenityFromNotification,
+      openChatFromNotification,
+      openComplaintFromNotification,
+      openNoticeFromNotification,
+      openPollFromNotification,
+      openRuleFromNotification,
+      openVisitorFromNotification,
+    ]
+  );
+
+  useEffect(() => {
+    inbox.setListActive(inbox.panelOpen);
+  }, [inbox.panelOpen, inbox.setListActive]);
 
   useEffect(() => {
     registerPushNotificationsWithBackend();
@@ -278,11 +431,27 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
       }
       await inbox.markPushNotificationAsRead(parsed);
       if (parsed.kind === 'poll') {
-        openPollFromNotification(parsed.pollId);
+        openPollFromNotification(parsed.pollId, parsed.groupId);
         return;
       }
       if (parsed.kind === 'complaint') {
         openComplaintFromNotification(parsed.complaintId);
+        return;
+      }
+      if (parsed.kind === 'amenity') {
+        openAmenityFromNotification(parsed.bookingId);
+        return;
+      }
+      if (parsed.kind === 'rule') {
+        openRuleFromNotification(parsed.ruleId);
+        return;
+      }
+      if (parsed.kind === 'notice') {
+        openNoticeFromNotification(parsed.noticeId);
+        return;
+      }
+      if (parsed.kind === 'visitor') {
+        openVisitorFromNotification(parsed.visitorId, parsed.type);
         return;
       }
       openChatFromNotification(parsed.groupId);
@@ -296,11 +465,23 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
       onOpenChat: (groupId) => {
         openChatFromNotification(groupId);
       },
-      onOpenPoll: (pollId) => {
-        openPollFromNotification(pollId);
+      onOpenPoll: (pollId, groupId) => {
+        openPollFromNotification(pollId, groupId);
       },
       onOpenComplaint: (complaintId) => {
         openComplaintFromNotification(complaintId);
+      },
+      onOpenAmenity: (bookingId) => {
+        openAmenityFromNotification(bookingId);
+      },
+      onOpenRule: (ruleId) => {
+        openRuleFromNotification(ruleId);
+      },
+      onOpenNotice: (noticeId) => {
+        openNoticeFromNotification(noticeId);
+      },
+      onOpenVisitor: (visitorId, type) => {
+        openVisitorFromNotification(visitorId, type);
       },
     });
     const receivedSubscription = addNotificationReceivedListener((notification) => {
@@ -324,54 +505,103 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
     openChatFromNotification,
     openPollFromNotification,
     openComplaintFromNotification,
+    openRuleFromNotification,
+    openNoticeFromNotification,
+    openAmenityFromNotification,
+    openVisitorFromNotification,
     inbox.markPushNotificationAsRead,
     inbox.refreshUnreadCount,
   ]);
 
-  const activeTitle = useMemo(
-    () => modules.find((m) => m.routePath === activePath)?.title ?? 'Dashboard',
-    [modules, activePath]
-  );
-
   async function logout() {
-    await unregisterPushNotificationsFromBackend();
-    await clearSession();
     onLogout();
   }
 
-  async function switchToOfficeView() {
-    if (!canSwitchView || !memberPortal) {
+  const openMoreMenuRoute = useCallback((routePath: string) => {
+    if (routePath === '__switch_role__') {
+      setMoreMenuOpen(false);
+      onSwitchRole?.();
       return;
     }
-    await setAppViewContext('CHAIRMAN');
-    setAppContextState('CHAIRMAN');
-  }
-
-  async function switchToMemberView() {
-    if (!canSwitchView || memberPortal) {
-      return;
+    const primary = new Set(
+      memberPortal
+        ? ['dashboard', 'activity', 'chat']
+        : gatekeeperPortal
+          ? ['dashboard', 'visitor-entry', 'visitor-history']
+          : treasurerPortal
+            ? ['dashboard', 'activity', 'ledger']
+            : ['dashboard', 'activity', 'chat']
+    );
+    if (primary.has(activePathRef.current) || activePathRef.current === 'activity') {
+      lastTabPathRef.current = activePathRef.current;
+    } else if (!primary.has(activePathRef.current)) {
+      // Keep last primary tab when opening a More destination
+      if (primary.has(lastTabPathRef.current) === false) {
+        lastTabPathRef.current = 'dashboard';
+      }
     }
-    await setAppViewContext('MEMBER');
-    setAppContextState('MEMBER');
-  }
+    setActivePath(routePath);
+    setMoreMenuOpen(false);
+  }, [gatekeeperPortal, memberPortal, treasurerPortal, onSwitchRole]);
 
-  const displayName = userDisplayName(sessionUser);
-  const portalBadge = memberPortal ? 'Member View' : formatRole(sessionUser.role);
-  const headerTitle = memberPortal && displayName ? displayName : societyName;
-  const avatarLabel = memberPortal && displayName ? displayName : societyName;
-  const portalKicker = memberPortal
-    ? displayName
-      ? `${societyName} · Flat ${sessionUser.memberProfile?.flatNumber ?? '—'} · Resident access`
-      : `Flat ${sessionUser.memberProfile?.flatNumber ?? '—'} · Resident access`
-    : 'Financial Command';
+  const moreMenuItems = useMemo(() => {
+    const switchRoleLabel =
+      canSwitchView && onSwitchRole
+        ? memberPortal
+          ? 'Switch to Chairman View'
+          : 'Switch to Member View'
+        : undefined;
+    return buildMoreMenuItems(modules, navPortal, { switchRoleLabel });
+  }, [modules, navPortal, canSwitchView, onSwitchRole, memberPortal]);
+
+  const selectTab = useCallback((routePath: string) => {
+    setMoreMenuOpen(false);
+    setActivePath(routePath);
+    lastTabPathRef.current = routePath;
+  }, []);
+
+  const openProfileScreen = useCallback(() => {
+    openMoreMenuRoute(memberPortal ? 'profile' : gatekeeperPortal ? 'profile' : 'appearance');
+  }, [gatekeeperPortal, memberPortal, openMoreMenuRoute]);
+
+  const { scrollableTabs, profileTab: moreTab } = useMemo(
+    () => splitTabBarModules(modules, navPortal),
+    [modules, navPortal]
+  );
+
+  const moreRelatedRoutes = useMemo(
+    () =>
+      new Set(
+        moreMenuItems
+          .map((item) => item.routePath)
+          .filter((routePath) => routePath !== '__switch_role__')
+      ),
+    [moreMenuItems]
+  );
+  const moreTabActive = moreMenuOpen || moreRelatedRoutes.has(activePath);
+
+  const toggleMoreMenu = useCallback(() => {
+    if (!moreMenuOpen && !moreRelatedRoutes.has(activePathRef.current)) {
+      lastTabPathRef.current = activePathRef.current;
+    }
+    setMoreMenuOpen((open) => !open);
+  }, [moreRelatedRoutes, moreMenuOpen]);
+
+  const navigateFromActivity = useCallback((routePath: string) => {
+    setMoreMenuOpen(false);
+    lastTabPathRef.current = 'activity';
+    setActivePath(routePath);
+  }, []);
 
   if (!contextReady) {
     return (
       <View style={[styles.root, styles.boot, { backgroundColor: theme.pageBg }]}>
-        <ActivityIndicator size="large" color={theme.accent} />
+        <AppLogoLoader size="lg" tone="onLight" label="Loading your society…" />
       </View>
     );
   }
+
+  const avatarLabel = userDisplayName(sessionUser) || societyName;
 
   return (
     <View style={[styles.root, { backgroundColor: theme.pageBg }]}>
@@ -383,11 +613,27 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
           setBannerNotification(null);
           void inbox.markPushNotificationAsRead(item).then(() => {
             if (item.kind === 'poll') {
-              openPollFromNotification(item.pollId);
+              openPollFromNotification(item.pollId, item.groupId);
               return;
             }
             if (item.kind === 'complaint') {
               openComplaintFromNotification(item.complaintId);
+              return;
+            }
+            if (item.kind === 'amenity') {
+              openAmenityFromNotification(item.bookingId);
+              return;
+            }
+            if (item.kind === 'rule') {
+              openRuleFromNotification(item.ruleId);
+              return;
+            }
+            if (item.kind === 'notice') {
+              openNoticeFromNotification(item.noticeId);
+              return;
+            }
+            if (item.kind === 'visitor') {
+              openVisitorFromNotification(item.visitorId, item.type);
               return;
             }
             openChatFromNotification(item.groupId);
@@ -406,120 +652,62 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
         onClose={inbox.closePanel}
         onLoadMore={() => void inbox.loadMore()}
         onMarkAllRead={() => void inbox.handleMarkAllRead()}
-        onPressNotification={(item) => {
-          void inbox.handleOpenNotification(item).then((opened) => {
-            if (!opened) return;
-            if (opened.pollId || opened.type.startsWith('POLL')) {
-              openPollFromNotification(opened.pollId);
-              return;
-            }
-            if (opened.complaintId || opened.type.startsWith('COMPLAINT')) {
-              openComplaintFromNotification(opened.complaintId);
-              return;
-            }
-            if (opened.groupId || opened.type.startsWith('GROUP')) {
-              openChatFromNotification(opened.groupId);
-            }
-          });
-        }}
+        onPressNotification={handleNotificationPress}
+      />
+
+      <MoreBottomMenu
+        visible={moreMenuOpen}
+        items={moreMenuItems}
+        activePath={activePath}
+        bottomOffset={bottomBarHeight}
+        onClose={() => setMoreMenuOpen(false)}
+        onSelect={openMoreMenuRoute}
+        onLogout={() => void logout()}
       />
 
       <LinearGradient colors={[...theme.headerGradient]} style={styles.hero}>
         <View style={styles.heroRow}>
-          <View
-            style={[
-              styles.avatar,
-              { borderColor: theme.accentGold, backgroundColor: theme.accentSoft },
-            ]}
-          >
-            <Text style={styles.avatarText}>{societyInitials(avatarLabel)}</Text>
+          <View style={styles.heroBrand}>
+            <AppLogo variant="glyph" size={34} framed />
           </View>
-          <View style={styles.heroText}>
-            <View style={[styles.badge, { backgroundColor: theme.accentSoft }]}>
-              <Text style={[styles.badgeText, { color: theme.accentGold }]}>{portalBadge}</Text>
-            </View>
-            <Text style={styles.societyName} numberOfLines={2}>
-              {headerTitle}
-            </Text>
-            <Text style={[styles.moduleTitle, { color: theme.accentGold }]}>{activeTitle}</Text>
-          </View>
-          <View style={styles.heroActions}>
+          <View style={styles.heroTrailing}>
             <NotificationBellButton unreadCount={inbox.unreadCount} onPress={inbox.openPanel} />
-            <Pressable style={styles.iconBtn} onPress={toggleMode} accessibilityLabel="Toggle theme">
-              <Text style={styles.iconBtnText}>{mode === 'dark' ? '☀️' : '🌙'}</Text>
-            </Pressable>
-            <Pressable style={styles.iconBtn} onPress={logout} accessibilityLabel="Log out">
-              <Ionicons name="log-out-outline" size={22} color="#fff" />
-            </Pressable>
           </View>
         </View>
-        <Text style={styles.kicker}>{portalKicker}</Text>
-        {canSwitchView ? (
-          <View style={styles.roleSwitcher}>
-            <Pressable
-              style={[
-                styles.roleSegment,
-                !memberPortal ? styles.roleSegmentActive : null,
-                !memberPortal ? { borderColor: theme.accentGold, backgroundColor: theme.accentSoft } : null,
-              ]}
-              onPress={() => void switchToOfficeView()}
-              accessibilityLabel="Switch to office view"
-              accessibilityState={{ selected: !memberPortal }}
-            >
-              <Text
-                style={[
-                  styles.roleSegmentTitle,
-                  !memberPortal ? { color: theme.accentGold } : styles.roleSegmentTitleIdle,
-                ]}
-              >
-                Office
-              </Text>
-              <Text style={styles.roleSegmentHint}>{formatRole(sessionUser.role)}</Text>
-            </Pressable>
-            <Pressable
-              style={[
-                styles.roleSegment,
-                memberPortal ? styles.roleSegmentActive : null,
-                memberPortal ? { borderColor: theme.accentGold, backgroundColor: theme.accentSoft } : null,
-              ]}
-              onPress={() => void switchToMemberView()}
-              accessibilityLabel="Switch to member view"
-              accessibilityState={{ selected: memberPortal }}
-            >
-              <Text
-                style={[
-                  styles.roleSegmentTitle,
-                  memberPortal ? { color: theme.accentGold } : styles.roleSegmentTitleIdle,
-                ]}
-              >
-                Member
-              </Text>
-              <Text style={styles.roleSegmentHint}>
-                {displayName || `Flat ${sessionUser.memberProfile?.flatNumber ?? '—'}`}
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
+        <Text style={styles.kicker}>
+          {gatekeeperPortal
+            ? `Gate Security · ${societyName}`
+            : memberPortal
+              ? `Member Mode · ${societyName} · Flat ${sessionUser.memberProfile?.flatNumber ?? '—'}`
+              : canSwitchView
+                ? `Chairman Mode · ${societyName}`
+                : societyName}
+        </Text>
+        {!memberPortal && !gatekeeperPortal ? <SocietyJoinCodeHeader /> : null}
       </LinearGradient>
 
       <View style={styles.content}>
         <ModuleRouter
           routePath={activePath}
           memberPortal={memberPortal}
+          gatekeeperPortal={gatekeeperPortal}
+          societyId={sessionUser.societyId}
           userId={sessionUser.userId}
           userRole={sessionUser.role}
           initialChatGroupId={initialChatGroupId}
           onChatGroupConsumed={() => setInitialChatGroupId(null)}
-          onMaintenanceConfigured={() => {
-            setMaintenanceConfigured(true);
-            fetchMaintenanceSettings()
-              .then((settings) => setMaintenanceConfigured(settings.configured === true))
-              .catch(() => undefined);
-          }}
           initialPollId={initialPollId}
           onPollConsumed={() => setInitialPollId(null)}
           initialComplaintId={initialComplaintId}
           onComplaintConsumed={() => setInitialComplaintId(null)}
+          initialRuleId={initialRuleId}
+          onRuleConsumed={() => setInitialRuleId(null)}
+          initialNoticeId={initialNoticeId}
+          onNoticeConsumed={() => setInitialNoticeId(null)}
+          initialBookingId={initialBookingId}
+          onBookingConsumed={() => setInitialBookingId(null)}
+          initialVisitorId={initialVisitorId}
+          onVisitorConsumed={() => setInitialVisitorId(null)}
           onUserUpdated={(patch) => {
             handleUserUpdated(patch);
             void updateStoredUser(patch).then((next) => {
@@ -528,30 +716,51 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
               }
             });
           }}
-          onNavigateProfile={() => setActivePath('profile')}
+          onNavigateProfile={openProfileScreen}
+          onOpenNotice={(noticeId) => openNoticeFromNotification(noticeId)}
+          onOpenVisitors={openVisitorsScreen}
+          onLogout={() => void logout()}
+          onNavigateFromActivity={navigateFromActivity}
+          onNavigateSideRoute={openMoreMenuRoute}
+          profileDisplayName={avatarLabel}
+          societyName={societyName}
+          navPortal={navPortal}
         />
       </View>
 
       <View
         style={[styles.bottomBar, { backgroundColor: theme.bottomBarBg, borderTopColor: theme.bottomBarBorder }]}
+        onLayout={(event) => {
+          const next = Math.ceil(event.nativeEvent.layout.height);
+          if (next > 0 && next !== bottomBarHeight) {
+            setBottomBarHeight(next);
+          }
+        }}
       >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.bottomScrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          {modules.map((m) => {
-            const active = activePath === m.routePath;
+        <View style={styles.bottomBarRow}>
+          {scrollableTabs.map((m) => {
+            const active =
+              m.routePath === 'activity'
+                ? activePath === 'activity' || ACTIVITY_HUB_ROUTE_PATHS.has(activePath)
+                : activePath === m.routePath;
+            const tabIconColor = active ? theme.accentGold : theme.textMuted;
+            const tabIconName =
+              m.routePath === 'activity'
+                ? 'grid'
+                : iconFromPrimeIcon(m.icon) || iconForRoutePath(m.routePath);
             return (
               <Pressable
                 key={m.code}
-                style={[styles.tab, active ? { backgroundColor: theme.accentSoft } : null]}
-                onPress={() => selectModule(m.routePath)}
+                style={({ pressed }) => [
+                  styles.tab,
+                  active ? [styles.tabActivePill, { backgroundColor: theme.accentSoft }] : null,
+                  pressed ? styles.tabPressed : null,
+                ]}
+                onPress={() => selectTab(m.routePath)}
               >
-                <Text style={[styles.tabGlyph, active ? { color: theme.accentGold } : { color: theme.textMuted }]}>
-                  {moduleGlyph(m.icon)}
-                </Text>
+                <View style={styles.tabIconWrap}>
+                  <UiIcon name={tabIconName} size={22} color={tabIconColor} />
+                </View>
                 <Text
                   style={[
                     styles.tabLabel,
@@ -564,7 +773,37 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
               </Pressable>
             );
           })}
-        </ScrollView>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.tab,
+              moreTabActive ? [styles.tabActivePill, { backgroundColor: theme.accentSoft }] : null,
+              pressed ? styles.tabPressed : null,
+            ]}
+            onPress={toggleMoreMenu}
+            accessibilityLabel={moreMenuOpen ? 'Close more menu' : 'Open more menu'}
+            accessibilityState={{ expanded: moreMenuOpen }}
+          >
+            <View style={styles.tabIconWrap}>
+              <UiIcon
+                name="more"
+                size={20}
+                color={moreTabActive ? theme.accentGold : theme.textMuted}
+              />
+            </View>
+            <Text
+              style={[
+                styles.tabLabel,
+                moreTabActive
+                  ? { color: theme.accentGold, fontWeight: '700' }
+                  : { color: theme.textMuted },
+              ]}
+              numberOfLines={1}
+            >
+              {tabLabel(moreTab.title)}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
     </View>
@@ -573,134 +812,111 @@ export function SocietyShell({ user, onLogout, onUserUpdated }: Props) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  boot: { alignItems: 'center', justifyContent: 'center' },
+  boot: { alignItems: 'center', justifyContent: 'center', gap: 16 },
   hero: {
-    paddingTop: 52,
-    paddingHorizontal: 16,
+    paddingTop: 48,
+    paddingHorizontal: 18,
     paddingBottom: 18,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#16061c',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.28,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   heroRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  heroBrand: {
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  heroTrailing: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { color: '#fff', fontWeight: '800', fontSize: 18 },
-  heroText: { flex: 1 },
-  badge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    marginBottom: 6,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  societyName: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '800',
-    lineHeight: 26,
-  },
-  moduleTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 4,
-  },
+  avatarPressed: { opacity: 0.85 },
   kicker: {
-    color: '#94a3b8',
+    color: 'rgba(243, 232, 251, 0.78)',
     fontSize: 11,
-    marginTop: 12,
-    letterSpacing: 0.6,
+    marginTop: 10,
+    letterSpacing: 0.7,
+    fontWeight: '600',
     textTransform: 'uppercase',
-  },
-  heroActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexShrink: 0,
-  },
-  iconBtn: {
-    minWidth: 44,
-    height: 44,
-    paddingHorizontal: 8,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconBtnText: { fontSize: 20 },
-  roleSwitcher: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 14,
-    padding: 4,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  roleSegment: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  roleSegmentActive: {
-    borderWidth: 1,
-  },
-  roleSegmentTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  roleSegmentTitleIdle: {
-    color: '#cbd5e1',
-  },
-  roleSegmentHint: {
-    marginTop: 2,
-    fontSize: 10,
-    color: '#94a3b8',
-    textAlign: 'center',
   },
   content: { flex: 1 },
   bottomBar: {
+    zIndex: 30,
+    elevation: 30,
     borderTopWidth: 1,
-    paddingBottom: 8,
-    paddingTop: 6,
+    paddingBottom: 10,
+    paddingTop: 8,
+    ...Platform.select({
+      ios: {
+        paddingBottom: 18,
+        paddingTop: 10,
+      },
+    }),
   },
-  bottomScrollContent: {
-    paddingHorizontal: 8,
-    gap: 4,
+  bottomBarRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
+    paddingHorizontal: 6,
   },
   tab: {
-    minWidth: 72,
-    maxWidth: 96,
+    flex: 1,
+    minHeight: 58,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    gap: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 14,
+    gap: 3,
+  },
+  tabActivePill: {
+    borderRadius: 14,
+  },
+  tabPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }],
+  },
+  tabIconWrap: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 28,
+    height: 28,
+  },
+  tabBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#0f172a',
+  },
+  tabBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
+    lineHeight: 11,
   },
   tabGlyph: { fontSize: 18 },
-  tabLabel: { fontSize: 10, textAlign: 'center' },
+  tabLabel: { fontSize: 10, textAlign: 'center', letterSpacing: 0.15 },
 });

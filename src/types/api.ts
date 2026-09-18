@@ -4,16 +4,32 @@ export interface ApiResponse<T> {
   timestamp: string;
 }
 
+export interface DurationPlanCard {
+  months: number;
+  label: string;
+  pricePerFlat: number;
+  flatCount: number;
+  amount: number;
+  monthlyEquivalent: number;
+}
+
 export interface SocietySubscriptionStatus {
   status: string;
   canAccessApp: boolean;
   renewRequired: boolean;
+  needsPlanPurchase?: boolean;
+  onTrial?: boolean;
   message?: string;
   portalUrl?: string;
   planId?: string;
   planName?: string;
   planCode?: string;
   price?: number;
+  pricePerFlat?: number;
+  flatCount?: number;
+  trialDaysConfigured?: number;
+  durationPlans?: DurationPlanCard[];
+  billingMonths?: number;
   billingCycle?: string;
   memberLimit?: number;
   additionalMemberPrice?: number;
@@ -71,12 +87,56 @@ export interface PublicSubscriptionPlan {
   active: boolean;
 }
 
+export interface LoginAccountOption {
+  memberId: string | null;
+  userId: string;
+  societyId: string;
+  societyName: string;
+  role: string;
+  email: string;
+  flatNumber: string;
+  displayName: string;
+}
+
+export type FlatNumberFormat = 'FLOOR' | 'SEQUENTIAL' | 'CUSTOM' | 'EXPLICIT';
+
+export type SmsLoginVerifyResult =
+  | ({ selectionRequired: false; onboardingRequired?: false } & LoginData)
+  | {
+      selectionRequired: true;
+      onboardingRequired?: false;
+      selectionToken: string;
+      accounts: LoginAccountOption[];
+    }
+  | {
+      onboardingRequired: true;
+      selectionRequired?: false;
+      selectionToken: string;
+      accounts?: LoginAccountOption[];
+    };
+
+export interface OnboardingSocietyOption {
+  societyId: string;
+  societyName: string;
+  totalFlats?: number | null;
+  totalBuildings?: number | null;
+  openFlats: number;
+}
+
+export interface OnboardingOpenFlat {
+  flatId: string;
+  flatNumber: string;
+  /** Present when a reserved (unlinked) member already exists for claim flows. */
+  memberId?: string | null;
+}
+
 export interface LoginData {
   token: string;
   role: string;
   societyId: string | null;
   firstLogin: boolean;
   userId: string;
+  activeMemberId?: string | null;
   subscription?: SocietySubscriptionStatus;
   memberProfile?: {
     memberId: string;
@@ -85,7 +145,12 @@ export interface LoginData {
     email: string;
   };
   canSwitchToMemberView?: boolean;
+  email?: string;
   emailVerified?: boolean;
+  /** True when member must capture/verify email before using the app. */
+  profileCompletionRequired?: boolean;
+  /** True when stored email is a phone-login placeholder, not a real inbox. */
+  emailNeedsCapture?: boolean;
   firstName?: string;
   lastName?: string;
 }
@@ -100,6 +165,8 @@ export interface MemberProfile {
   phone: string;
   emailVerified: boolean;
   emailVerificationRequired: boolean;
+  profileCompletionRequired?: boolean;
+  emailNeedsCapture?: boolean;
   societyName: string;
 }
 
@@ -136,6 +203,59 @@ export interface MemberOverview {
   totalDueAmount: number;
   remainingDueAmount: number;
   paymentType: string;
+  onlinePaymentEnabled?: boolean;
+  payableAmount?: number;
+  canPayOnline?: boolean;
+  maintenanceFromMonth?: string;
+  maintenanceToMonth?: string;
+  paymentUnavailableMessage?: string;
+}
+
+export interface MemberMaintenanceDue {
+  onlinePaymentEnabled: boolean;
+  onlinePaymentConfigured?: boolean;
+  paymentUnavailableMessage?: string;
+  alreadyPaid: boolean;
+  alreadyPaidMessage: string;
+  monthlyMaintenanceAmount: number;
+  carryForwardDue: number;
+  penaltyAmount: number;
+  totalDueAmount: number;
+  payableAmount: number;
+  maintenanceFromMonth: string;
+  maintenanceToMonth: string;
+  description: string;
+  canPayOnline: boolean;
+}
+
+export interface MemberMaintenanceCheckout {
+  required: boolean;
+  paymentId: string;
+  amountInr: number;
+  description: string;
+  maintenanceFromMonth: string;
+  maintenanceToMonth: string;
+  keyId?: string;
+  orderId?: string;
+  amount?: number;
+  currency?: string;
+  societyName?: string;
+  memberName?: string;
+  flatNumber?: string;
+  message?: string;
+  prefill?: {
+    name?: string;
+    email?: string;
+    contact?: string;
+  };
+}
+
+export interface MemberMaintenanceVerifyResult {
+  status: string;
+  expenseId?: string;
+  amount?: number;
+  remainingDueAmount?: number;
+  message?: string;
 }
 
 export interface RecentExpense {
@@ -179,6 +299,25 @@ export interface MaintenanceSettings {
   configured: boolean;
 }
 
+export interface SocietyMemberPaymentSettings {
+  enabled: boolean;
+  configured: boolean;
+  keyId: string;
+  keySecretMasked: string;
+  testMode: boolean;
+  memberPaymentsReady: boolean;
+  message?: string;
+  routeEnabled?: boolean;
+  usesRoute?: boolean;
+  routeStatus?: string;
+  routeError?: string;
+  linkedAccountId?: string;
+  bankIfsc?: string;
+  bankBeneficiaryName?: string;
+  bankAccountMasked?: string;
+  manualKeysConfigured?: boolean;
+}
+
 export interface ReportSummary {
   totalMaintenanceCollected: number;
   totalOtherIncome?: number;
@@ -216,6 +355,59 @@ export interface SocietyMember {
   phone: string;
   customMaintenanceAmount?: number;
   createdAt: string | null;
+  lastLoginAt?: string | null;
+  ownershipLabel?: string;
+  isTreasurer?: boolean;
+}
+
+export interface DirectoryEntry {
+  id: string;
+  name: string;
+  flatNumber: string;
+  phone: string;
+  email?: string;
+  lastLoginAt?: string | null;
+  ownershipLabel?: string;
+  isTreasurer?: boolean;
+}
+
+export type FamilyRelationship = 'SPOUSE' | 'CHILD' | 'PARENT' | 'OTHER';
+export type MemberVehicleType = 'TWO_WHEELER' | 'FOUR_WHEELER' | 'OTHER';
+
+export interface MemberFamilyMember {
+  id: string;
+  name: string;
+  relationship: FamilyRelationship;
+  phone?: string | null;
+  age?: number | null;
+  adult: boolean;
+  createdAt: string;
+}
+
+export interface MemberVehicleRecord {
+  id: string;
+  vehicleType: MemberVehicleType;
+  registrationNumber: string;
+  makeModel?: string | null;
+  color?: string | null;
+  parkingSlot?: string | null;
+  createdAt: string;
+}
+
+export interface FamilyMemberPayload {
+  name: string;
+  relationship: FamilyRelationship;
+  phone?: string;
+  age?: number;
+  adult?: boolean;
+}
+
+export interface VehiclePayload {
+  vehicleType: MemberVehicleType;
+  registrationNumber: string;
+  makeModel?: string;
+  color?: string;
+  parkingSlot?: string;
 }
 
 export interface MemberUploadResult {
@@ -279,6 +471,11 @@ export interface ReportEmailPayload {
   reportTypes: string[];
 }
 
+export interface ReportDownloadPayload {
+  includeAllReports: boolean;
+  reportTypes: string[];
+}
+
 export interface ReportEmailResult {
   sentCount: number;
   reportCount: number;
@@ -288,6 +485,11 @@ export interface ReportEmailResult {
 export interface ChatMessage {
   id: string;
   body: string;
+  messageType?: 'TEXT' | 'POLL' | 'IMAGE';
+  pollId?: string;
+  poll?: PollDetail;
+  attachmentUrl?: string;
+  localPreviewUri?: string;
   sentAt: string;
   readAt: string | null;
   senderUserId: string;
@@ -295,6 +497,9 @@ export interface ChatMessage {
   senderRole: string;
   senderFlat?: string;
   mine: boolean;
+  /** Client-only optimistic fields (not from API). */
+  clientId?: string;
+  localStatus?: 'sending' | 'sent' | 'failed';
 }
 
 export interface ChatGroupSummary {
@@ -341,6 +546,8 @@ export interface PollSummary {
   allMembers: boolean;
   createdAt: string;
   closedAt: string | null;
+  expiresAt?: string | null;
+  expired?: boolean;
   totalVotes: number;
   participantCount: number;
   hasVoted: boolean;
@@ -370,7 +577,63 @@ export interface ComplaintDetail extends ComplaintSummary {
   description: string;
   chairmanNote?: string | null;
   memberId?: string;
+  attachments?: { index: number; url: string; memberUrl?: string }[];
 }
+
+export interface RuleSummary {
+  ruleId: string;
+  subject: string;
+  description: string;
+  createdAt: string;
+  createdByName?: string;
+}
+
+export type RuleDetail = RuleSummary;
+
+export interface NoticeSummary {
+  noticeId: string;
+  subject: string;
+  description: string;
+  createdAt: string;
+  createdByName?: string;
+}
+
+export type NoticeDetail = NoticeSummary;
+
+export interface SocietyProfile {
+  societyId: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  aboutDescription: string | null;
+  yearEstablished: number | null;
+  totalFlats: number | null;
+  totalBlocks: number | null;
+  registrationNumber: string | null;
+  amenitiesSummary: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+}
+
+export interface AmenityBookingSummary {
+  bookingId: string;
+  amenityType: string;
+  amenityLabel: string;
+  bookingDate: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+  createdAt: string;
+  notes?: string | null;
+  memberName?: string;
+  flatNumber?: string;
+  memberId?: string;
+  mine?: boolean;
+}
+
+export type AmenityBookingDetail = AmenityBookingSummary;
 
 export interface AppNotification {
   notificationId: string;
@@ -378,10 +641,14 @@ export interface AppNotification {
   title: string;
   subtitle: string;
   body: string;
-  audienceRole?: 'CHAIRMAN' | 'MEMBER';
+  audienceRole?: 'CHAIRMAN' | 'MEMBER' | 'GATEKEEPER';
   groupId?: string;
   pollId?: string;
   complaintId?: string;
+  amenityBookingId?: string;
+  ruleId?: string;
+  noticeId?: string;
+  visitorId?: string;
   societyId?: string;
   read: boolean;
   readAt: string | null;
@@ -392,4 +659,74 @@ export interface NotificationPage {
   items: AppNotification[];
   hasMore: boolean;
   nextOffset: number;
+}
+
+export interface VisitorSummary {
+  id: string;
+  visitorName: string;
+  mobileNumber: string;
+  flatNumber: string;
+  residentName: string;
+  vehicleNumber?: string | null;
+  visitorCount: number;
+  purpose: string;
+  status: string;
+  photoPath?: string | null;
+  photoUrl?: string | null;
+  memberPhotoUrl?: string | null;
+  createdAt: string;
+  approvedAt?: string | null;
+  entryTime?: string | null;
+  exitTime?: string | null;
+}
+
+export interface VisitorDetail extends VisitorSummary {
+  expectedDurationMinutes?: number | null;
+  remarks?: string | null;
+  rejectionReason?: string | null;
+  approvalExpiresAt?: string | null;
+  residentMemberId?: string;
+  durationMinutes?: number;
+}
+
+export interface VisitorHistoryPage {
+  items: VisitorSummary[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface GateKeeperDashboard {
+  societyName?: string;
+  todayTotal: number;
+  pendingApproval: number;
+  approved: number;
+  rejected: number;
+  recent: VisitorSummary[];
+}
+
+export interface ChairmanVisitorDashboard {
+  todayTotal: number;
+  approved: number;
+  rejected: number;
+  pending: number;
+  checkedIn: number;
+  recentLogs: VisitorSummary[];
+}
+
+export interface GateKeeperAssignment {
+  id: string;
+  userId: string;
+  displayName: string;
+  phone: string;
+  active: boolean;
+  assignedAt: string;
+}
+
+export interface ResidentSearchResult {
+  memberId: string;
+  flatNumber: string;
+  name: string;
+  phone?: string | null;
 }

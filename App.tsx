@@ -1,25 +1,31 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, LogBox, Platform, StyleSheet, View } from 'react-native';
+import { LogBox, StyleSheet, View } from 'react-native';
 import * as ExpoSplashScreen from 'expo-splash-screen';
-import { SecureScreenGuard } from './src/components/SecureScreenGuard';
+import { AppErrorBoundary } from './src/components/AppErrorBoundary';
+import { AppBootLoader } from './src/components/AppLogoLoader';
+import { GlobalLoadingOverlay } from './src/components/GlobalLoadingOverlay';
 import { FirstLoginPasswordScreen } from './src/screens/FirstLoginPasswordScreen';
 import { ForgotPasswordScreen } from './src/screens/ForgotPasswordScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { PlansScreen } from './src/screens/PlansScreen';
+import { ProfileCompletionScreen } from './src/screens/ProfileCompletionScreen';
 import { SocietyShell } from './src/screens/SocietyShell';
 import { SplashScreen } from './src/screens/SplashScreen';
-import { ExpiredSubscriptionScreen } from './src/screens/ExpiredSubscriptionScreen';
+import { PlanPurchaseScreen } from './src/screens/PlanPurchaseScreen';
+import { RoleSelectionScreen } from './src/screens/RoleSelectionScreen';
 import { loadStoredSession, setSessionInvalidHandler } from './src/services/session';
-import { fetchSubscriptionStatus } from './src/services/api';
-import { clearSession } from './src/services/storage';
+import { fetchSubscriptionStatus, isGateKeeperRole } from './src/services/api';
+import { performAppLogout } from './src/services/authLogout';
+import { getAppViewContext, canSwitchLoginRole, requiresRoleSelection, clearAppViewContext } from './src/services/appContext';
 import { AppAlertProvider } from './src/context/AppAlertContext';
-import { ScreenCaptureProvider } from './src/context/ScreenCaptureContext';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import type { LoginData, SocietySubscriptionStatus } from './src/types/api';
 import {
   configurePushNotifications,
   isRemotePushAvailable,
 } from './src/services/pushNotifications';
+import { preloadBrandAssets } from './src/utils/preloadBrandAssets';
+import { needsMemberProfileCompletion } from './src/utils/profileCompletion';
 
 ExpoSplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -43,9 +49,34 @@ function AppRoot() {
   const [user, setUser] = useState<LoginData | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SocietySubscriptionStatus | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
+  const [assetsReady, setAssetsReady] = useState(false);
+  const [pendingRoleSelection, setPendingRoleSelection] = useState(false);
+
+  /** Splash must not wait on network — only local assets. Session restore runs after. */
+  const splashReady = assetsReady;
 
   const finishSplash = useCallback(() => {
     setShowSplash(false);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const safety = setTimeout(() => {
+      if (!cancelled) {
+        setAssetsReady(true);
+      }
+    }, 4000);
+    preloadBrandAssets()
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) {
+          setAssetsReady(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+      clearTimeout(safety);
+    };
   }, []);
 
   useEffect(() => {
@@ -56,6 +87,12 @@ function AppRoot() {
 
   useEffect(() => {
     let cancelled = false;
+    const safety = setTimeout(() => {
+      if (!cancelled) {
+        setSessionReady(true);
+      }
+    }, 10000);
+
     loadStoredSession()
       .then(async (u) => {
         if (cancelled) {
@@ -63,20 +100,23 @@ function AppRoot() {
         }
         if (u?.token) {
           try {
-            const sub = await fetchSubscriptionStatus();
+            const sub = await fetchSubscriptionStatus({
+              skipGlobalLoader: true,
+              timeoutMs: 8000,
+            });
             if (!cancelled) {
               setSubscriptionStatus(sub);
               setUser(u);
+              const storedContext = await getAppViewContext();
+              setPendingRoleSelection(requiresRoleSelection(u) && !storedContext);
             }
           } catch {
             if (!cancelled) {
+              // Offline / wrong API host — still open the app with stored session.
               setUser(u);
-              setSubscriptionStatus({
-                status: 'EXPIRED',
-                canAccessApp: false,
-                renewRequired: true,
-                message: 'Could not verify subscription.',
-              });
+              const storedContext = await getAppViewContext();
+              setPendingRoleSelection(requiresRoleSelection(u) && !storedContext);
+              setSubscriptionStatus(null);
             }
           }
         } else {
@@ -94,6 +134,7 @@ function AppRoot() {
       });
     return () => {
       cancelled = true;
+      clearTimeout(safety);
     };
   }, []);
 
@@ -101,6 +142,7 @@ function AppRoot() {
     setSessionInvalidHandler(() => {
       setUser(null);
       setSubscriptionStatus(null);
+      setPendingRoleSelection(false);
       setGuestScreen('login');
     });
     return () => setSessionInvalidHandler(null);
@@ -131,41 +173,73 @@ function AppRoot() {
     }
     setUser(data);
     setSubscriptionStatus(null);
+    setPendingRoleSelection(requiresRoleSelection(data));
   }
 
   async function handleLogout() {
-    await clearSession();
+    await performAppLogout();
     setUser(null);
     setSubscriptionStatus(null);
+    setPendingRoleSelection(false);
     setGuestScreen('login');
     setShowSplash(true);
   }
 
-  if (showSplash) {
-    return <SplashScreen onFinish={finishSplash} />;
+  function handleSwitchRole() {
+    setPendingRoleSelection(true);
+  }
+
+  if (showSplash || !assetsReady) {
+    return <SplashScreen onFinish={finishSplash} appReady={splashReady} />;
   }
 
   return (
     <View style={[styles.root, { backgroundColor: theme.pageBg }]}>
-      {Platform.OS !== 'web' ? <SecureScreenGuard /> : null}
       {!sessionReady ? (
-        <View style={styles.boot}>
-          <ActivityIndicator size="large" color={theme.accent} />
-        </View>
+        <AppBootLoader label="Loading..." />
       ) : user && subscriptionStatus && !subscriptionStatus.canAccessApp ? (
-        <ExpiredSubscriptionScreen status={subscriptionStatus} onLogout={handleLogout} />
-      ) : user && user.firstLogin ? (
+        <PlanPurchaseScreen
+          status={subscriptionStatus}
+          societyId={user.societyId}
+          onLogout={handleLogout}
+          onRefreshStatus={fetchSubscriptionStatus}
+          onActivated={(next) => {
+            setSubscriptionStatus(next.canAccessApp ? null : next);
+          }}
+        />
+      ) : user && user.firstLogin && !isGateKeeperRole(user.role) ? (
         <FirstLoginPasswordScreen
           user={user}
           onPasswordChanged={(updated) => {
             setUser(updated);
           }}
         />
+      ) : user && needsMemberProfileCompletion(user) ? (
+        <ProfileCompletionScreen
+          user={user}
+          onCompleted={(updated) => {
+            setUser(updated);
+          }}
+          onLogout={handleLogout}
+        />
+      ) : user && pendingRoleSelection ? (
+        <RoleSelectionScreen
+          user={user}
+          onSelected={() => setPendingRoleSelection(false)}
+          onUserUpdated={(data) => {
+            void clearAppViewContext().then(() => {
+              setUser(data);
+              setPendingRoleSelection(requiresRoleSelection(data));
+            });
+          }}
+          onLogout={handleLogout}
+        />
       ) : user ? (
         <SocietyShell
           user={user}
           onLogout={handleLogout}
           onUserUpdated={setUser}
+          onSwitchRole={canSwitchLoginRole(user) ? handleSwitchRole : undefined}
         />
       ) : guestScreen === 'plans' ? (
         <PlansScreen onBack={() => setGuestScreen('login')} />
@@ -178,7 +252,6 @@ function AppRoot() {
         <LoginScreen
           onLoggedIn={handleLoggedIn}
           onViewPlans={() => setGuestScreen('plans')}
-          onForgotPassword={() => setGuestScreen('forgot-password')}
         />
       )}
     </View>
@@ -187,17 +260,17 @@ function AppRoot() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <ScreenCaptureProvider>
+    <AppErrorBoundary>
+      <ThemeProvider>
         <AppAlertProvider>
           <AppRoot key={appLaunchGeneration} />
+          <GlobalLoadingOverlay />
         </AppAlertProvider>
-      </ScreenCaptureProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </AppErrorBoundary>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  boot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

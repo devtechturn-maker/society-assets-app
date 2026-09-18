@@ -1,27 +1,27 @@
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text } from 'react-native';
-import { AddOtherIncomeModal } from '../../components/income/AddOtherIncomeModal';
+import { AddLedgerEntryModal } from '../../components/ledger/AddLedgerEntryModal';
 import { ExpenseRowCard } from '../../components/dashboard/ExpenseRowCard';
 import { ListEmpty, ListError, ListLoading } from '../../components/dashboard/ListStates';
 import { SectionCard } from '../../components/dashboard/SectionCard';
-import { fetchOtherIncomeHistory } from '../../services/api';
+import { fetchLedgerHistory } from '../../services/api';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
 
-export function OtherIncomeModule() {
+export function IncomeExpensesModule() {
   const { theme } = useTheme();
   const [modalOpen, setModalOpen] = useState(false);
-  const { data, loading, error, refreshing, refresh } = useAsyncLoad(fetchOtherIncomeHistory, []);
+  const ledger = useAsyncLoad(fetchLedgerHistory, []);
 
   return (
     <>
       <ScrollView
         contentContainerStyle={[styles.scroll, { backgroundColor: theme.pageBg }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
+        refreshControl={<RefreshControl refreshing={ledger.refreshing} onRefresh={ledger.refresh} />}
       >
         <SectionCard
-          title="Other Income History"
-          subtitle="Transfer fees, amenity charges, parking, hall rent, and other incidental income"
+          title="Income & Expenses"
+          subtitle="Society expenses and other income in one place — transfer fees, repairs, utilities, amenity charges, and more"
           headerRight={
             <Pressable
               style={[styles.addBtn, { backgroundColor: theme.accent }]}
@@ -31,19 +31,21 @@ export function OtherIncomeModule() {
             </Pressable>
           }
         >
-          {loading ? <ListLoading /> : null}
-          {error ? <ListError message={error} /> : null}
-          {data?.length === 0 ? <ListEmpty message="No other income entries yet." /> : null}
-          {data?.map((row) => (
-            <ExpenseRowCard key={row.expenseId} row={row} />
+          {ledger.loading ? <ListLoading /> : null}
+          {ledger.error ? <ListError message={ledger.error} /> : null}
+          {ledger.data?.length === 0 ? <ListEmpty message="No income or expense entries yet." /> : null}
+          {ledger.data?.map((row) => (
+            <ExpenseRowCard key={row.expenseId} row={row} showEntryType />
           ))}
         </SectionCard>
       </ScrollView>
 
-      <AddOtherIncomeModal
+      <AddLedgerEntryModal
         visible={modalOpen}
         onClose={() => setModalOpen(false)}
-        onSaved={refresh}
+        onSaved={() => {
+          ledger.refresh();
+        }}
       />
     </>
   );

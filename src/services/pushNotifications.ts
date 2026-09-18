@@ -5,6 +5,11 @@ import * as Notifications from 'expo-notifications';
 import { isRunningInExpoGo } from 'expo';
 import { AppState, Platform } from 'react-native';
 import { registerDevicePushToken, unregisterDevicePushToken } from './api';
+import {
+  playVisitorNotificationSound,
+  visitorAndroidChannelId,
+} from './visitorNotificationSounds';
+import { registerBackgroundVisitorNotificationTask } from './backgroundVisitorNotificationTask';
 
 export type AppPushNotification = {
   kind: 'chat';
@@ -17,6 +22,7 @@ export type AppPushNotification = {
   kind: 'poll';
   notificationId?: string;
   pollId: string;
+  groupId?: string;
   question: string;
   preview: string;
   type: 'POLL_CREATED' | 'POLL_RESULTS' | 'POLL_VOTED';
@@ -27,6 +33,35 @@ export type AppPushNotification = {
   subject: string;
   preview: string;
   type: 'COMPLAINT_CREATED' | 'COMPLAINT_UPDATED';
+} | {
+  kind: 'amenity';
+  notificationId?: string;
+  bookingId: string;
+  amenityLabel: string;
+  preview: string;
+  type: 'AMENITY_BOOKED';
+} | {
+  kind: 'rule';
+  notificationId?: string;
+  ruleId: string;
+  subject: string;
+  preview: string;
+  type: 'RULE_PUBLISHED';
+} | {
+  kind: 'notice';
+  notificationId?: string;
+  noticeId: string;
+  subject: string;
+  preview: string;
+  type: 'NOTICE_PUBLISHED';
+} | {
+  kind: 'visitor';
+  notificationId?: string;
+  visitorId: string;
+  visitorName: string;
+  flatNumber?: string;
+  preview: string;
+  type: 'VISITOR_ARRIVED' | 'VISITOR_APPROVED' | 'VISITOR_REJECTED';
 };
 
 /** @deprecated Use AppPushNotification */
@@ -40,12 +75,26 @@ export function configurePushNotifications(): void {
   if (initialized) return;
   initialized = true;
 
+  void registerBackgroundVisitorNotificationTask();
+
   Notifications.setNotificationHandler({
-    handleNotification: async () => {
+    handleNotification: async (notification) => {
+      const data = notification.request.content.data as Record<string, unknown> | undefined;
+      const type = typeof data?.type === 'string' ? data.type : '';
+      const isVisitor = type.startsWith('VISITOR_');
       const isForeground = AppState.currentState === 'active';
+
+      // Foreground: play bundled WAV here.
+      // Background: backgroundVisitorNotificationTask plays it (OS tray sound needs native rebuild).
+      if (isVisitor && isForeground) {
+        void playVisitorNotificationSound(type);
+      }
+
       return {
         shouldShowAlert: !isForeground,
-        shouldPlaySound: true,
+        // Prefer our spoken WAV; avoid default OS beep on top in foreground.
+        // Background/killed: OS uses channelId + sound from the push (after native rebuild).
+        shouldPlaySound: isVisitor ? !isForeground : true,
         shouldSetBadge: true,
         shouldShowBanner: !isForeground,
         shouldShowList: true,
@@ -56,29 +105,82 @@ export function configurePushNotifications(): void {
 
 async function ensureAndroidChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
+
+  const base = {
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250] as number[],
+    lightColor: '#0f172a',
+    sound: 'default' as string | null,
+    enableVibrate: true,
+  };
+
   await Notifications.setNotificationChannelAsync('chat', {
+    ...base,
     name: 'Society Assets · Group Chat',
     description: 'Chat messages and group updates',
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#70088c',
-    sound: 'default',
   });
   await Notifications.setNotificationChannelAsync('polls', {
+    ...base,
     name: 'Society Assets · Polls',
     description: 'New polls and poll result updates',
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#70088c',
-    sound: 'default',
   });
   await Notifications.setNotificationChannelAsync('complaints', {
+    ...base,
     name: 'Society Assets · Complaints',
     description: 'Member complaints and status updates',
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#70088c',
-    sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync('amenities', {
+    ...base,
+    name: 'Society Assets · Amenities',
+    description: 'Amenity booking updates',
+  });
+  await Notifications.setNotificationChannelAsync('rules', {
+    ...base,
+    name: 'Society Assets · Rules',
+    description: 'Society rules published by the chairman',
+  });
+  await Notifications.setNotificationChannelAsync('notices', {
+    ...base,
+    name: 'Society Assets · Notices',
+    description: 'Society notices published by the chairman',
+  });
+
+  // v2 channel ids force fresh Android channels (sound is immutable after first create).
+  await Notifications.setNotificationChannelAsync(visitorAndroidChannelId('VISITOR_ARRIVED'), {
+    name: 'Visitors · Arrival',
+    description: 'Spoken alert when a new visitor is waiting at the gate',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 300, 200, 300],
+    lightColor: '#0f172a',
+    sound: 'visitor_arrived.wav',
+    enableVibrate: true,
+  });
+  await Notifications.setNotificationChannelAsync(visitorAndroidChannelId('VISITOR_APPROVED'), {
+    name: 'Visitors · Approved',
+    description: 'Spoken alert when a resident approves a visitor',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 200, 100, 200],
+    lightColor: '#0f172a',
+    sound: 'visitor_approved.wav',
+    enableVibrate: true,
+  });
+  await Notifications.setNotificationChannelAsync(visitorAndroidChannelId('VISITOR_REJECTED'), {
+    name: 'Visitors · Rejected',
+    description: 'Spoken alert when a resident rejects a visitor',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 400, 200, 400],
+    lightColor: '#0f172a',
+    sound: 'visitor_rejected.wav',
+    enableVibrate: true,
+  });
+  await Notifications.setNotificationChannelAsync(visitorAndroidChannelId(), {
+    name: 'Society Assets · Visitors',
+    description: 'Visitor arrivals and approval updates at the gate',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 300, 200, 300],
+    lightColor: '#0f172a',
+    sound: 'visitor_arrived.wav',
+    enableVibrate: true,
   });
 }
 
@@ -213,6 +315,13 @@ type PushData = {
   question?: string;
   complaintId?: string;
   subject?: string;
+  amenityBookingId?: string;
+  amenityType?: string;
+  ruleId?: string;
+  noticeId?: string;
+  visitorId?: string;
+  visitorName?: string;
+  flatNumber?: string;
   notificationId?: string;
 };
 
@@ -243,6 +352,7 @@ function parseAppPushNotification(
       kind: 'poll',
       notificationId: readNotificationId(data),
       pollId,
+      groupId: data.groupId ? String(data.groupId) : undefined,
       question,
       preview,
       type: data.type,
@@ -263,6 +373,85 @@ function parseAppPushNotification(
       notificationId: readNotificationId(data),
       complaintId,
       subject,
+      preview,
+      type: data.type,
+    };
+  }
+  if (data?.type === 'AMENITY_BOOKED') {
+    const bookingId = data.amenityBookingId ? String(data.amenityBookingId) : '';
+    if (!bookingId) return null;
+    const amenityLabel =
+      (data.amenityType && String(data.amenityType).replace(/_/g, ' ')) ||
+      (content.subtitle && String(content.subtitle).trim()) ||
+      'Amenity';
+    const preview = (content.body && String(content.body).trim()) || 'New amenity booking';
+    return {
+      kind: 'amenity',
+      notificationId: readNotificationId(data),
+      bookingId,
+      amenityLabel,
+      preview,
+      type: data.type,
+    };
+  }
+  if (data?.type === 'RULE_PUBLISHED') {
+    const ruleId = data.ruleId ? String(data.ruleId) : '';
+    if (!ruleId) return null;
+    const subject =
+      (data.subject && String(data.subject).trim()) ||
+      (content.title && String(content.title).trim()) ||
+      'Society rule';
+    const preview = (content.body && String(content.body).trim()) || subject;
+    return {
+      kind: 'rule',
+      notificationId: readNotificationId(data),
+      ruleId,
+      subject,
+      preview,
+      type: data.type,
+    };
+  }
+  if (data?.type === 'NOTICE_PUBLISHED') {
+    const noticeId = data.noticeId ? String(data.noticeId) : '';
+    if (!noticeId) return null;
+    const subject =
+      (data.subject && String(data.subject).trim()) ||
+      (content.title && String(content.title).trim()) ||
+      'Society notice';
+    const preview = (content.body && String(content.body).trim()) || subject;
+    return {
+      kind: 'notice',
+      notificationId: readNotificationId(data),
+      noticeId,
+      subject,
+      preview,
+      type: data.type,
+    };
+  }
+  if (
+    data?.type === 'VISITOR_ARRIVED' ||
+    data?.type === 'VISITOR_APPROVED' ||
+    data?.type === 'VISITOR_REJECTED'
+  ) {
+    const visitorId = data.visitorId ? String(data.visitorId) : '';
+    if (!visitorId) return null;
+    const visitorName =
+      (data.visitorName && String(data.visitorName).trim()) ||
+      (content.subtitle && String(content.subtitle).trim()) ||
+      'Visitor';
+    const preview =
+      (content.body && String(content.body).trim()) ||
+      (data.type === 'VISITOR_ARRIVED'
+        ? 'Tap to approve or reject this visitor'
+        : data.type === 'VISITOR_APPROVED'
+          ? 'Resident approved this visitor'
+          : 'Resident rejected this visitor');
+    return {
+      kind: 'visitor',
+      notificationId: readNotificationId(data),
+      visitorId,
+      visitorName,
+      flatNumber: data.flatNumber ? String(data.flatNumber) : undefined,
       preview,
       type: data.type,
     };
@@ -332,8 +521,12 @@ export function openNotificationResponse(
   handlers: {
     onOpen?: (notification: AppPushNotification) => void;
     onOpenChat?: (groupId?: string) => void;
-    onOpenPoll?: (pollId?: string) => void;
+    onOpenPoll?: (pollId?: string, groupId?: string) => void;
     onOpenComplaint?: (complaintId?: string) => void;
+    onOpenAmenity?: (bookingId?: string) => void;
+    onOpenRule?: (ruleId?: string) => void;
+    onOpenNotice?: (noticeId?: string) => void;
+    onOpenVisitor?: (visitorId?: string, type?: AppPushNotification['type']) => void;
   }
 ): boolean {
   const parsed = parseAppPushFromResponse(response);
@@ -342,11 +535,27 @@ export function openNotificationResponse(
   }
   handlers.onOpen?.(parsed);
   if (parsed.kind === 'poll') {
-    handlers.onOpenPoll?.(parsed.pollId);
+    handlers.onOpenPoll?.(parsed.pollId, parsed.groupId);
     return true;
   }
   if (parsed.kind === 'complaint') {
     handlers.onOpenComplaint?.(parsed.complaintId);
+    return true;
+  }
+  if (parsed.kind === 'amenity') {
+    handlers.onOpenAmenity?.(parsed.bookingId);
+    return true;
+  }
+  if (parsed.kind === 'rule') {
+    handlers.onOpenRule?.(parsed.ruleId);
+    return true;
+  }
+  if (parsed.kind === 'notice') {
+    handlers.onOpenNotice?.(parsed.noticeId);
+    return true;
+  }
+  if (parsed.kind === 'visitor') {
+    handlers.onOpenVisitor?.(parsed.visitorId, parsed.type);
     return true;
   }
   handlers.onOpenChat?.(parsed.groupId);
@@ -364,6 +573,10 @@ export async function resolveInitialNotificationTargets(): Promise<{
   groupId?: string;
   pollId?: string;
   complaintId?: string;
+  bookingId?: string;
+  ruleId?: string;
+  noticeId?: string;
+  visitorId?: string;
 }> {
   if (!isRemotePushAvailable()) return {};
   const response = await Notifications.getLastNotificationResponseAsync();
@@ -371,6 +584,10 @@ export async function resolveInitialNotificationTargets(): Promise<{
   if (!parsed) return {};
   if (parsed.kind === 'poll') return { pollId: parsed.pollId };
   if (parsed.kind === 'complaint') return { complaintId: parsed.complaintId };
+  if (parsed.kind === 'amenity') return { bookingId: parsed.bookingId };
+  if (parsed.kind === 'rule') return { ruleId: parsed.ruleId };
+  if (parsed.kind === 'notice') return { noticeId: parsed.noticeId };
+  if (parsed.kind === 'visitor') return { visitorId: parsed.visitorId };
   return { groupId: parsed.groupId };
 }
 
@@ -382,8 +599,12 @@ export async function resolveInitialNotificationGroupId(): Promise<string | unde
 export function addNotificationResponseListener(handlers: {
   onOpen?: (notification: AppPushNotification) => void;
   onOpenChat?: (groupId?: string) => void;
-  onOpenPoll?: (pollId?: string) => void;
+  onOpenPoll?: (pollId?: string, groupId?: string) => void;
   onOpenComplaint?: (complaintId?: string) => void;
+  onOpenAmenity?: (bookingId?: string) => void;
+  onOpenRule?: (ruleId?: string) => void;
+  onOpenNotice?: (noticeId?: string) => void;
+  onOpenVisitor?: (visitorId?: string, type?: AppPushNotification['type']) => void;
 }): Notifications.Subscription {
   if (!isRemotePushAvailable()) {
     return { remove: () => undefined };
@@ -402,6 +623,9 @@ export function addNotificationReceivedListener(
   return Notifications.addNotificationReceivedListener((notification) => {
     const parsed = parseAppPushNotification(extractNotificationContent(notification));
     if (parsed) {
+      if (parsed.kind === 'visitor' && AppState.currentState === 'active') {
+        void playVisitorNotificationSound(parsed.type);
+      }
       onReceived(parsed);
     }
   });

@@ -36,7 +36,6 @@ export function DashboardModule() {
             { label: 'Cash On Hand', value: overview.data.cashOnHand },
             { label: 'Expense Count', value: overview.data.expenseCount, isCurrency: false },
             { label: 'Total Members', value: overview.data.totalUsers, isCurrency: false },
-            { label: 'Society', value: overview.data.societyName, isCurrency: false },
           ]}
         />
       ) : null}

@@ -4,33 +4,59 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import axios from 'axios';
 import { ListEmpty, ListError, ListLoading } from '../../components/dashboard/ListStates';
-import { SectionCard } from '../../components/dashboard/SectionCard';
 import { ChangePasswordFlow } from '../../components/ChangePasswordFlow';
 import {
   addContractType,
   deleteContractType,
   fetchContractTypes,
   fetchMaintenanceSettings,
+  fetchMemberPaymentSettings,
+  requestMemberPaymentSetupOtp,
   updateMaintenanceSettings,
+  updateMemberPaymentSettings,
+  verifyMemberPaymentSetupOtp,
 } from '../../services/api';
 import { useAppAlert } from '../../context/AppAlertContext';
-import { useScreenCaptureSettings } from '../../context/ScreenCaptureContext';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import type { MaintenanceSettings } from '../../types/api';
 
-export function SettingsModule({ onMaintenanceConfigured }: { onMaintenanceConfigured?: () => void }) {
+type ServicesSectionKey = 'security' | 'maintenance' | 'payments' | 'contracts';
+
+function ServicesAccordionSection({
+  title,
+  expanded,
+  onToggle,
+  children,
+}: {
+  title: string;
+  expanded: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  const { theme } = useTheme();
+  return (
+    <View style={[styles.accordion, { borderColor: theme.divider, backgroundColor: theme.cardBg }]}>
+      <Pressable style={styles.accordionHead} onPress={onToggle}>
+        <Text style={[styles.accordionTitle, { color: theme.text }]}>{title}</Text>
+        <Text style={[styles.accordionChevron, { color: theme.textMuted }]}>{expanded ? '▾' : '▸'}</Text>
+      </Pressable>
+      {expanded ? <View style={styles.accordionBody}>{children}</View> : null}
+    </View>
+  );
+}
+
+export function SettingsModule() {
   const { theme } = useTheme();
   const { alert, confirm } = useAppAlert();
-  const { allowScreenCapture, setAllowScreenCapture } = useScreenCaptureSettings();
   const settingsLoad = useAsyncLoad(fetchMaintenanceSettings, []);
+  const paymentSettingsLoad = useAsyncLoad(fetchMemberPaymentSettings, []);
   const typesLoad = useAsyncLoad(fetchContractTypes, []);
 
   const [defaultMaintenance, setDefaultMaintenance] = useState('');
@@ -39,9 +65,37 @@ export function SettingsModule({ onMaintenanceConfigured }: { onMaintenanceConfi
   const [allowCustomMaintenance, setAllowCustomMaintenance] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
 
+  const [memberPaymentsEnabled, setMemberPaymentsEnabled] = useState(false);
+  const [razorpayKeyId, setRazorpayKeyId] = useState('');
+  const [razorpayKeySecret, setRazorpayKeySecret] = useState('');
+  const [savingPaymentSettings, setSavingPaymentSettings] = useState(false);
+
+  const [chairmanPhone, setChairmanPhone] = useState('');
+  const [societyPan, setSocietyPan] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankIfsc, setBankIfsc] = useState('');
+  const [bankBeneficiaryName, setBankBeneficiaryName] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [routeTncAccepted, setRouteTncAccepted] = useState(false);
+  const [paymentSetupStep, setPaymentSetupStep] = useState<'form' | 'otp'>('form');
+  const [paymentSetupEmail, setPaymentSetupEmail] = useState('');
+  const [setupOtp, setSetupOtp] = useState('');
+
   const [typeLabel, setTypeLabel] = useState('');
   const [typeCode, setTypeCode] = useState('');
   const [addingType, setAddingType] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Record<ServicesSectionKey, boolean>>({
+    security: false,
+    maintenance: false,
+    payments: false,
+    contracts: false,
+  });
+
+  function toggleSection(section: ServicesSectionKey) {
+    setExpandedSections((current) => ({ ...current, [section]: !current[section] }));
+  }
 
   useEffect(() => {
     if (!settingsLoad.data) return;
@@ -50,12 +104,25 @@ export function SettingsModule({ onMaintenanceConfigured }: { onMaintenanceConfi
     setPenaltyGraceDay(String(s.maintenancePenaltyGraceDay));
     setPenaltyAmount(String(s.maintenancePenaltyAmount));
     setAllowCustomMaintenance(s.allowCustomMemberMaintenance);
+    if (s.configured === false) {
+      setExpandedSections((current) => ({ ...current, maintenance: true }));
+    }
   }, [settingsLoad.data]);
 
-  const refreshing = settingsLoad.refreshing || typesLoad.refreshing;
+  useEffect(() => {
+    if (!paymentSettingsLoad.data) return;
+    setMemberPaymentsEnabled(paymentSettingsLoad.data.enabled);
+    setRazorpayKeyId(paymentSettingsLoad.data.keyId ?? '');
+    setRazorpayKeySecret('');
+    setBankIfsc(paymentSettingsLoad.data.bankIfsc ?? '');
+    setBankBeneficiaryName(paymentSettingsLoad.data.bankBeneficiaryName ?? '');
+  }, [paymentSettingsLoad.data]);
+
+  const refreshing = settingsLoad.refreshing || paymentSettingsLoad.refreshing || typesLoad.refreshing;
 
   function refreshAll() {
     settingsLoad.refresh();
+    paymentSettingsLoad.refresh();
     typesLoad.refresh();
   }
 
@@ -90,11 +157,8 @@ export function SettingsModule({ onMaintenanceConfigured }: { onMaintenanceConfi
 
     setSavingSettings(true);
     try {
-      const saved = await updateMaintenanceSettings(payload);
+      await updateMaintenanceSettings(payload);
       alert('Saved', 'Maintenance settings saved.', { variant: 'success' });
-      if (saved.configured === true) {
-        onMaintenanceConfigured?.();
-      }
       settingsLoad.refresh();
     } catch (e: unknown) {
       const msg = axios.isAxiosError(e)
@@ -105,6 +169,132 @@ export function SettingsModule({ onMaintenanceConfigured }: { onMaintenanceConfi
       });
     } finally {
       setSavingSettings(false);
+    }
+  }
+
+  function buildBankSetupPayload() {
+    return {
+      routeTncAccepted,
+      chairmanPhone: chairmanPhone.trim(),
+      societyPan: societyPan.trim(),
+      bankAccountNumber: bankAccountNumber.trim(),
+      bankIfsc: bankIfsc.trim(),
+      bankBeneficiaryName: bankBeneficiaryName.trim(),
+      city: city.trim(),
+      state: state.trim(),
+      postalCode: postalCode.trim(),
+    };
+  }
+
+  async function savePaymentSettings() {
+    const paymentData = paymentSettingsLoad.data;
+    const routeEnabled = paymentData?.routeEnabled === true;
+
+    if (routeEnabled) {
+      if (paymentSetupStep === 'otp') {
+        const otp = setupOtp.trim();
+        if (!/^\d{6}$/.test(otp)) {
+          alert('Invalid code', 'Enter the 6-digit verification code from your email.', { variant: 'error' });
+          return;
+        }
+        setSavingPaymentSettings(true);
+        try {
+          const result = await verifyMemberPaymentSetupOtp(otp);
+          alert('Saved', result.message ?? 'Bank account submitted to Razorpay.', { variant: 'success' });
+          setPaymentSetupStep('form');
+          setSetupOtp('');
+          setBankAccountNumber('');
+          paymentSettingsLoad.refresh();
+        } catch (e: unknown) {
+          const msg = axios.isAxiosError(e)
+            ? (e.response?.data as { message?: string } | undefined)?.message
+            : undefined;
+          alert('Verification failed', msg ?? (e instanceof Error ? e.message : 'Invalid verification code'), {
+            variant: 'error',
+          });
+        } finally {
+          setSavingPaymentSettings(false);
+        }
+        return;
+      }
+
+      if (!routeTncAccepted) {
+        alert('Terms required', 'Please accept the payment account terms.', { variant: 'error' });
+        return;
+      }
+      if (!chairmanPhone.trim() || !societyPan.trim() || !bankAccountNumber.trim() || !bankIfsc.trim() || !bankBeneficiaryName.trim() || !city.trim() || !state.trim() || !postalCode.trim()) {
+        alert('Missing fields', 'Please fill all bank and KYC fields.', { variant: 'error' });
+        return;
+      }
+
+      setSavingPaymentSettings(true);
+      try {
+        const result = await requestMemberPaymentSetupOtp(buildBankSetupPayload());
+        setPaymentSetupStep('otp');
+        setPaymentSetupEmail(result.email ?? '');
+        setSetupOtp('');
+        alert('Code sent', result.message ?? 'Verification code sent to your email.', { variant: 'success' });
+      } catch (e: unknown) {
+        const msg = axios.isAxiosError(e)
+          ? (e.response?.data as { message?: string } | undefined)?.message
+          : undefined;
+        alert('Save failed', msg ?? (e instanceof Error ? e.message : 'Unable to send verification code'), {
+          variant: 'error',
+        });
+      } finally {
+        setSavingPaymentSettings(false);
+      }
+      return;
+    }
+
+    const keyId = razorpayKeyId.trim();
+    const keySecret = razorpayKeySecret.trim();
+    if (memberPaymentsEnabled && !keyId) {
+      alert('Razorpay Key ID required', 'Enter your society Razorpay Key ID.', { variant: 'error' });
+      return;
+    }
+    if (memberPaymentsEnabled && !keySecret && !paymentData?.configured) {
+      alert('Razorpay Key Secret required', 'Enter your society Razorpay Key Secret.', { variant: 'error' });
+      return;
+    }
+
+    setSavingPaymentSettings(true);
+    try {
+      const result = await updateMemberPaymentSettings({
+        enabled: memberPaymentsEnabled,
+        keyId,
+        ...(keySecret ? { keySecret } : {}),
+      });
+      alert('Saved', result.message ?? 'Member payment settings saved.', { variant: 'success' });
+      setRazorpayKeySecret('');
+      paymentSettingsLoad.refresh();
+    } catch (e: unknown) {
+      const msg = axios.isAxiosError(e)
+        ? (e.response?.data as { message?: string } | undefined)?.message
+        : undefined;
+      alert('Save failed', msg ?? (e instanceof Error ? e.message : 'Unable to save payment settings'), {
+        variant: 'error',
+      });
+    } finally {
+      setSavingPaymentSettings(false);
+    }
+  }
+
+  async function resendPaymentSetupOtp() {
+    setSavingPaymentSettings(true);
+    try {
+      const result = await requestMemberPaymentSetupOtp(buildBankSetupPayload());
+      setPaymentSetupStep('otp');
+      setPaymentSetupEmail(result.email ?? paymentSetupEmail);
+      setSetupOtp('');
+      alert('Code sent', 'Verification code sent again.', { variant: 'success' });
+    } catch (e: unknown) {
+      const msg = axios.isAxiosError(e)
+        ? (e.response?.data as { message?: string } | undefined)?.message
+        : undefined;
+      alert('Failed', msg ?? 'Unable to resend verification code', { variant: 'error' });
+    } finally {
+      setSavingPaymentSettings(false);
     }
   }
 
@@ -162,41 +352,19 @@ export function SettingsModule({ onMaintenanceConfigured }: { onMaintenanceConfi
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} />}
       keyboardShouldPersistTaps="handled"
     >
-      <ChangePasswordFlow />
-
-      <SectionCard
-        title="Screenshots & screen recording"
-        subtitle="Saved on this device only. Turn off to block screenshots and screen recording in the app."
+      <ServicesAccordionSection
+        title="Account security"
+        expanded={expandedSections.security}
+        onToggle={() => toggleSection('security')}
       >
-        <View style={styles.captureRow}>
-          <View style={styles.captureText}>
-            <Text style={[styles.captureLabel, { color: theme.text }]}>Allow screenshots</Text>
-            <Text style={[styles.captureHint, { color: theme.textMuted }]}>
-              {allowScreenCapture
-                ? 'Screenshots and screen recording are allowed.'
-                : 'Screenshots and screen recording are blocked.'}
-            </Text>
-          </View>
-          <Switch
-            value={allowScreenCapture}
-            onValueChange={setAllowScreenCapture}
-            trackColor={{ false: theme.divider, true: theme.accentGold }}
-          />
-        </View>
-      </SectionCard>
+        <ChangePasswordFlow />
+      </ServicesAccordionSection>
 
-      <SectionCard
+      <ServicesAccordionSection
         title="Maintenance Rules & Penalty Settings"
-        subtitle="Configure default maintenance, grace days, penalty and per-member override mode"
+        expanded={expandedSections.maintenance}
+        onToggle={() => toggleSection('maintenance')}
       >
-        {settingsLoad.data && settingsLoad.data.configured === false ? (
-          <View style={[styles.setupBanner, { backgroundColor: theme.accentSoft, borderColor: theme.accentGold }]}>
-            <Text style={[styles.setupBannerTitle, { color: theme.accentGold }]}>Maintenance setup required</Text>
-            <Text style={[styles.setupBannerText, { color: theme.textMuted }]}>
-              Save your maintenance rules below before using other modules.
-            </Text>
-          </View>
-        ) : null}
         {settingsLoad.loading ? <ListLoading /> : null}
         {settingsLoad.error ? <ListError message={settingsLoad.error} /> : null}
         {settingsLoad.data ? (
@@ -241,15 +409,247 @@ export function SettingsModule({ onMaintenanceConfigured }: { onMaintenanceConfi
               onPress={saveSettings}
               disabled={savingSettings}
             >
-              <Text style={styles.primaryBtnText}>{savingSettings ? 'Saving…' : 'Save Settings'}</Text>
+              <Text style={styles.primaryBtnText}>{savingSettings ? 'Saving…' : 'Save Maintenance'}</Text>
             </Pressable>
           </View>
         ) : null}
-      </SectionCard>
+      </ServicesAccordionSection>
 
-      <SectionCard
+      <ServicesAccordionSection
+        title="Member online payments"
+        expanded={expandedSections.payments}
+        onToggle={() => toggleSection('payments')}
+      >
+        {paymentSettingsLoad.loading ? <ListLoading /> : null}
+        {paymentSettingsLoad.error ? <ListError message={paymentSettingsLoad.error} /> : null}
+        {paymentSettingsLoad.data ? (
+          <View style={styles.form}>
+            {paymentSettingsLoad.data.routeEnabled ? (
+              <>
+                {paymentSettingsLoad.data.routeStatus && paymentSettingsLoad.data.routeStatus !== 'NONE' ? (
+                  <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
+                    Status: {paymentSettingsLoad.data.routeStatus}
+                    {paymentSettingsLoad.data.routeError ? ` — ${paymentSettingsLoad.data.routeError}` : ''}
+                  </Text>
+                ) : null}
+                {paymentSettingsLoad.data.routeStatus === 'ACTIVATED' ? (
+                  <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
+                    Your society payment account is active. Members can pay maintenance online.
+                  </Text>
+                ) : paymentSettingsLoad.data.routeStatus === 'PENDING' ? (
+                  <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
+                    Razorpay is verifying your bank account. This usually takes 1–2 business days.
+                  </Text>
+                ) : paymentSetupStep === 'otp' ? (
+                  <>
+                    <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
+                      A verification code was sent to {paymentSetupEmail || 'your email'}. Enter it below to confirm
+                      bank setup.
+                    </Text>
+                    <FormField label="Verification code" theme={theme}>
+                      <TextInput
+                        style={inputStyle(theme)}
+                        value={setupOtp}
+                        onChangeText={setSetupOtp}
+                        placeholder="6-digit code"
+                        placeholderTextColor={theme.placeholder}
+                        keyboardType="number-pad"
+                        maxLength={6}
+                      />
+                    </FormField>
+                    <Pressable
+                      style={[
+                        styles.primaryBtn,
+                        { backgroundColor: theme.accent },
+                        savingPaymentSettings ? styles.disabled : null,
+                      ]}
+                      onPress={savePaymentSettings}
+                      disabled={savingPaymentSettings}
+                    >
+                      <Text style={styles.primaryBtnText}>
+                        {savingPaymentSettings ? 'Verifying…' : 'Verify and set up bank account'}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.linkBtn}
+                      onPress={() => void resendPaymentSetupOtp()}
+                    >
+                      <Text style={[styles.linkBtnText, { color: theme.accent }]}>Resend code</Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.linkBtn}
+                      onPress={() => {
+                        setPaymentSetupStep('form');
+                        setSetupOtp('');
+                        setPaymentSetupEmail('');
+                      }}
+                    >
+                      <Text style={[styles.linkBtnText, { color: theme.textMuted }]}>Cancel</Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <>
+                    <FormField label="Chairman phone" theme={theme}>
+                      <TextInput
+                        style={inputStyle(theme)}
+                        value={chairmanPhone}
+                        onChangeText={setChairmanPhone}
+                        placeholder="10-digit mobile"
+                        placeholderTextColor={theme.placeholder}
+                        keyboardType="phone-pad"
+                      />
+                    </FormField>
+                    <FormField label="Society PAN" theme={theme}>
+                      <TextInput
+                        style={inputStyle(theme)}
+                        value={societyPan}
+                        onChangeText={setSocietyPan}
+                        placeholder="AAAAA9999A"
+                        placeholderTextColor={theme.placeholder}
+                        autoCapitalize="characters"
+                      />
+                    </FormField>
+                    <FormField label="Bank account number" theme={theme}>
+                      <TextInput
+                        style={inputStyle(theme)}
+                        value={bankAccountNumber}
+                        onChangeText={setBankAccountNumber}
+                        placeholder="Account number"
+                        placeholderTextColor={theme.placeholder}
+                        keyboardType="number-pad"
+                      />
+                    </FormField>
+                    <FormField label="IFSC code" theme={theme}>
+                      <TextInput
+                        style={inputStyle(theme)}
+                        value={bankIfsc}
+                        onChangeText={setBankIfsc}
+                        placeholder="HDFC0001234"
+                        placeholderTextColor={theme.placeholder}
+                        autoCapitalize="characters"
+                      />
+                    </FormField>
+                    <FormField label="Account holder name" theme={theme}>
+                      <TextInput
+                        style={inputStyle(theme)}
+                        value={bankBeneficiaryName}
+                        onChangeText={setBankBeneficiaryName}
+                        placeholder="As per bank records"
+                        placeholderTextColor={theme.placeholder}
+                      />
+                    </FormField>
+                    <FormField label="City" theme={theme}>
+                      <TextInput
+                        style={inputStyle(theme)}
+                        value={city}
+                        onChangeText={setCity}
+                        placeholder="Pune"
+                        placeholderTextColor={theme.placeholder}
+                      />
+                    </FormField>
+                    <FormField label="State" theme={theme}>
+                      <TextInput
+                        style={inputStyle(theme)}
+                        value={state}
+                        onChangeText={setState}
+                        placeholder="Maharashtra"
+                        placeholderTextColor={theme.placeholder}
+                      />
+                    </FormField>
+                    <FormField label="Postal code" theme={theme}>
+                      <TextInput
+                        style={inputStyle(theme)}
+                        value={postalCode}
+                        onChangeText={setPostalCode}
+                        placeholder="411001"
+                        placeholderTextColor={theme.placeholder}
+                        keyboardType="number-pad"
+                      />
+                    </FormField>
+                    <CheckboxField
+                      label="I authorise SOCIETY-ASSETS to create a Razorpay payment account for our society"
+                      checked={routeTncAccepted}
+                      onChange={setRouteTncAccepted}
+                    />
+                    <Pressable
+                      style={[
+                        styles.primaryBtn,
+                        { backgroundColor: theme.accent },
+                        savingPaymentSettings ? styles.disabled : null,
+                      ]}
+                      onPress={savePaymentSettings}
+                      disabled={savingPaymentSettings}
+                    >
+                      <Text style={styles.primaryBtnText}>
+                        {savingPaymentSettings ? 'Sending code…' : 'Set up bank account'}
+                      </Text>
+                    </Pressable>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <CheckboxField
+                  label="Allow members to pay maintenance online"
+                  checked={memberPaymentsEnabled}
+                  onChange={setMemberPaymentsEnabled}
+                />
+                <FormField label="Razorpay Key ID" theme={theme}>
+                  <TextInput
+                    style={inputStyle(theme)}
+                    value={razorpayKeyId}
+                    onChangeText={setRazorpayKeyId}
+                    placeholder="rzp_live_... or rzp_test_..."
+                    placeholderTextColor={theme.placeholder}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </FormField>
+                <FormField
+                  label={
+                    paymentSettingsLoad.data.keySecretMasked
+                      ? `Razorpay Key Secret (${paymentSettingsLoad.data.keySecretMasked} saved — leave blank to keep)`
+                      : 'Razorpay Key Secret'
+                  }
+                  theme={theme}
+                >
+                  <TextInput
+                    style={inputStyle(theme)}
+                    value={razorpayKeySecret}
+                    onChangeText={setRazorpayKeySecret}
+                    placeholder="Enter key secret"
+                    placeholderTextColor={theme.placeholder}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </FormField>
+                <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
+                  Get API keys from dashboard.razorpay.com → Settings → API Keys.
+                </Text>
+                <Pressable
+                  style={[
+                    styles.primaryBtn,
+                    { backgroundColor: theme.accent },
+                    savingPaymentSettings ? styles.disabled : null,
+                  ]}
+                  onPress={savePaymentSettings}
+                  disabled={savingPaymentSettings}
+                >
+                  <Text style={styles.primaryBtnText}>
+                    {savingPaymentSettings ? 'Saving…' : 'Save payment settings'}
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        ) : null}
+      </ServicesAccordionSection>
+
+      <ServicesAccordionSection
         title="Contract Types"
-        subtitle="Used in the Contracts module dropdown. Leave code blank to auto-generate from the name."
+        expanded={expandedSections.contracts}
+        onToggle={() => toggleSection('contracts')}
       >
         {typesLoad.loading ? <ListLoading /> : null}
         {typesLoad.error ? <ListError message={typesLoad.error} /> : null}
@@ -294,7 +694,7 @@ export function SettingsModule({ onMaintenanceConfigured }: { onMaintenanceConfi
             <Text style={styles.primaryBtnText}>{addingType ? 'Adding…' : 'Add Contract Type'}</Text>
           </Pressable>
         </View>
-      </SectionCard>
+      </ServicesAccordionSection>
     </ScrollView>
   );
 }
@@ -359,16 +759,18 @@ function CheckboxField({
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: 12, paddingBottom: 32 },
-  captureRow: {
+  scroll: { padding: 12, paddingBottom: 32, gap: 12 },
+  accordion: { borderWidth: 1, borderRadius: 12, overflow: 'hidden' },
+  accordionHead: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  captureText: { flex: 1, minWidth: 0 },
-  captureLabel: { fontSize: 16, fontWeight: '600' },
-  captureHint: { fontSize: 13, marginTop: 4, lineHeight: 18 },
+  accordionTitle: { fontSize: 16, fontWeight: '700', flex: 1 },
+  accordionChevron: { fontSize: 16, fontWeight: '700' },
+  accordionBody: { paddingHorizontal: 14, paddingBottom: 14 },
   form: { gap: 4 },
   field: { marginBottom: 12 },
   fieldLabel: {
@@ -378,6 +780,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 6,
   },
+  paymentHint: { fontSize: 12, lineHeight: 18, marginBottom: 8 },
   input: {
     borderWidth: 1,
     borderRadius: 8,
@@ -418,6 +821,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   disabled: { opacity: 0.65 },
+  linkBtn: { marginTop: 4, paddingVertical: 8, alignItems: 'center' },
+  linkBtnText: { fontSize: 14, fontWeight: '600' },
   typeRow: {
     borderTopWidth: 1,
     paddingVertical: 10,
@@ -434,22 +839,5 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     marginTop: 12,
     paddingTop: 12,
-  },
-  setupBanner: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
-  },
-  setupBannerTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  setupBannerText: {
-    fontSize: 13,
-    lineHeight: 18,
   },
 });

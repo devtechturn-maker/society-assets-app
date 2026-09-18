@@ -1,88 +1,118 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Image, StyleSheet, View } from 'react-native';
+import {
+  Animated,
+  Easing,
+  Platform,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as ExpoSplashScreen from 'expo-splash-screen';
-import { useTheme } from '../theme/ThemeContext';
+import { AppLogo } from '../components/AppLogo';
+import { SplashBackgroundArt } from '../components/splash/SplashBackgroundArt';
+import { SPLASH_COLORS, splashLogoSize } from '../components/splash/splashTheme';
 
-/** Always show at least this long on every cold start / full reload. */
+/** Minimum branded splash time on cold start / full reload. */
 export const SPLASH_DURATION_MS = 2500;
 
-const LOGO_WIDTH = 300;
-const LOGO_HEIGHT = 340;
-
-const splashLogo = require('../../assets/logo.png');
+const BREATHE_DURATION_MS = 2200;
+const BREATHE_SCALE_MIN = 0.97;
+const BREATHE_SCALE_MAX = 1.05;
 
 type Props = {
   onFinish: () => void;
+  appReady?: boolean;
 };
 
-/** Branded splash: theme background + centered app logo. */
-export function SplashScreen({ onFinish }: Props) {
-  const { theme } = useTheme();
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.92)).current;
-  const footerOpacity = useRef(new Animated.Value(0)).current;
+export function SplashScreen({ onFinish, appReady = false }: Props) {
+  const { width: screenWidth } = useWindowDimensions();
+  const logoSize = splashLogoSize(screenWidth);
+  const cornerRadius = logoSize / 4;
   const finished = useRef(false);
+  const startedAt = useRef(Date.now());
+  const breathe = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathe, {
+          toValue: 1,
+          duration: BREATHE_DURATION_MS,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(breathe, {
+          toValue: 0,
+          duration: BREATHE_DURATION_MS,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [breathe]);
+
+  useEffect(() => {
+    if (!appReady) {
+      return;
+    }
     ExpoSplashScreen.hideAsync().catch(() => undefined);
+  }, [appReady]);
 
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(logoOpacity, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.spring(logoScale, {
-          toValue: 1,
-          friction: 9,
-          tension: 65,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.timing(footerOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [logoOpacity, logoScale, footerOpacity]);
+  // Hard failsafe: never leave the OS splash / branded splash forever.
+  useEffect(() => {
+    const failsafe = setTimeout(() => {
+      ExpoSplashScreen.hideAsync().catch(() => undefined);
+      if (!finished.current) {
+        finished.current = true;
+        onFinish();
+      }
+    }, SPLASH_DURATION_MS + 6000);
+    return () => clearTimeout(failsafe);
+  }, [onFinish]);
 
   useEffect(() => {
+    if (!appReady || finished.current) {
+      return;
+    }
+
+    const elapsed = Date.now() - startedAt.current;
+    const remaining = Math.max(0, SPLASH_DURATION_MS - elapsed);
     const timer = setTimeout(() => {
       if (finished.current) {
         return;
       }
       finished.current = true;
       onFinish();
-    }, SPLASH_DURATION_MS);
+    }, remaining);
+
     return () => clearTimeout(timer);
-  }, [onFinish]);
+  }, [appReady, onFinish]);
+
+  const logoScale = breathe.interpolate({
+    inputRange: [0, 1],
+    outputRange: [BREATHE_SCALE_MIN, BREATHE_SCALE_MAX],
+  });
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.splashBg }]}>
-      <StatusBar style="light" backgroundColor={theme.splashBg} />
+    <View style={styles.root}>
+      <StatusBar style="dark" backgroundColor={SPLASH_COLORS.background} />
+      <SplashBackgroundArt />
 
-      <View style={styles.center}>
-        <Animated.View
-          style={{
-            opacity: logoOpacity,
-            transform: [{ scale: logoScale }],
-          }}
-        >
-          <Image
-            source={splashLogo}
-            style={styles.logo}
-            resizeMode="contain"
-            accessibilityLabel="Society Assets"
+      <View style={styles.logoStage} pointerEvents="none">
+        <Animated.View style={{ transform: [{ scale: logoScale }] }}>
+          <AppLogo
+            variant="splashScreen"
+            size={logoSize}
+            roundedSquare
+            cornerRadius={cornerRadius}
+            resizeMode="cover"
+            style={styles.logoShadow}
           />
         </Animated.View>
       </View>
-
-      <Animated.Text style={[styles.footerBrand, { opacity: footerOpacity }]}>
-        SOCIETY ASSETS
-      </Animated.Text>
     </View>
   );
 }
@@ -90,25 +120,24 @@ export function SplashScreen({ onFinish }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: SPLASH_COLORS.background,
   },
-  center: {
-    flex: 1,
+  logoStage: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logo: {
-    width: LOGO_WIDTH,
-    height: LOGO_HEIGHT,
-  },
-  footerBrand: {
-    position: 'absolute',
-    bottom: 48,
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-    color: 'rgba(255, 255, 255, 0.72)',
-    fontSize: 11,
-    fontWeight: '300',
-    letterSpacing: 4.5,
+  logoShadow: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0f172a',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.24,
+        shadowRadius: 14,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
 });

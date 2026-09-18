@@ -138,8 +138,14 @@ export function EmailVerificationFlow({
     Keyboard.dismiss();
     otpInputRef.current?.blur();
     try {
-      await verifyMemberEmailOtp(otp.trim());
-      const patch: Partial<LoginData> = { emailVerified: true };
+      const response = await verifyMemberEmailOtp(otp.trim());
+      const patch: Partial<LoginData> = {
+        emailVerified: true,
+        profileCompletionRequired: false,
+        emailNeedsCapture: false,
+        ...(response.email ? { email: response.email } : {}),
+        ...(response.token ? { token: response.token } : {}),
+      };
       await updateStoredUser(patch);
       onVerified?.(patch);
       toast('Email verified successfully', 'success');
@@ -340,7 +346,7 @@ const styles = StyleSheet.create({
     gap: 8,
     height: 48,
     borderRadius: 8,
-    backgroundColor: '#70088c',
+    backgroundColor: '#0f172a',
   },
   secondaryBtn: {
     height: 44,

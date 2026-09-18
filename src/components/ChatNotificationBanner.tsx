@@ -10,9 +10,11 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme/ThemeContext';
+import { colors } from '../theme/colors';
 import type { AppPushNotification } from '../services/pushNotifications';
+import { APP_NAME, brandLogos } from '../constants/branding';
 
-const logoGlyph = require('../../assets/logo-glyph.png');
+const logoGlyph = brandLogos.glyph;
 
 const AUTO_DISMISS_MS = 5000;
 
@@ -63,8 +65,34 @@ export function ChatNotificationBanner({ notification, onPress, onDismiss }: Pro
   }
 
   const topInset = Platform.OS === 'ios' ? 52 : 12;
-  const title = notification.kind === 'poll' ? notification.question : notification.groupName;
-  const glyph = notification.kind === 'poll' ? '📊' : '💬';
+  const title =
+    notification.kind === 'poll'
+      ? notification.question
+      : notification.kind === 'complaint'
+        ? notification.subject
+        : notification.kind === 'amenity'
+          ? notification.amenityLabel
+          : notification.kind === 'rule'
+            ? notification.subject
+            : notification.kind === 'notice'
+              ? notification.subject
+              : notification.kind === 'visitor'
+                ? notification.visitorName
+                : notification.groupName;
+  const glyph =
+    notification.kind === 'poll'
+      ? '📊'
+      : notification.kind === 'complaint'
+        ? '⚠'
+        : notification.kind === 'amenity'
+          ? '📅'
+          : notification.kind === 'rule'
+            ? '📖'
+            : notification.kind === 'notice'
+              ? '📢'
+              : notification.kind === 'visitor'
+                ? '🚪'
+                : '💬';
 
   return (
     <Animated.View
@@ -91,13 +119,13 @@ export function ChatNotificationBanner({ notification, onPress, onDismiss }: Pro
         ]}
       >
         <LinearGradient
-          colors={['#70088c', '#5c0672']}
+          colors={[colors.navy600, colors.navy700]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={styles.accentRail}
         />
         <LinearGradient
-          colors={['#70088c', '#5c0672']}
+          colors={[colors.navy600, colors.navy700]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.logoWrap}
@@ -107,7 +135,7 @@ export function ChatNotificationBanner({ notification, onPress, onDismiss }: Pro
         <View style={styles.copy}>
           <View style={styles.titleRow}>
             <Text style={[styles.brand, { color: theme.accentGold }]} numberOfLines={1}>
-              Society Assets
+              {APP_NAME}
             </Text>
             <Text style={[styles.time, { color: theme.textMuted }]}>now</Text>
           </View>

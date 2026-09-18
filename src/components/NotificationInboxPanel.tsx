@@ -11,7 +11,7 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import type { AppNotification } from '../types/api';
 
-type SectionKey = 'complaints' | 'chats' | 'polls';
+type SectionKey = 'complaints' | 'chats' | 'polls' | 'amenities' | 'rules' | 'notices';
 
 const SECTION_PREVIEW = 3;
 
@@ -48,6 +48,10 @@ function notificationGlyph(type: string): string {
   if (type.startsWith('COMPLAINT')) return '⚠';
   if (type.startsWith('GROUP')) return '💬';
   if (type.startsWith('POLL')) return '📊';
+  if (type.startsWith('AMENITY')) return '📅';
+  if (type.startsWith('RULE')) return '📖';
+  if (type.startsWith('NOTICE')) return '📢';
+  if (type.startsWith('VISITOR')) return '🚪';
   return '🔔';
 }
 
@@ -65,22 +69,37 @@ function filterBySection(notifications: AppNotification[], section: SectionKey):
   if (section === 'chats') {
     return notifications.filter((n) => n.type.startsWith('GROUP'));
   }
-  return notifications.filter((n) => n.type.startsWith('POLL'));
+  if (section === 'polls') {
+    return notifications.filter((n) => n.type.startsWith('POLL'));
+  }
+  if (section === 'rules') {
+    return notifications.filter((n) => n.type.startsWith('RULE'));
+  }
+  if (section === 'notices') {
+    return notifications.filter((n) => n.type.startsWith('NOTICE'));
+  }
+  return notifications.filter((n) => n.type.startsWith('AMENITY'));
 }
 
 function sectionTitle(section: SectionKey): string {
   if (section === 'complaints') return 'Complaints';
   if (section === 'chats') return 'Chats';
-  return 'Polls';
+  if (section === 'polls') return 'Polls';
+  if (section === 'rules') return 'Rules';
+  if (section === 'notices') return 'Notices';
+  return 'Amenities';
 }
 
 function sectionEmptyCopy(section: SectionKey): string {
   if (section === 'complaints') return 'No complaint notifications';
   if (section === 'chats') return 'No chat notifications';
-  return 'No poll notifications';
+  if (section === 'polls') return 'No poll notifications';
+  if (section === 'rules') return 'No rule notifications';
+  if (section === 'notices') return 'No notice notifications';
+  return 'No amenity notifications';
 }
 
-const SECTIONS: SectionKey[] = ['complaints', 'chats', 'polls'];
+const SECTIONS: SectionKey[] = ['complaints', 'chats', 'polls', 'rules', 'notices', 'amenities'];
 
 function NotificationRow({
   item,
@@ -210,6 +229,9 @@ export function NotificationInboxPanel({
     complaints: SECTION_PREVIEW,
     chats: SECTION_PREVIEW,
     polls: SECTION_PREVIEW,
+    rules: SECTION_PREVIEW,
+    notices: SECTION_PREVIEW,
+    amenities: SECTION_PREVIEW,
   });
   const prevLoadingMoreRef = useRef(false);
 
@@ -218,6 +240,9 @@ export function NotificationInboxPanel({
       complaints: filterBySection(notifications, 'complaints'),
       chats: filterBySection(notifications, 'chats'),
       polls: filterBySection(notifications, 'polls'),
+      rules: filterBySection(notifications, 'rules'),
+      notices: filterBySection(notifications, 'notices'),
+      amenities: filterBySection(notifications, 'amenities'),
     }),
     [notifications]
   );
@@ -228,6 +253,9 @@ export function NotificationInboxPanel({
         complaints: SECTION_PREVIEW,
         chats: SECTION_PREVIEW,
         polls: SECTION_PREVIEW,
+        rules: SECTION_PREVIEW,
+        notices: SECTION_PREVIEW,
+        amenities: SECTION_PREVIEW,
       });
     }
   }, [visible]);
@@ -238,6 +266,9 @@ export function NotificationInboxPanel({
         complaints: current.complaints + SECTION_PREVIEW,
         chats: current.chats + SECTION_PREVIEW,
         polls: current.polls + SECTION_PREVIEW,
+        rules: current.rules + SECTION_PREVIEW,
+        notices: current.notices + SECTION_PREVIEW,
+        amenities: current.amenities + SECTION_PREVIEW,
       }));
     }
     prevLoadingMoreRef.current = loadingMore;
@@ -506,15 +537,15 @@ const styles = StyleSheet.create({
   },
   closeText: { fontSize: 14, fontWeight: '800' },
   bellBtn: {
-    minWidth: 44,
-    height: 44,
-    paddingHorizontal: 8,
-    borderRadius: 22,
+    minWidth: 38,
+    height: 38,
+    paddingHorizontal: 6,
+    borderRadius: 19,
     backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bellGlyph: { fontSize: 20 },
+  bellGlyph: { fontSize: 18 },
   bellBadge: {
     position: 'absolute',
     top: 4,

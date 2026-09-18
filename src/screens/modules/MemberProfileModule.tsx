@@ -5,6 +5,7 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -27,6 +28,7 @@ import { useTheme } from '../../theme/ThemeContext';
 
 type Props = {
   onUserUpdated?: (patch: Partial<LoginData>) => void;
+  onLogout?: () => void;
 };
 
 function apiErrorMessage(error: unknown, fallback: string): string {
@@ -38,7 +40,7 @@ function apiErrorMessage(error: unknown, fallback: string): string {
 }
 
 export function MemberProfileModule({ onUserUpdated }: Props) {
-  const { theme } = useTheme();
+  const { theme, mode, setMode } = useTheme();
   const { toast } = useAppAlert();
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -217,6 +219,22 @@ export function MemberProfileModule({ onUserUpdated }: Props) {
               </Text>
             )}
           </SectionCard>
+
+          <SectionCard title="Appearance" subtitle="Choose light or dark mode on this device">
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleCopy}>
+                <Text style={[styles.toggleLabel, { color: theme.text }]}>Dark mode</Text>
+                <Text style={[styles.hint, { color: theme.textMuted, marginTop: 2 }]}>
+                  {mode === 'dark' ? 'Dark theme is on' : 'Light theme is on'}
+                </Text>
+              </View>
+              <Switch
+                value={mode === 'dark'}
+                onValueChange={(on) => setMode(on ? 'dark' : 'light')}
+                trackColor={{ false: theme.divider, true: theme.accentGold }}
+              />
+            </View>
+          </SectionCard>
         </>
       ) : null}
     </ScrollView>
@@ -274,7 +292,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     height: 46,
     borderRadius: 6,
-    backgroundColor: '#70088c',
+    backgroundColor: '#0f172a',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -286,4 +304,13 @@ const styles = StyleSheet.create({
     letterSpacing: 1.1,
     textTransform: 'uppercase',
   },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  toggleCopy: { flex: 1 },
+  toggleLabel: { fontSize: 16, fontWeight: '600' },
+
 });

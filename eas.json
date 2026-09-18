@@ -10,6 +10,9 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
       },
+      "android": {
+        "buildType": "apk"
+      },
       "ios": {
         "simulator": false
       }
@@ -22,6 +25,15 @@
       },
       "ios": {
         "simulator": true
+      }
+    },
+    "preview-apk": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
+      },
+      "android": {
+        "buildType": "apk"
       }
     },
     "preview": {

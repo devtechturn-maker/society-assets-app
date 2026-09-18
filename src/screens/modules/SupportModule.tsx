@@ -6,8 +6,7 @@ export function SupportModule() {
     <ScrollView contentContainerStyle={styles.scroll}>
       <SectionCard title="Help & support">
         <Text style={styles.body}>
-          For help with billing, contracts, or reports, contact your society chairman or use the web
-          dashboard.
+          For help with billing, contracts, or reports, contact your society chairman or treasurer.
         </Text>
       </SectionCard>
     </ScrollView>

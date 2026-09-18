@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { RecentExpense } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
@@ -7,9 +8,11 @@ import { Badge, paymentBadgeTone } from './Badge';
 type Props = {
   row: RecentExpense;
   showMember?: boolean;
+  showEntryType?: boolean;
+  children?: ReactNode;
 };
 
-export function ExpenseRowCard({ row, showMember = false }: Props) {
+export function ExpenseRowCard({ row, showMember = false, showEntryType = false, children }: Props) {
   const { theme } = useTheme();
   const period =
     row.maintenanceFromMonth || row.maintenanceToMonth
@@ -19,9 +22,23 @@ export function ExpenseRowCard({ row, showMember = false }: Props) {
   return (
     <View style={[styles.card, { borderTopColor: theme.divider }]}>
       <View style={styles.top}>
-        <Badge label={row.category || '—'} tone="info" />
+        <View style={styles.badges}>
+          {showEntryType ? (
+            <Badge
+              label={row.entryType === 'INCOME' ? 'Income' : 'Expense'}
+              tone={row.entryType === 'INCOME' ? 'success' : 'warn'}
+            />
+          ) : null}
+          <Badge
+            label={row.category || '—'}
+            tone={row.entryType === 'INCOME' ? 'success' : 'info'}
+          />
+        </View>
         <Text style={[styles.amount, { color: theme.text }]}>{formatInr(row.amount)}</Text>
       </View>
+      {!showMember && row.flatNumber ? (
+        <Text style={[styles.meta, { color: theme.textSoft }]}>Flat: {row.flatNumber}</Text>
+      ) : null}
       {showMember && (row.memberName || row.flatNumber) ? (
         <Text style={[styles.member, { color: theme.text }]}>
           {row.memberName ?? '—'}
@@ -38,6 +55,7 @@ export function ExpenseRowCard({ row, showMember = false }: Props) {
         <Text style={[styles.date, { color: theme.textMuted }]}>{formatDate(row.expenseDate)}</Text>
       </View>
       <Text style={[styles.created, { color: theme.textMuted }]}>Created {formatDateTime(row.createdAt)}</Text>
+      {children}
     </View>
   );
 }
@@ -53,6 +71,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: 8,
+  },
+  badges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    flex: 1,
   },
   amount: {
     fontSize: 16,
