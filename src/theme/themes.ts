@@ -1,4 +1,4 @@
-import { dark as darkTokens, light as lightTokens } from './colors';
+import { dark as darkTokens, light as lightTokens, palette } from './colors';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -19,6 +19,8 @@ export type AppTheme = {
   navText: string;
   divider: string;
   danger: string;
+  success: string;
+  warning: string;
   bottomBarBg: string;
   bottomBarBorder: string;
   chipBg: string;
@@ -50,18 +52,20 @@ export const lightTheme: AppTheme = {
   navActiveText: lightTokens.navActiveText,
   navText: lightTokens.navText,
   divider: lightTokens.cardBorder,
-  danger: '#ef4444',
+  danger: palette.danger,
+  success: '#22c55e',
+  warning: '#f59e0b',
   bottomBarBg: lightTokens.cardBg,
   bottomBarBorder: lightTokens.cardBorder,
   chipBg: lightTokens.cardBg,
-  chipBorder: '#cbd5e1',
+  chipBorder: palette.slate['300'],
   chipActiveBg: lightTokens.chipActiveBg,
   chipActiveBorder: lightTokens.chipActiveBorder,
   inputBg: lightTokens.cardBg,
   inputBorder: lightTokens.inputBorder,
   inputText: lightTokens.text,
-  placeholder: '#94a3b8',
-  shadow: lightTokens.text,
+  placeholder: palette.slate['400'],
+  shadow: lightTokens.shadow,
   statusBar: 'light',
   splashBg: lightTokens.splashBg,
 };
@@ -83,16 +87,18 @@ export const darkTheme: AppTheme = {
   navText: darkTokens.navText,
   divider: darkTokens.cardBorder,
   danger: '#f87171',
-  bottomBarBg: '#111827',
+  success: '#4ade80',
+  warning: '#fbbf24',
+  bottomBarBg: palette.slate['900'],
   bottomBarBorder: darkTokens.cardBorder,
   chipBg: darkTokens.cardBg,
-  chipBorder: '#334155',
+  chipBorder: palette.slate['700'],
   chipActiveBg: darkTokens.chipActiveBg,
   chipActiveBorder: darkTokens.chipActiveBorder,
   inputBg: darkTokens.cardBg,
   inputBorder: darkTokens.inputBorder,
   inputText: darkTokens.text,
-  placeholder: '#64748b',
+  placeholder: palette.slate['500'],
   shadow: darkTokens.shadow,
   statusBar: 'light',
   splashBg: darkTokens.splashBg,

@@ -531,7 +531,7 @@ const styles = StyleSheet.create({
     height: 46,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#70088c',
+    backgroundColor: '#0f172a',
   },
   buttonDisabled: { opacity: 0.85 },
   buttonText: {
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
   inlineLink: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#70088c',
+    color: '#0f172a',
     textDecorationLine: 'underline',
   },
 });

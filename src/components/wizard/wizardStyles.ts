@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { colors } from '../../theme/colors';
 
-export const WIZARD_ACCENT = '#70088c';
+export const WIZARD_ACCENT = colors.navy600;
 
 export const wizardStyles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f8fafc' },
@@ -138,7 +138,7 @@ export const wizardStyles = StyleSheet.create({
   },
   optionCardSelected: {
     borderColor: WIZARD_ACCENT,
-    backgroundColor: '#faf5ff',
+    backgroundColor: '#f1f5f9',
   },
   optionCardPressed: {
     opacity: 0.92,
@@ -175,9 +175,9 @@ export const wizardStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: '#f3e8ff',
+    backgroundColor: '#f1f5f9',
     borderWidth: 1,
-    borderColor: '#e9d5ff',
+    borderColor: '#cbd5e1',
   },
   phoneChipLabel: {
     fontSize: 10,

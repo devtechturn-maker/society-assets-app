@@ -1,22 +1,21 @@
 import { palette } from '../../theme/colors';
 
-/** Premium loading palette — brand purple + lavender tints only. */
+/** Premium loading palette — Admin Panel blue-slate brand tints. */
 export const SPLASH_COLORS = {
-  /** Sampled from bottom splash art sky (reference video). */
-  background: '#f8edf7',
-  backgroundMid: '#f8edf7',
+  background: palette.slate['50'],
+  backgroundMid: palette.slate['50'],
   backgroundSoft: palette.info.bg,
   brandPurple: palette.navy['700'],
   brandPurpleDark: palette.navy['800'],
   brandPurpleDeep: palette.navy['900'],
-  lavenderLight: 'rgba(112, 8, 140, 0.14)',
-  lavenderMid: 'rgba(112, 8, 140, 0.28)',
-  lavenderSoft: 'rgba(112, 8, 140, 0.08)',
+  lavenderLight: 'rgba(15, 23, 42, 0.14)',
+  lavenderMid: 'rgba(15, 23, 42, 0.28)',
+  lavenderSoft: 'rgba(15, 23, 42, 0.08)',
   /** Deeper band at the very bottom of the splash waves. */
-  lavenderWaveDeep: 'rgba(112, 8, 140, 0.22)',
-  lavenderWavePale: 'rgba(112, 8, 140, 0.06)',
+  lavenderWaveDeep: 'rgba(15, 23, 42, 0.22)',
+  lavenderWavePale: 'rgba(15, 23, 42, 0.06)',
   text: palette.info.text,
-  textMuted: '#6b5f7a',
+  textMuted: palette.slate['500'],
 } as const;
 
 export function premiumLoaderSizes(screenWidth: number, screenHeight: number) {

@@ -216,6 +216,7 @@ export async function previewFlatNumbers(payload: {
   totalBuildings: number;
   flatNumberFormat: FlatNumberFormat;
   flatsPerFloor?: number;
+  flatNumbers?: string[];
 }): Promise<{ total: number; flatNumbers: string[] }> {
   const { data } = await client.post<ApiResponse<{ total: number; flatNumbers: string[] }>>(
     '/auth/onboarding/preview-flats',
@@ -254,6 +255,8 @@ export async function createSocietyMobile(payload: {
   totalBuildings: number;
   flatNumberFormat: FlatNumberFormat;
   flatsPerFloor?: number;
+  flatNumbers?: string[];
+  chairmanFlatNumber?: string;
   chairmanName: string;
   email: string;
   societyAddress?: string;
@@ -269,7 +272,7 @@ export async function joinSocietyMobile(payload: {
   phone: string;
   selectionToken: string;
   societyId: string;
-  memberId: string;
+  flatId: string;
   memberName: string;
 }): Promise<LoginData> {
   const { data } = await client.post<ApiResponse<LoginData>>('/auth/onboarding/join-society', {
@@ -284,9 +287,9 @@ export async function fetchClaimableFlats(): Promise<OnboardingOpenFlat[]> {
   return data.data ?? [];
 }
 
-export async function linkMemberFlat(memberId: string): Promise<LoginData['memberProfile']> {
+export async function linkMemberFlat(flatId: string): Promise<LoginData['memberProfile']> {
   const { data } = await client.post<ApiResponse<LoginData['memberProfile']>>('/society/members/link-flat', {
-    memberId,
+    flatId,
   });
   return data.data;
 }
@@ -302,6 +305,8 @@ export async function createAdditionalSocietyMobile(payload: {
   totalBuildings: number;
   flatNumberFormat: FlatNumberFormat;
   flatsPerFloor?: number;
+  flatNumbers?: string[];
+  chairmanFlatNumber?: string;
   chairmanName: string;
   email: string;
   societyAddress?: string;

@@ -98,7 +98,7 @@ export interface LoginAccountOption {
   displayName: string;
 }
 
-export type FlatNumberFormat = 'FLOOR' | 'SEQUENTIAL' | 'CUSTOM';
+export type FlatNumberFormat = 'FLOOR' | 'SEQUENTIAL' | 'CUSTOM' | 'EXPLICIT';
 
 export type SmsLoginVerifyResult =
   | ({ selectionRequired: false; onboardingRequired?: false } & LoginData)
@@ -124,8 +124,10 @@ export interface OnboardingSocietyOption {
 }
 
 export interface OnboardingOpenFlat {
-  memberId: string;
+  flatId: string;
   flatNumber: string;
+  /** Present when a reserved (unlinked) member already exists for claim flows. */
+  memberId?: string | null;
 }
 
 export interface LoginData {

@@ -1,13 +1,14 @@
 import { Image, StyleSheet, View, type ImageStyle, type StyleProp, type ViewStyle, type ImageResizeMode } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { APP_NAME, PRIMARY_LOGO_ASPECT, brandLogos } from '../constants/branding';
+import { colors } from '../theme/colors';
 
 export type AppLogoVariant = 'glyph' | 'primary' | 'splash' | 'splashScreen';
 
 type Props = {
   variant?: AppLogoVariant;
   size?: number;
-  /** Purple gradient tile — best for glyph on light or gradient headers. */
+  /** Brand gradient tile — best for glyph on light or gradient headers. */
   framed?: boolean;
   /** Square clip with rounded corners (matches app logo tile). */
   roundedSquare?: boolean;
@@ -89,7 +90,7 @@ export function AppLogo({
   return (
     <View style={style}>
       <LinearGradient
-        colors={['#70088c', '#5c0672']}
+        colors={[colors.navy600, colors.navy700]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.frame, { width: frameSize, height: frameSize, borderRadius: frameSize / 4 }]}

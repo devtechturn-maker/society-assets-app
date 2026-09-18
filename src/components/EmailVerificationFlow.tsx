@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
     gap: 8,
     height: 48,
     borderRadius: 8,
-    backgroundColor: '#70088c',
+    backgroundColor: '#0f172a',
   },
   secondaryBtn: {
     height: 44,

@@ -96,7 +96,12 @@ export function RoleSelectionScreen({ user, onSelected, onUserUpdated, onLogout 
         <AppLogo variant="glyph" size={40} framed />
         <Text style={styles.heroTitle}>Choose how to continue</Text>
         <Text style={styles.heroSubtitle}>
-          Signed in as {userDisplayName(user) || 'your account'}. Pick the view you want to use now.
+          {userDisplayName(user) || 'Your account'}
+          {hasMemberLink && user.memberProfile?.flatNumber
+            ? ` · Flat ${user.memberProfile.flatNumber}`
+            : ''}
+          {'\n'}
+          Switch between Chairman Mode and Member Mode anytime — no need to log out.
         </Text>
       </LinearGradient>
 
@@ -243,7 +248,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   groupRowPressed: {
-    backgroundColor: '#faf5ff',
+    backgroundColor: '#f1f5f9',
   },
   groupRowBody: {
     flex: 1,

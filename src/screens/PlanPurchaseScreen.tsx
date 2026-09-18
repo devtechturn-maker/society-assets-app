@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   priceBanner: {
-    backgroundColor: '#70088c',
+    backgroundColor: '#0f172a',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
@@ -197,8 +197,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   cardPressed: {
-    borderColor: '#70088c',
-    backgroundColor: '#faf5ff',
+    borderColor: '#cbd5e1',
+    backgroundColor: '#f1f5f9',
   },
   cardMonths: {
     fontSize: 16,
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 26,
     fontWeight: '800',
-    color: '#70088c',
+    color: '#0f172a',
   },
   cardMeta: {
     marginTop: 4,
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     height: 42,
     borderRadius: 10,
-    backgroundColor: '#70088c',
+    backgroundColor: '#0f172a',
     alignItems: 'center',
     justifyContent: 'center',
   },

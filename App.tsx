@@ -219,6 +219,7 @@ function AppRoot() {
           onCompleted={(updated) => {
             setUser(updated);
           }}
+          onLogout={handleLogout}
         />
       ) : user && pendingRoleSelection ? (
         <RoleSelectionScreen

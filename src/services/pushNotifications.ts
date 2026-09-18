@@ -109,7 +109,7 @@ async function ensureAndroidChannel(): Promise<void> {
   const base = {
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250] as number[],
-    lightColor: '#70088c',
+    lightColor: '#0f172a',
     sound: 'default' as string | null,
     enableVibrate: true,
   };
@@ -151,7 +151,7 @@ async function ensureAndroidChannel(): Promise<void> {
     description: 'Spoken alert when a new visitor is waiting at the gate',
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 300, 200, 300],
-    lightColor: '#70088c',
+    lightColor: '#0f172a',
     sound: 'visitor_arrived.wav',
     enableVibrate: true,
   });
@@ -160,7 +160,7 @@ async function ensureAndroidChannel(): Promise<void> {
     description: 'Spoken alert when a resident approves a visitor',
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 200, 100, 200],
-    lightColor: '#70088c',
+    lightColor: '#0f172a',
     sound: 'visitor_approved.wav',
     enableVibrate: true,
   });
@@ -169,7 +169,7 @@ async function ensureAndroidChannel(): Promise<void> {
     description: 'Spoken alert when a resident rejects a visitor',
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 400, 200, 400],
-    lightColor: '#70088c',
+    lightColor: '#0f172a',
     sound: 'visitor_rejected.wav',
     enableVibrate: true,
   });
@@ -178,7 +178,7 @@ async function ensureAndroidChannel(): Promise<void> {
     description: 'Visitor arrivals and approval updates at the gate',
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 300, 200, 300],
-    lightColor: '#70088c',
+    lightColor: '#0f172a',
     sound: 'visitor_arrived.wav',
     enableVibrate: true,
   });

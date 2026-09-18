@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme/ThemeContext';
+import { colors } from '../theme/colors';
 import type { AppPushNotification } from '../services/pushNotifications';
 import { APP_NAME, brandLogos } from '../constants/branding';
 
@@ -118,13 +119,13 @@ export function ChatNotificationBanner({ notification, onPress, onDismiss }: Pro
         ]}
       >
         <LinearGradient
-          colors={['#70088c', '#5c0672']}
+          colors={[colors.navy600, colors.navy700]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={styles.accentRail}
         />
         <LinearGradient
-          colors={['#70088c', '#5c0672']}
+          colors={[colors.navy600, colors.navy700]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.logoWrap}

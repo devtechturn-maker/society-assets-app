@@ -16,7 +16,7 @@ export type AppLogoLoaderSize = 'sm' | 'md' | 'lg' | 'xl';
 
 type Props = {
   size?: AppLogoLoaderSize;
-  /** Glyph for tiny buttons; splash = purple fill; primary = full wordmark. */
+  /** Glyph for tiny buttons; splash = brand fill; primary = full wordmark. */
   logo?: 'glyph' | 'primary' | 'splash';
   /** Smaller pulse — fits inside buttons. */
   minimal?: boolean;

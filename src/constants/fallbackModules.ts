@@ -10,9 +10,9 @@ import { iconFromPrimeIcon } from './uiIcons';
 /** Flat member app — read-only home, maintenance, support. */
 export const MEMBER_PROFILE_MODULE: NavModule = {
   code: 'MEMBER_PROFILE',
-  title: 'Profile',
+  title: 'More',
   routePath: 'profile',
-  icon: 'pi pi-user',
+  icon: 'pi pi-ellipsis-h',
   sortOrder: 99,
 };
 
@@ -30,14 +30,18 @@ export const FALLBACK_MEMBER_NAV_SOURCE: NavModule[] = [
 /** @deprecated Use FALLBACK_MEMBER_NAV_SOURCE with prepareBottomTabModules */
 export const FALLBACK_MEMBER_MODULES = FALLBACK_MEMBER_NAV_SOURCE;
 
-export const MEMBER_SIDE_MENU_ITEMS = [
+/** Items shown in the bottom More menu (formerly the right-side profile drawer). */
+export const MEMBER_MORE_MENU_ITEMS = [
   { label: 'My Profile', routePath: 'profile', icon: 'pi pi-user' },
   { label: 'About Society', routePath: 'about-society', icon: 'pi pi-building' },
   { label: 'Help', routePath: 'help', icon: 'pi pi-question-circle' },
   { label: 'About Us', routePath: 'about-us', icon: 'pi pi-info-circle' },
 ] as const;
 
-export const SOCIETY_SIDE_MENU_ITEMS = [
+/** @deprecated Use MEMBER_MORE_MENU_ITEMS */
+export const MEMBER_SIDE_MENU_ITEMS = MEMBER_MORE_MENU_ITEMS;
+
+export const SOCIETY_MORE_MENU_ITEMS = [
   { label: 'My Profile', routePath: 'appearance', icon: 'pi pi-user' },
   { label: 'About Society', routePath: 'about-society', icon: 'pi pi-building' },
   { label: 'Subscription', routePath: 'subscription', icon: 'pi pi-id-card' },
@@ -45,8 +49,11 @@ export const SOCIETY_SIDE_MENU_ITEMS = [
   { label: 'About Us', routePath: 'about-us', icon: 'pi pi-info-circle' },
 ] as const;
 
-/** Routes that live in the side menu only — not in the scrollable bottom tab bar. */
-const SIDE_MENU_ROUTE_PATHS = new Set([
+/** @deprecated Use SOCIETY_MORE_MENU_ITEMS */
+export const SOCIETY_SIDE_MENU_ITEMS = SOCIETY_MORE_MENU_ITEMS;
+
+/** Routes that live in the More menu only — not in the scrollable bottom tab bar. */
+const MORE_MENU_ROUTE_PATHS = new Set([
   'profile',
   'appearance',
   'about-us',
@@ -55,11 +62,25 @@ const SIDE_MENU_ROUTE_PATHS = new Set([
   'subscription',
 ]);
 
-function isSideMenuOnlyRoute(routePath: string, portal: NavPortalKind): boolean {
+function isMoreMenuOnlyRoute(routePath: string, portal: NavPortalKind): boolean {
   if (portal === 'gatekeeper' && routePath === 'about-society') {
     return false;
   }
-  return SIDE_MENU_ROUTE_PATHS.has(routePath);
+  return MORE_MENU_ROUTE_PATHS.has(routePath);
+}
+
+/** Fixed primary bottom tabs — everything else (plus Profile/Help/etc.) lives in More. */
+export function primaryBottomTabRoutes(portal: NavPortalKind): string[] {
+  if (portal === 'member') {
+    return ['dashboard', 'activity', 'chat'];
+  }
+  if (portal === 'treasurer') {
+    return ['dashboard', 'activity', 'ledger'];
+  }
+  if (portal === 'gatekeeper') {
+    return ['dashboard', 'visitor-entry', 'visitor-history'];
+  }
+  return ['dashboard', 'activity', 'chat'];
 }
 
 function sortNavModules(modules: NavModule[]): NavModule[] {
@@ -72,10 +93,70 @@ function sortNavModules(modules: NavModule[]): NavModule[] {
   });
 }
 
-/** Bottom tabs: scrollable modules + fixed profile tab as the last item. */
+export type MoreMenuNavItem = {
+  label: string;
+  routePath: string;
+  icon: string;
+};
+
+function staticMoreMenuItems(portal: NavPortalKind): MoreMenuNavItem[] {
+  if (portal === 'member') {
+    return MEMBER_MORE_MENU_ITEMS.map((item) => ({ ...item }));
+  }
+  if (portal === 'gatekeeper') {
+    return GATEKEEPER_MORE_MENU_ITEMS.map((item) => ({ ...item }));
+  }
+  return SOCIETY_MORE_MENU_ITEMS.map((item) => ({ ...item }));
+}
+
+/**
+ * Builds the More bottom-grid items: former sidebar entries + every non-primary module.
+ * No drawer — this is the only secondary menu.
+ */
+export function buildMoreMenuItems(
+  bottomTabModules: NavModule[],
+  portal: NavPortalKind,
+  options?: { switchRoleLabel?: string }
+): MoreMenuNavItem[] {
+  const moreTab = profileTabForPortal(portal);
+  const primary = new Set(primaryBottomTabRoutes(portal));
+  const seen = new Set<string>();
+  const items: MoreMenuNavItem[] = [];
+
+  const push = (item: MoreMenuNavItem) => {
+    if (!item.routePath || item.routePath === moreTab.routePath || seen.has(item.routePath)) {
+      return;
+    }
+    seen.add(item.routePath);
+    items.push(item);
+  };
+
+  if (options?.switchRoleLabel) {
+    push({ label: options.switchRoleLabel, routePath: '__switch_role__', icon: 'pi pi-sync' });
+  }
+
+  for (const item of staticMoreMenuItems(portal)) {
+    push(item);
+  }
+
+  for (const module of sortNavModules(bottomTabModules)) {
+    if (primary.has(module.routePath) || module.routePath === moreTab.routePath) {
+      continue;
+    }
+    push({
+      label: module.title,
+      routePath: module.routePath,
+      icon: module.icon,
+    });
+  }
+
+  return items;
+}
+
+/** Bottom tabs: primary modules only + fixed More tab as the last item. */
 export function prepareBottomTabModules(modules: NavModule[], portal: NavPortalKind): NavModule[] {
-  const sideFiltered = modules.filter((m) => !isSideMenuOnlyRoute(m.routePath, portal));
-  const tabFiltered = sideFiltered.filter(
+  const moreFiltered = modules.filter((m) => !isMoreMenuOnlyRoute(m.routePath, portal));
+  const tabFiltered = moreFiltered.filter(
     (m) =>
       !ACTIVITY_HUB_ROUTE_PATHS.has(m.routePath) &&
       (portal !== 'gatekeeper' || (m.routePath !== 'activity' && m.routePath !== 'notifications'))
@@ -88,14 +169,22 @@ export function prepareBottomTabModules(modules: NavModule[], portal: NavPortalK
     }
   }
 
-  const profileTab = profileTabForPortal(portal);
-  const withoutProfile = sortNavModules(tabFiltered).filter(
-    (module) => module.routePath !== profileTab.routePath
+  const moreTab = profileTabForPortal(portal);
+  const primaryOrder = primaryBottomTabRoutes(portal);
+  const byPath = new Map(sortNavModules(tabFiltered).map((module) => [module.routePath, module]));
+  const primaryTabs = primaryOrder
+    .map((routePath) => byPath.get(routePath))
+    .filter((module): module is NavModule => !!module);
+
+  // Keep overflow modules in the array so More can reuse them (splitTabBarModules / buildMoreMenuItems).
+  const overflow = sortNavModules(tabFiltered).filter(
+    (module) => module.routePath !== moreTab.routePath && !primaryOrder.includes(module.routePath)
   );
-  return [...withoutProfile, profileTab];
+
+  return [...primaryTabs, ...overflow, moreTab];
 }
 
-/** Hide profile and info screens from the bottom tab bar — they live in the side menu. */
+/** Hide profile and info screens from the bottom tab bar — they live in the More menu. */
 export function filterBottomTabModules(modules: NavModule[], portal: NavPortalKind = 'society'): NavModule[] {
   return prepareBottomTabModules(modules, portal);
 }
@@ -107,17 +196,20 @@ export function mergeMemberPortalModules(modules: NavModule[]): NavModule[] {
 
 export const GATEKEEPER_PROFILE_MODULE: NavModule = {
   code: 'GATEKEEPER_PROFILE',
-  title: 'Profile',
+  title: 'More',
   routePath: 'profile',
-  icon: 'pi pi-user',
+  icon: 'pi pi-ellipsis-h',
   sortOrder: 99,
 };
 
-export const GATEKEEPER_SIDE_MENU_ITEMS = [
+export const GATEKEEPER_MORE_MENU_ITEMS = [
   { label: 'My Profile', routePath: 'profile', icon: 'pi pi-user' },
   { label: 'Help', routePath: 'help', icon: 'pi pi-question-circle' },
   { label: 'About Us', routePath: 'about-us', icon: 'pi pi-info-circle' },
 ] as const;
+
+/** @deprecated Use GATEKEEPER_MORE_MENU_ITEMS */
+export const GATEKEEPER_SIDE_MENU_ITEMS = GATEKEEPER_MORE_MENU_ITEMS;
 
 export const FALLBACK_GATEKEEPER_NAV_SOURCE: NavModule[] = [
   { code: 'GATEKEEPER_DASHBOARD', title: 'Dashboard', routePath: 'dashboard', icon: 'pi pi-home', sortOrder: 1 },
@@ -128,16 +220,16 @@ export const FALLBACK_GATEKEEPER_NAV_SOURCE: NavModule[] = [
 
 export function profileTabForPortal(portal: NavPortalKind): NavModule {
   if (portal === 'member') {
-    return { ...MEMBER_PROFILE_MODULE, title: 'Profile' };
+    return { ...MEMBER_PROFILE_MODULE, title: 'More' };
   }
   if (portal === 'gatekeeper') {
     return GATEKEEPER_PROFILE_MODULE;
   }
   return {
     code: 'MOBILE_APPEARANCE',
-    title: 'Profile',
+    title: 'More',
     routePath: 'appearance',
-    icon: 'pi pi-user',
+    icon: 'pi pi-ellipsis-h',
     sortOrder: 99,
   };
 }
@@ -147,7 +239,15 @@ export function splitTabBarModules(
   portal: NavPortalKind
 ): { scrollableTabs: NavModule[]; profileTab: NavModule } {
   const profileTab = profileTabForPortal(portal);
-  const scrollableTabs = modules.filter((module) => module.routePath !== profileTab.routePath);
+  const primary = primaryBottomTabRoutes(portal);
+  const byPath = new Map(
+    modules
+      .filter((module) => module.routePath !== profileTab.routePath)
+      .map((module) => [module.routePath, module])
+  );
+  const scrollableTabs = primary
+    .map((routePath) => byPath.get(routePath))
+    .filter((module): module is NavModule => !!module);
   return { scrollableTabs, profileTab };
 }
 

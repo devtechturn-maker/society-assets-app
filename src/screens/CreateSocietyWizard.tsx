@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import {
+  BuildingFlatConfigEditor,
   FlatNumberFullList,
   FormatOptionCard,
   PhoneVerifiedChip,
@@ -13,11 +14,16 @@ import { createAdditionalSocietyMobile, createSocietyMobile } from '../services/
 import type { FlatNumberFormat, LoginData } from '../types/api';
 import { apiErrorMessage } from '../utils/apiError';
 import {
+  composeSocietyFlatKey,
+  createBuildingDraft,
   customFormatValidationMessage,
+  flattenBuildingFlats,
   flatsValidationMessage,
   formatExampleLine,
   generateFlatNumbers,
   MAX_FLATS,
+  validateBuildingFlatDrafts,
+  type BuildingFlatDraft,
 } from '../utils/flatNumbering';
 import { colors } from '../theme/colors';
 
@@ -29,6 +35,8 @@ type Props = {
   onCreated: (data: LoginData) => void;
   onBack: () => void;
 };
+
+type FlatConfigMode = 'AUTO' | 'EXPLICIT';
 
 const STEPS = ['name', 'buildings', 'flats', 'format', 'profile'] as const;
 type WizardStep = (typeof STEPS)[number];
@@ -42,7 +50,7 @@ const STEP_COPY: Record<WizardStep, { title: string; subtitle: string }> = {
   flats: { title: 'Total flats', subtitle: 'How many flats / units in total?' },
   format: {
     title: 'Flat numbers',
-    subtitle: 'Pick a style. Customize sets flats per floor (e.g. 4 → 101–104, 201–204).',
+    subtitle: 'Auto-generate sequential numbers, or configure buildings and flats.',
   },
   profile: {
     title: 'Your details',
@@ -65,8 +73,14 @@ export function CreateSocietyWizard({
   const [societyName, setSocietyName] = useState('');
   const [buildings, setBuildings] = useState('');
   const [flats, setFlats] = useState('');
+  const [configMode, setConfigMode] = useState<FlatConfigMode>('AUTO');
   const [format, setFormat] = useState<FlatNumberFormat>('FLOOR');
   const [flatsPerFloor, setFlatsPerFloor] = useState('4');
+  const [buildingDrafts, setBuildingDrafts] = useState<BuildingFlatDraft[]>([
+    createBuildingDraft('A', 0),
+  ]);
+  const [chairmanBuildingId, setChairmanBuildingId] = useState<string | null>(null);
+  const [chairmanFlatDigits, setChairmanFlatDigits] = useState<string | null>(null);
   const [chairmanName, setChairmanName] = useState(initialChairmanName);
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -77,6 +91,9 @@ export function CreateSocietyWizard({
   const flatsPerFloorNum = Number.parseInt(flatsPerFloor, 10) || 0;
 
   const allFlatNumbers = useMemo(() => {
+    if (configMode === 'EXPLICIT') {
+      return flattenBuildingFlats(buildingDrafts);
+    }
     if (buildingsNum < 1 || flatsNum < 1 || flatsNum % buildingsNum !== 0) {
       return [] as string[];
     }
@@ -87,7 +104,7 @@ export function CreateSocietyWizard({
       return generateFlatNumbers(buildingsNum, flatsNum, 'CUSTOM', flatsPerFloorNum);
     }
     return generateFlatNumbers(buildingsNum, flatsNum, format);
-  }, [buildingsNum, flatsNum, format, flatsPerFloorNum]);
+  }, [buildingsNum, flatsNum, format, flatsPerFloorNum, configMode, buildingDrafts]);
 
   const floorExample = useMemo(
     () => formatExampleLine(generateFlatNumbers(buildingsNum || 1, flatsNum || buildingsNum || 1, 'FLOOR')),
@@ -105,16 +122,39 @@ export function CreateSocietyWizard({
     return nums.length > 0 ? formatExampleLine(nums) : '101–104, 201–204';
   }, [buildingsNum, flatsPerFloorNum]);
 
+  function resolveChairmanFlatKey(): string | null {
+    if (!chairmanBuildingId || !chairmanFlatDigits) return null;
+    const building = buildingDrafts.find((b) => b.id === chairmanBuildingId);
+    if (!building) return null;
+    const multi = buildingDrafts.length > 1;
+    return composeSocietyFlatKey(building.name, chairmanFlatDigits, multi);
+  }
+
   function validateCurrent(): string | null {
     if (step === 'name' && !societyName.trim()) return 'Enter society name.';
     if (step === 'buildings') {
+      if (configMode === 'EXPLICIT') return null;
       if (buildingsNum < 1) return 'Enter number of buildings.';
       if (buildingsNum > 50) return 'Buildings cannot exceed 50.';
     }
     if (step === 'flats') {
+      if (configMode === 'EXPLICIT') return null;
       return flatsValidationMessage(buildingsNum, flatsNum);
     }
     if (step === 'format') {
+      if (configMode === 'EXPLICIT') {
+        const base = validateBuildingFlatDrafts(buildingDrafts);
+        if (base) return base;
+        const chairmanKey = resolveChairmanFlatKey();
+        if (!chairmanKey) {
+          return 'Select chairman building and flat.';
+        }
+        const all = flattenBuildingFlats(buildingDrafts);
+        if (!all.includes(chairmanKey)) {
+          return 'Chairman flat must be one of the configured flats.';
+        }
+        return null;
+      }
       if (format === 'CUSTOM') {
         return customFormatValidationMessage(buildingsNum, flatsNum, flatsPerFloorNum);
       }
@@ -135,29 +175,49 @@ export function CreateSocietyWizard({
       onBack();
       return;
     }
+    if (step === 'format' && configMode === 'EXPLICIT') {
+      wizard.setStepIndex(STEPS.indexOf('buildings'));
+      return;
+    }
     wizard.goBack();
   }
 
-  async function handlePrimary() {
+  function handlePrimary() {
     const err = validateCurrent();
     if (err) {
       setInlineError(err);
       return;
     }
     setInlineError(null);
+
+    if (step === 'buildings' && configMode === 'EXPLICIT') {
+      wizard.setStepIndex(STEPS.indexOf('format'));
+      return;
+    }
+
     if (!wizard.isLast) {
       wizard.goNext();
       return;
     }
 
+    void submitCreate();
+  }
+
+  async function submitCreate() {
     setSubmitting(true);
     try {
+      const isExplicit = configMode === 'EXPLICIT';
+      const flatNumbers = isExplicit ? flattenBuildingFlats(buildingDrafts) : undefined;
+      const totalFlats = isExplicit ? flatNumbers!.length : flatsNum;
+      const totalBuildings = isExplicit ? Math.max(1, buildingDrafts.length) : buildingsNum || 1;
       const payload = {
         societyName: societyName.trim(),
-        totalFlats: flatsNum,
-        totalBuildings: buildingsNum,
-        flatNumberFormat: format,
-        flatsPerFloor: format === 'CUSTOM' ? flatsPerFloorNum : undefined,
+        totalFlats,
+        totalBuildings,
+        flatNumberFormat: (isExplicit ? 'EXPLICIT' : format) as FlatNumberFormat,
+        flatsPerFloor: !isExplicit && format === 'CUSTOM' ? flatsPerFloorNum : undefined,
+        flatNumbers,
+        chairmanFlatNumber: isExplicit ? resolveChairmanFlatKey() ?? undefined : undefined,
         chairmanName: chairmanName.trim(),
         email: email.trim().toLowerCase(),
       };
@@ -181,6 +241,7 @@ export function CreateSocietyWizard({
 
   const copy = STEP_COPY[step];
   const isFormatStep = step === 'format';
+  const showFlatsStep = step === 'flats' && configMode !== 'EXPLICIT';
 
   return (
     <WizardShell
@@ -189,12 +250,16 @@ export function CreateSocietyWizard({
       progress={wizard.progress}
       stepLabel={`Step ${wizard.stepIndex + 1} of ${wizard.stepCount}`}
       heading={copy.title}
-      subtitle={copy.subtitle}
+      subtitle={
+        step === 'format' && configMode === 'EXPLICIT'
+          ? 'Configure each building’s flats, then pick the chairman flat.'
+          : copy.subtitle
+      }
       error={inlineError}
       primaryLabel={wizard.isLast ? 'Start free trial' : 'Next'}
       onPrimaryPress={() => void handlePrimary()}
       primaryLoading={submitting}
-      bodyScroll={!isFormatStep}
+      bodyScroll={!isFormatStep || configMode === 'EXPLICIT'}
     >
       {step === 'name' ? (
         <WizardTextField
@@ -206,16 +271,39 @@ export function CreateSocietyWizard({
       ) : null}
 
       {step === 'buildings' ? (
-        <WizardTextField
-          value={buildings}
-          onChangeText={(v) => setBuildings(v.replace(/\D/g, '').slice(0, 2))}
-          placeholder="e.g. 2"
-          keyboardType="number-pad"
-          autoFocus
-        />
+        <>
+          {configMode === 'AUTO' ? (
+            <WizardTextField
+              value={buildings}
+              onChangeText={(v) => setBuildings(v.replace(/\D/g, '').slice(0, 2))}
+              placeholder="e.g. 2"
+              keyboardType="number-pad"
+              autoFocus
+            />
+          ) : (
+            <Text style={styles.explicitBuildingsHint}>
+              You’ll name each building and enter its flats on the next screen.
+            </Text>
+          )}
+          <Text style={styles.modeLabel}>Flat number configuration</Text>
+          <FormatOptionCard
+            label="Sequential / Auto Generate"
+            description="System generates flat numbers from your totals."
+            example="101–104, 201–204 or 1, 2, 3…"
+            selected={configMode === 'AUTO'}
+            onPress={() => setConfigMode('AUTO')}
+          />
+          <FormatOptionCard
+            label="Custom Flat Numbers"
+            description="Add buildings, set flats per building, enter exact numbers."
+            example="A: 101, 105 · B: 201, 205"
+            selected={configMode === 'EXPLICIT'}
+            onPress={() => setConfigMode('EXPLICIT')}
+          />
+        </>
       ) : null}
 
-      {step === 'flats' ? (
+      {showFlatsStep ? (
         <WizardTextField
           value={flats}
           onChangeText={(v) => setFlats(v.replace(/\D/g, '').slice(0, 4))}
@@ -226,7 +314,7 @@ export function CreateSocietyWizard({
         />
       ) : null}
 
-      {isFormatStep ? (
+      {isFormatStep && configMode === 'AUTO' ? (
         <View style={styles.formatStep}>
           <FormatOptionCard
             label="Floor based (auto)"
@@ -243,7 +331,7 @@ export function CreateSocietyWizard({
             onPress={() => setFormat('SEQUENTIAL')}
           />
           <FormatOptionCard
-            label="Customize"
+            label="Customize per floor"
             description="Set flats per floor. Example: 4 → 101–104, then 201–204."
             example={customExample}
             selected={format === 'CUSTOM'}
@@ -279,6 +367,27 @@ export function CreateSocietyWizard({
         </View>
       ) : null}
 
+      {isFormatStep && configMode === 'EXPLICIT' ? (
+        <BuildingFlatConfigEditor
+          buildings={buildingDrafts}
+          onChange={(next) => {
+            setBuildingDrafts(next);
+            if (chairmanBuildingId && !next.some((b) => b.id === chairmanBuildingId)) {
+              setChairmanBuildingId(null);
+              setChairmanFlatDigits(null);
+            }
+            if (inlineError) setInlineError(null);
+          }}
+          chairmanBuildingId={chairmanBuildingId}
+          chairmanFlatDigits={chairmanFlatDigits}
+          onChairmanChange={(buildingId, flatDigits) => {
+            setChairmanBuildingId(buildingId);
+            setChairmanFlatDigits(flatDigits);
+            if (inlineError) setInlineError(null);
+          }}
+        />
+      ) : null}
+
       {step === 'profile' ? (
         <>
           <WizardTextField
@@ -308,6 +417,19 @@ const styles = StyleSheet.create({
   formatStep: {
     flex: 1,
   },
+  modeLabel: {
+    marginTop: 16,
+    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.navy900,
+  },
+  explicitBuildingsHint: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.muted,
+    marginBottom: 4,
+  },
   customBox: {
     marginBottom: 4,
     padding: 12,
@@ -318,8 +440,8 @@ const styles = StyleSheet.create({
   },
   customHint: {
     marginTop: 8,
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 12,
+    lineHeight: 17,
     color: colors.muted,
   },
 });

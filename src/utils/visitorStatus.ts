@@ -9,7 +9,7 @@ export function visitorStatusTone(status: string): { bg: string; border: string;
     case 'APPROVED':
       return { bg: '#ecfdf5', border: '#10b981', text: '#047857' };
     case 'CHECKED_IN':
-      return { bg: '#eff6ff', border: '#3b82f6', text: '#1d4ed8' };
+      return { bg: '#f1f5f9', border: '#0f172a', text: '#0f172a' };
     case 'CHECKED_OUT':
       return { bg: '#f8fafc', border: '#94a3b8', text: '#475569' };
     case 'REJECTED':

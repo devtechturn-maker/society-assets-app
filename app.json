@@ -21,7 +21,7 @@
       "package": "com.devtechturn.societyassets",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#70088c"
+        "backgroundColor": "#0f172a"
       },
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize"
@@ -44,7 +44,7 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#70088c",
+          "color": "#0f172a",
           "defaultChannel": "chat",
           "sounds": [
             "./assets/sounds/visitor_arrived.wav",
@@ -56,7 +56,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#70088c",
+          "backgroundColor": "#0f172a",
           "image": "./assets/splash.png",
           "resizeMode": "contain",
           "imageWidth": 280

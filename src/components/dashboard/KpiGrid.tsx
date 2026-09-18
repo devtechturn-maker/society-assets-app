@@ -1,11 +1,12 @@
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
+import { colors, palette } from '../../theme/colors';
 import { formatInr } from '../../utils/format';
 
-const HIGHLIGHT_KPI_BORDER = '#D8B4E8';
-const HIGHLIGHT_RAIL = '#70088c';
-const PAGE_SOFT = '#F3E8FB';
+const HIGHLIGHT_KPI_BORDER = palette.info.border;
+const HIGHLIGHT_RAIL = colors.navy600;
+const PAGE_SOFT = palette.selected.bg;
 
 export type KpiItem = {
   label: string;
@@ -92,7 +93,7 @@ export function KpiGrid({ items, columns = 2 }: Props) {
                 style={[
                   styles.iconWrap,
                   {
-                    backgroundColor: highlighted ? 'rgba(112, 8, 140, 0.12)' : PAGE_SOFT,
+                    backgroundColor: highlighted ? 'rgba(15, 23, 42, 0.08)' : PAGE_SOFT,
                   },
                 ]}
               >
@@ -146,7 +147,7 @@ const styles = StyleSheet.create({
   kpiShadow: {
     ...Platform.select({
       ios: {
-        shadowColor: '#70088c',
+        shadowColor: colors.navy600,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 10,

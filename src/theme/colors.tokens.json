@@ -1,17 +1,17 @@
 {
-  "primary": "#70088c",
+  "primary": "#0f172a",
   "palette": {
     "navy": {
-      "900": "#4a0559",
-      "800": "#5c0672",
-      "700": "#70088c",
-      "600": "#70088c",
-      "500": "#8a2aa5"
+      "900": "#020617",
+      "800": "#0f172a",
+      "700": "#0f172a",
+      "600": "#0f172a",
+      "500": "#1e293b"
     },
     "gold": {
-      "600": "#8a2aa5",
-      "500": "#a04cbd",
-      "400": "#b86ed4"
+      "600": "#0f172a",
+      "500": "#1e293b",
+      "400": "#334155"
     },
     "slate": {
       "900": "#0f172a",
@@ -29,37 +29,37 @@
     "white": "#ffffff",
     "black": "#000000",
     "error": "#dc2626",
-    "success": "#15803d",
+    "success": "#16a34a",
     "warning": "#b45309",
     "danger": "#ef4444",
     "info": {
-      "bg": "#f8f2fa",
-      "border": "#e8d4ef",
-      "text": "#4a0559"
+      "bg": "#f1f5f9",
+      "border": "#cbd5e1",
+      "text": "#0f172a"
     },
     "link": {
-      "default": "#70088c",
-      "hover": "#5c0672"
+      "default": "#0f172a",
+      "hover": "#1e293b"
     },
     "selected": {
-      "bg": "#f3e8f7",
-      "border": "#70088c"
+      "bg": "#f1f5f9",
+      "border": "#0f172a"
     },
     "tag": {
-      "successBg": "#f3e8f7",
-      "successText": "#4a0559"
+      "successBg": "#dcfce7",
+      "successText": "#16a34a"
     },
-    "accentMuted": "rgba(112, 8, 140, 0.22)"
+    "accentMuted": "rgba(15, 23, 42, 0.22)"
   },
   "light": {
-    "pageBg": "#f8f4fa",
-    "surface": "#faf7fb",
-    "splashBg": "#70088c",
-    "shadow": "rgba(112, 8, 140, 0.1)"
+    "pageBg": "#f8fafc",
+    "surface": "#ffffff",
+    "splashBg": "#0f172a",
+    "shadow": "rgba(15, 23, 42, 0.08)"
   },
   "dark": {
-    "pageBg": "#18091e",
-    "surface": "#18091e",
-    "splashBg": "#70088c"
+    "pageBg": "#0f172a",
+    "surface": "#1e293b",
+    "splashBg": "#0f172a"
   }
 }

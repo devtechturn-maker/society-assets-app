@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   },
   boxFilled: {
     borderColor: '#d8b4fe',
-    backgroundColor: '#faf5ff',
+    backgroundColor: '#f1f5f9',
   },
   boxFocused: {
     borderColor: WIZARD_ACCENT,

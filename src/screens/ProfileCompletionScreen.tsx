@@ -30,6 +30,7 @@ const OTP_LENGTH = 6;
 type Props = {
   user: LoginData;
   onCompleted: (user: LoginData) => void;
+  onLogout: () => void;
 };
 
 type Step = 'email' | 'otp';
@@ -42,7 +43,7 @@ function apiErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-export function ProfileCompletionScreen({ user, onCompleted }: Props) {
+export function ProfileCompletionScreen({ user, onCompleted, onLogout }: Props) {
   const { alert, toast } = useAppAlert();
   const otpRefs = useRef<Array<TextInput | null>>([]);
 
@@ -301,6 +302,14 @@ export function ProfileCompletionScreen({ user, onCompleted }: Props) {
                     <Text style={styles.secondaryBtnText}>{resendLabel}</Text>
                   )}
                 </Pressable>
+
+                <Pressable
+                  style={styles.logout}
+                  onPress={onLogout}
+                  disabled={sending || verifying}
+                >
+                  <Text style={styles.logoutText}>Logout</Text>
+                </Pressable>
               </>
             )}
           </View>
@@ -429,6 +438,15 @@ const styles = StyleSheet.create({
   secondaryBtnText: {
     color: colors.navy800,
     fontSize: 13,
+    fontWeight: '700',
+  },
+  logout: {
+    marginTop: 28,
+    alignSelf: 'center',
+    padding: 10,
+  },
+  logoutText: {
+    color: colors.muted,
     fontWeight: '700',
   },
 });

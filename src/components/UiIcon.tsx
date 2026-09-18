@@ -50,6 +50,8 @@ const IONICON_BY_NAME: Record<UiIconName, keyof typeof Ionicons.glyphMap> = {
   plus: 'add',
   share: 'share-outline',
   bell: 'notifications-outline',
+  more: 'ellipsis-horizontal',
+  sync: 'swap-horizontal-outline',
 };
 
 function UiIconComponent({ name, size = 28, color = '#475569', style }: Props) {

@@ -70,7 +70,7 @@ export function LinkMemberFlatWizard({ user, onLinked, onBack }: Props) {
     setSubmitting(true);
     setInlineError(null);
     try {
-      await linkMemberFlat(flat.memberId);
+      await linkMemberFlat(flat.flatId);
       const refreshed = await refreshLoginSession();
       await saveSession(refreshed);
       onLinked(refreshed);
@@ -130,7 +130,7 @@ export function LinkMemberFlatWizard({ user, onLinked, onBack }: Props) {
         ) : (
           <View style={styles.flatGrid}>
             {flats.map((flat) => (
-              <Pressable key={flat.memberId} style={styles.flatChip} onPress={() => void linkFlat(flat)}>
+              <Pressable key={flat.flatId} style={styles.flatChip} onPress={() => void linkFlat(flat)}>
                 <Text style={styles.flatChipText}>{flat.flatNumber}</Text>
               </Pressable>
             ))}

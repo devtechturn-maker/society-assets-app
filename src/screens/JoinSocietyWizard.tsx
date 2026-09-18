@@ -166,7 +166,7 @@ export function JoinSocietyWizard({ phone, selectionToken, onJoined, onBack }: P
         phone,
         selectionToken,
         societyId: selectedSociety.societyId,
-        memberId: selectedFlat.memberId,
+        flatId: selectedFlat.flatId,
         memberName: memberName.trim(),
       });
       onJoined(data);
@@ -275,17 +275,17 @@ export function JoinSocietyWizard({ phone, selectionToken, onJoined, onBack }: P
           <View style={styles.flatGrid}>
             {flats.map((flat) => (
               <Pressable
-                key={flat.memberId}
+                key={flat.flatId}
                 style={[
                   styles.flatChip,
-                  selectedFlat?.memberId === flat.memberId && styles.flatChipSelected,
+                  selectedFlat?.flatId === flat.flatId && styles.flatChipSelected,
                 ]}
                 onPress={() => pickFlat(flat)}
               >
                 <Text
                   style={[
                     styles.flatChipText,
-                    selectedFlat?.memberId === flat.memberId && styles.flatChipTextSelected,
+                    selectedFlat?.flatId === flat.flatId && styles.flatChipTextSelected,
                   ]}
                 >
                   {flat.flatNumber}
