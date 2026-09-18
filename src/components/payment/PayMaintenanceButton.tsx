@@ -123,7 +123,7 @@ export function PayMaintenanceButton({ due, compact = false, onPaid }: Props) {
     return (
       <View style={[styles.summaryCard, styles.cardShadow, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
         <View style={styles.summaryHead}>
-          <View style={[styles.statusIcon, { backgroundColor: '#F3E8FB' }]}>
+          <View style={[styles.statusIcon, { backgroundColor: '#f1f5f9' }]}>
             <Ionicons name="business-outline" size={20} color={theme.accent} />
           </View>
           <View style={[styles.awaitingBadge, { backgroundColor: '#FFF7ED', borderColor: '#FDBA74' }]}>
@@ -152,10 +152,10 @@ export function PayMaintenanceButton({ due, compact = false, onPaid }: Props) {
         {!compact ? (
           <View style={[styles.summaryCard, styles.cardShadow, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
             <View style={styles.summaryHead}>
-              <View style={[styles.statusIcon, { backgroundColor: '#F3E8FB' }]}>
+              <View style={[styles.statusIcon, { backgroundColor: '#f1f5f9' }]}>
                 <Ionicons name="wallet-outline" size={20} color={theme.accent} />
               </View>
-              <View style={[styles.readyBadge, { backgroundColor: '#F3E8FB', borderColor: '#D8B4E8' }]}>
+              <View style={[styles.readyBadge, { backgroundColor: '#f1f5f9', borderColor: '#cbd5e1' }]}>
                 <Text style={[styles.readyBadgeText, { color: theme.accent }]}>Ready to pay</Text>
               </View>
             </View>
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   cardShadow: {
     ...Platform.select({
       ios: {
-        shadowColor: '#70088c',
+        shadowColor: '#0f172a',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.08,
         shadowRadius: 12,

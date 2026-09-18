@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 6,
-    backgroundColor: '#eef2ff',
+    backgroundColor: '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
@@ -756,7 +756,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   choiceAvatarCreate: {
-    backgroundColor: '#70088c',
+    backgroundColor: '#0f172a',
   },
   choiceAvatarJoin: {
     backgroundColor: colors.navy800,
@@ -771,7 +771,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#70088c',
+    backgroundColor: '#0f172a',
   },
   accountAvatarText: {
     color: colors.white,
@@ -798,7 +798,7 @@ const styles = StyleSheet.create({
     height: 46,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#70088c',
+    backgroundColor: '#0f172a',
   },
   buttonDisabled: {
     opacity: 0.85,
@@ -828,7 +828,7 @@ const styles = StyleSheet.create({
   plansLinkText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#70088c',
+    color: '#0f172a',
   },
   otpActions: {
     marginTop: 10,
@@ -842,6 +842,6 @@ const styles = StyleSheet.create({
   textLinkText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#70088c',
+    color: '#0f172a',
   },
 });

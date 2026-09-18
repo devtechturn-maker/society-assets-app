@@ -1,11 +1,11 @@
 import { colors } from './colors';
 
 export const dashboard = {
-  pageBg: '#f8f4fa',
+  pageBg: colors.pageBg,
   sidebarBg: colors.navy800,
   sidebarGradient: [colors.navy800, colors.navy900] as const,
-  activeNavBg: 'rgba(16, 185, 129, 0.2)',
-  activeNavText: '#a7f3d0',
+  activeNavBg: 'rgba(15, 23, 42, 0.12)',
+  activeNavText: colors.gold400,
   navText: '#cbd5e1',
   subtitle: '#94a3b8',
   logout: '#ef4444',

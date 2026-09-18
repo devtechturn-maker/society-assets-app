@@ -3,7 +3,6 @@ import {
   BackHandler,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -35,13 +34,11 @@ import {
   FALLBACK_MEMBER_NAV_SOURCE,
   FALLBACK_SOCIETY_NAV_SOURCE,
   FALLBACK_GATEKEEPER_NAV_SOURCE,
-  GATEKEEPER_SIDE_MENU_ITEMS,
   FALLBACK_TREASURER_NAV_SOURCE,
   prepareBottomTabModules,
   splitTabBarModules,
+  buildMoreMenuItems,
   ACTIVITY_HUB_ROUTE_PATHS,
-  MEMBER_SIDE_MENU_ITEMS,
-  SOCIETY_SIDE_MENU_ITEMS,
 } from '../constants/fallbackModules';
 import { iconFromPrimeIcon, iconForRoutePath } from '../constants/uiIcons';
 import { UiIcon } from '../components/UiIcon';
@@ -67,7 +64,7 @@ import { useAppAlert } from '../context/AppAlertContext';
 import { mergeLoginUserPatch, userDisplayName } from '../utils/userDisplayName';
 import { AppLogo } from '../components/AppLogo';
 import { AppLogoLoader } from '../components/AppLogoLoader';
-import { ProfileSideMenu } from '../components/ProfileSideMenu';
+import { MoreBottomMenu } from '../components/MoreBottomMenu';
 import { SocietyJoinCodeHeader } from '../components/society/SocietyJoinCodeHeader';
 import { runHardwareBackHandlers } from '../services/hardwareBackNavigation';
 import { ModuleRouter } from './modules/ModuleRouter';
@@ -78,13 +75,6 @@ type Props = {
   onUserUpdated?: (user: LoginData) => void;
   onSwitchRole?: () => void;
 };
-
-function societyInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return 'SA';
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
 
 function tabLabel(title: string): string {
   const trimmed = title.trim();
@@ -98,7 +88,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
   const [sessionUser, setSessionUser] = useState(user);
   const [appContext, setAppContextState] = useState<AppViewContext>('CHAIRMAN');
   const [contextReady, setContextReady] = useState(false);
-  const canSwitchView = canSwitchAppView(user);
+  const canSwitchView = canSwitchAppView(sessionUser);
   const gatekeeperPortal = isGateKeeperRole(sessionUser.role ?? user.role ?? '');
   const memberPortal = !gatekeeperPortal && isMemberPortalView(sessionUser, appContext);
   const treasurerPortal =
@@ -141,7 +131,8 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
     )
   );
   const [activePath, setActivePath] = useState('dashboard');
-  const [sideMenuOpen, setSideMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [bottomBarHeight, setBottomBarHeight] = useState(72);
   const activePathRef = useRef(activePath);
   const lastTabPathRef = useRef('dashboard');
 
@@ -165,8 +156,8 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
       if (runHardwareBackHandlers()) {
         return true;
       }
-      if (sideMenuOpen) {
-        setSideMenuOpen(false);
+      if (moreMenuOpen) {
+        setMoreMenuOpen(false);
         return true;
       }
       if (inbox.panelOpen) {
@@ -191,7 +182,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
       return false;
     });
     return () => subscription.remove();
-  }, [sideMenuOpen, inbox.panelOpen, inbox.closePanel]);
+  }, [moreMenuOpen, inbox.panelOpen, inbox.closePanel]);
 
   useEffect(() => {
     let cancelled = false;
@@ -291,7 +282,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
       )
     );
     setActivePath('dashboard');
-    setSideMenuOpen(false);
+    setMoreMenuOpen(false);
     lastTabPathRef.current = 'dashboard';
   }, [gatekeeperPortal, memberPortal, treasurerPortal, navPortal]);
 
@@ -526,79 +517,78 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
     onLogout();
   }
 
-  const openSideMenuRoute = useCallback((routePath: string) => {
+  const openMoreMenuRoute = useCallback((routePath: string) => {
     if (routePath === '__switch_role__') {
-      setSideMenuOpen(false);
+      setMoreMenuOpen(false);
       onSwitchRole?.();
       return;
     }
-    const sideRoutes = new Set([
-      'profile',
-      'appearance',
-      'about-us',
-      ...(gatekeeperPortal ? [] : ['about-society']),
-      'help',
-      'subscription',
-    ]);
-    if (!sideRoutes.has(activePathRef.current)) {
+    const primary = new Set(
+      memberPortal
+        ? ['dashboard', 'activity', 'chat']
+        : gatekeeperPortal
+          ? ['dashboard', 'visitor-entry', 'visitor-history']
+          : treasurerPortal
+            ? ['dashboard', 'activity', 'ledger']
+            : ['dashboard', 'activity', 'chat']
+    );
+    if (primary.has(activePathRef.current) || activePathRef.current === 'activity') {
       lastTabPathRef.current = activePathRef.current;
+    } else if (!primary.has(activePathRef.current)) {
+      // Keep last primary tab when opening a More destination
+      if (primary.has(lastTabPathRef.current) === false) {
+        lastTabPathRef.current = 'dashboard';
+      }
     }
     setActivePath(routePath);
-    setSideMenuOpen(false);
-  }, [gatekeeperPortal, onSwitchRole]);
+    setMoreMenuOpen(false);
+  }, [gatekeeperPortal, memberPortal, treasurerPortal, onSwitchRole]);
 
-  const sideMenuItems = useMemo(() => {
-    if (gatekeeperPortal) {
-      return [...GATEKEEPER_SIDE_MENU_ITEMS];
-    }
-    const base = memberPortal ? MEMBER_SIDE_MENU_ITEMS : SOCIETY_SIDE_MENU_ITEMS;
-    if (canSwitchView && onSwitchRole) {
-      return [
-        { label: 'Switch role', routePath: '__switch_role__', icon: 'pi pi-sync' },
-        ...base,
-      ];
-    }
-    return base;
-  }, [gatekeeperPortal, memberPortal, canSwitchView, onSwitchRole]);
+  const moreMenuItems = useMemo(() => {
+    const switchRoleLabel =
+      canSwitchView && onSwitchRole
+        ? memberPortal
+          ? 'Switch to Chairman View'
+          : 'Switch to Member View'
+        : undefined;
+    return buildMoreMenuItems(modules, navPortal, { switchRoleLabel });
+  }, [modules, navPortal, canSwitchView, onSwitchRole, memberPortal]);
 
   const selectTab = useCallback((routePath: string) => {
-    setSideMenuOpen(false);
+    setMoreMenuOpen(false);
     setActivePath(routePath);
     lastTabPathRef.current = routePath;
   }, []);
 
   const openProfileScreen = useCallback(() => {
-    openSideMenuRoute(memberPortal ? 'profile' : gatekeeperPortal ? 'profile' : 'appearance');
-  }, [gatekeeperPortal, memberPortal, openSideMenuRoute]);
+    openMoreMenuRoute(memberPortal ? 'profile' : gatekeeperPortal ? 'profile' : 'appearance');
+  }, [gatekeeperPortal, memberPortal, openMoreMenuRoute]);
 
-  const { scrollableTabs, profileTab } = useMemo(
+  const { scrollableTabs, profileTab: moreTab } = useMemo(
     () => splitTabBarModules(modules, navPortal),
     [modules, navPortal]
   );
 
-  const profileRoute = profileTab.routePath;
-  const profileRelatedRoutes = useMemo(
+  const moreRelatedRoutes = useMemo(
     () =>
-      new Set([
-        profileRoute,
-        'about-us',
-        ...(gatekeeperPortal ? [] : ['about-society']),
-        'help',
-        'subscription',
-      ]),
-    [gatekeeperPortal, profileRoute]
+      new Set(
+        moreMenuItems
+          .map((item) => item.routePath)
+          .filter((routePath) => routePath !== '__switch_role__')
+      ),
+    [moreMenuItems]
   );
-  const profileTabActive = sideMenuOpen || profileRelatedRoutes.has(activePath);
+  const moreTabActive = moreMenuOpen || moreRelatedRoutes.has(activePath);
 
-  const toggleProfileMenu = useCallback(() => {
-    if (!sideMenuOpen && !profileRelatedRoutes.has(activePathRef.current)) {
+  const toggleMoreMenu = useCallback(() => {
+    if (!moreMenuOpen && !moreRelatedRoutes.has(activePathRef.current)) {
       lastTabPathRef.current = activePathRef.current;
     }
-    setSideMenuOpen((open) => !open);
-  }, [profileRelatedRoutes, sideMenuOpen]);
+    setMoreMenuOpen((open) => !open);
+  }, [moreRelatedRoutes, moreMenuOpen]);
 
   const navigateFromActivity = useCallback((routePath: string) => {
-    setSideMenuOpen(false);
+    setMoreMenuOpen(false);
     lastTabPathRef.current = 'activity';
     setActivePath(routePath);
   }, []);
@@ -665,13 +655,13 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
         onPressNotification={handleNotificationPress}
       />
 
-      <ProfileSideMenu
-        visible={sideMenuOpen}
-        items={sideMenuItems}
+      <MoreBottomMenu
+        visible={moreMenuOpen}
+        items={moreMenuItems}
         activePath={activePath}
-        societyName={societyName}
-        onClose={() => setSideMenuOpen(false)}
-        onSelect={openSideMenuRoute}
+        bottomOffset={bottomBarHeight}
+        onClose={() => setMoreMenuOpen(false)}
+        onSelect={openMoreMenuRoute}
         onLogout={() => void logout()}
       />
 
@@ -688,8 +678,10 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
           {gatekeeperPortal
             ? `Gate Security · ${societyName}`
             : memberPortal
-              ? `${societyName} · Flat ${sessionUser.memberProfile?.flatNumber ?? '—'}`
-              : societyName}
+              ? `Member Mode · ${societyName} · Flat ${sessionUser.memberProfile?.flatNumber ?? '—'}`
+              : canSwitchView
+                ? `Chairman Mode · ${societyName}`
+                : societyName}
         </Text>
         {!memberPortal && !gatekeeperPortal ? <SocietyJoinCodeHeader /> : null}
       </LinearGradient>
@@ -729,7 +721,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
           onOpenVisitors={openVisitorsScreen}
           onLogout={() => void logout()}
           onNavigateFromActivity={navigateFromActivity}
-          onNavigateSideRoute={openSideMenuRoute}
+          onNavigateSideRoute={openMoreMenuRoute}
           profileDisplayName={avatarLabel}
           societyName={societyName}
           navPortal={navPortal}
@@ -738,91 +730,77 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
 
       <View
         style={[styles.bottomBar, { backgroundColor: theme.bottomBarBg, borderTopColor: theme.bottomBarBorder }]}
+        onLayout={(event) => {
+          const next = Math.ceil(event.nativeEvent.layout.height);
+          if (next > 0 && next !== bottomBarHeight) {
+            setBottomBarHeight(next);
+          }
+        }}
       >
         <View style={styles.bottomBarRow}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.bottomScrollWrap}
-            contentContainerStyle={styles.bottomScrollContent}
-            keyboardShouldPersistTaps="handled"
-          >
-            {scrollableTabs.map((m) => {
-              const active =
-                m.routePath === 'activity'
-                  ? activePath === 'activity' || ACTIVITY_HUB_ROUTE_PATHS.has(activePath)
-                  : activePath === m.routePath;
-              const tabIconColor = active ? theme.accentGold : theme.textMuted;
-              const tabIconName =
-                m.routePath === 'activity'
-                  ? 'grid'
-                  : iconFromPrimeIcon(m.icon) || iconForRoutePath(m.routePath);
-              return (
-                <Pressable
-                  key={m.code}
-                  style={({ pressed }) => [
-                    styles.tab,
-                    active ? [styles.tabActivePill, { backgroundColor: theme.accentSoft }] : null,
-                    pressed ? styles.tabPressed : null,
+          {scrollableTabs.map((m) => {
+            const active =
+              m.routePath === 'activity'
+                ? activePath === 'activity' || ACTIVITY_HUB_ROUTE_PATHS.has(activePath)
+                : activePath === m.routePath;
+            const tabIconColor = active ? theme.accentGold : theme.textMuted;
+            const tabIconName =
+              m.routePath === 'activity'
+                ? 'grid'
+                : iconFromPrimeIcon(m.icon) || iconForRoutePath(m.routePath);
+            return (
+              <Pressable
+                key={m.code}
+                style={({ pressed }) => [
+                  styles.tab,
+                  active ? [styles.tabActivePill, { backgroundColor: theme.accentSoft }] : null,
+                  pressed ? styles.tabPressed : null,
+                ]}
+                onPress={() => selectTab(m.routePath)}
+              >
+                <View style={styles.tabIconWrap}>
+                  <UiIcon name={tabIconName} size={22} color={tabIconColor} />
+                </View>
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    active ? { color: theme.accentGold, fontWeight: '700' } : { color: theme.textMuted },
                   ]}
-                  onPress={() => selectTab(m.routePath)}
+                  numberOfLines={1}
                 >
-                  <View style={styles.tabIconWrap}>
-                    <UiIcon name={tabIconName} size={22} color={tabIconColor} />
-                  </View>
-                  <Text
-                    style={[
-                      styles.tabLabel,
-                      active ? { color: theme.accentGold, fontWeight: '700' } : { color: theme.textMuted },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {tabLabel(m.title)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+                  {tabLabel(m.title)}
+                </Text>
+              </Pressable>
+            );
+          })}
 
           <Pressable
             style={({ pressed }) => [
               styles.tab,
-              styles.profileTab,
-              profileTabActive ? [styles.tabActivePill, { backgroundColor: theme.accentSoft }] : null,
-              { borderLeftColor: theme.bottomBarBorder },
+              moreTabActive ? [styles.tabActivePill, { backgroundColor: theme.accentSoft }] : null,
               pressed ? styles.tabPressed : null,
             ]}
-            onPress={toggleProfileMenu}
-            accessibilityLabel="Open profile menu"
+            onPress={toggleMoreMenu}
+            accessibilityLabel={moreMenuOpen ? 'Close more menu' : 'Open more menu'}
+            accessibilityState={{ expanded: moreMenuOpen }}
           >
-            <View
-              style={[
-                styles.profileTabAvatar,
-                {
-                  borderColor: profileTabActive ? theme.accentGold : theme.cardBorder,
-                  backgroundColor: profileTabActive ? theme.accentSoft : theme.chipBg,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.profileTabAvatarText,
-                  { color: profileTabActive ? theme.accentGold : theme.textMuted },
-                ]}
-              >
-                {societyInitials(avatarLabel)}
-              </Text>
+            <View style={styles.tabIconWrap}>
+              <UiIcon
+                name="more"
+                size={20}
+                color={moreTabActive ? theme.accentGold : theme.textMuted}
+              />
             </View>
             <Text
               style={[
                 styles.tabLabel,
-                profileTabActive
+                moreTabActive
                   ? { color: theme.accentGold, fontWeight: '700' }
                   : { color: theme.textMuted },
               ]}
               numberOfLines={1}
             >
-              {tabLabel(profileTab.title)}
+              {tabLabel(moreTab.title)}
             </Text>
           </Pressable>
         </View>
@@ -878,6 +856,8 @@ const styles = StyleSheet.create({
   },
   content: { flex: 1 },
   bottomBar: {
+    zIndex: 30,
+    elevation: 30,
     borderTopWidth: 1,
     paddingBottom: 10,
     paddingTop: 8,
@@ -891,51 +871,20 @@ const styles = StyleSheet.create({
   bottomBarRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
-  },
-  bottomScrollWrap: {
-    flex: 1,
-  },
-  bottomScrollContent: {
-    paddingHorizontal: 8,
-    gap: 6,
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    ...Platform.select({
-      ios: {
-        paddingBottom: 2,
-      },
-    }),
-  },
-  profileTab: {
-    borderLeftWidth: 1,
-    minWidth: 80,
-    maxWidth: 96,
-  },
-  profileTabAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileTabAvatarText: {
-    fontSize: 11,
-    fontWeight: '800',
+    paddingHorizontal: 6,
   },
   tab: {
-    minWidth: 76,
-    maxWidth: 104,
+    flex: 1,
     minHeight: 58,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 999,
+    paddingHorizontal: 4,
+    borderRadius: 14,
     gap: 3,
   },
   tabActivePill: {
-    borderRadius: 999,
+    borderRadius: 14,
   },
   tabPressed: {
     opacity: 0.82,

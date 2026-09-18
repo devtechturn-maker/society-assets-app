@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
   cardShadow: {
     ...Platform.select({
       ios: {
-        shadowColor: '#70088c',
+        shadowColor: '#0f172a',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.07,
         shadowRadius: 14,

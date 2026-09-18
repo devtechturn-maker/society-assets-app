@@ -61,7 +61,7 @@ export function getAvailableLoginRoles(user: LoginData): LoginRoleOption[] {
   if (!isMemberRole(user.role)) {
     roles.push({
       context: 'CHAIRMAN',
-      title: 'Office',
+      title: 'Chairman Mode',
       subtitle: `${formatStaffRole(user.role)} · manage society modules`,
     });
   }
@@ -72,7 +72,7 @@ export function getAvailableLoginRoles(user: LoginData): LoginRoleOption[] {
       : 'Your flat';
     roles.push({
       context: 'MEMBER',
-      title: 'Member',
+      title: 'Member Mode',
       subtitle: `${flatLabel} · maintenance, notices, and chat`,
     });
   }

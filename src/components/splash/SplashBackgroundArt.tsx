@@ -8,7 +8,7 @@ const REF_HEIGHT = 1280;
 const BOTTOM_ART_HEIGHT = 400;
 
 /**
- * Uniform lavender screen + top wisps + bottom skyline/waves.
+ * Uniform brand-tinted screen + top wisps + bottom skyline/waves.
  * No full-screen raster (avoids double-logo and centre colour bands).
  */
 export function SplashBackgroundArt() {

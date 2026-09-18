@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
   },
   cardSelected: {
     borderColor: WIZARD_ACCENT,
-    backgroundColor: '#faf5ff',
+    backgroundColor: '#f1f5f9',
   },
   cardPressed: { opacity: 0.94 },
   radio: {

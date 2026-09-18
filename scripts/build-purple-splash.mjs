@@ -7,16 +7,16 @@ const assets = path.join(__dirname, '..', 'assets');
 
 const W = 1080;
 const H = 1920;
-const brand = { r: 112, g: 8, b: 140, alpha: 1 }; // #70088c
+const brand = { r: 15, g: 23, b: 42, alpha: 1 }; // #0f172a
 
 async function makeGlow(size = 720) {
   const svg = `
   <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <radialGradient id="g" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#8a2aa5" stop-opacity="0.55"/>
-        <stop offset="55%" stop-color="#70088c" stop-opacity="0.22"/>
-        <stop offset="100%" stop-color="#70088c" stop-opacity="0"/>
+        <stop offset="0%" stop-color="#334155" stop-opacity="0.55"/>
+        <stop offset="55%" stop-color="#0f172a" stop-opacity="0.22"/>
+        <stop offset="100%" stop-color="#0f172a" stop-opacity="0"/>
       </radialGradient>
     </defs>
     <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="url(#g)"/>

@@ -10,9 +10,9 @@ type Props = {
   title: string;
   meta?: string | null;
   secondaryMeta?: string | null;
-  /** Letter or short text inside the purple avatar circle. */
+  /** Letter or short text inside the brand avatar circle. */
   avatarInitial?: string;
-  /** Icon shown inside the purple avatar when no initial is provided. */
+  /** Icon shown inside the brand avatar when no initial is provided. */
   avatarIcon?: UiIconName;
   muted?: boolean;
   onPress?: () => void;
@@ -141,7 +141,7 @@ export function DirectoryListItem({
   );
 }
 
-/** Filled purple circular “+” control for section headers. */
+/** Filled brand circular “+” control for section headers. */
 export function DirectoryAddButton({ onPress, label = 'Add' }: { onPress: () => void; label?: string }) {
   const { theme } = useTheme();
   return (
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   cardShadow: {
     ...Platform.select({
       ios: {
-        shadowColor: '#70088c',
+        shadowColor: '#0f172a',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.06,
         shadowRadius: 10,
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   addBtnShadow: {
     ...Platform.select({
       ios: {
-        shadowColor: '#70088c',
+        shadowColor: '#0f172a',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.25,
         shadowRadius: 6,

@@ -12,8 +12,8 @@ const defaultSources = [
   'C:\\Users\\DELL\\Downloads\\APP ICON.png',
 ];
 
-const brandBg = { r: 112, g: 8, b: 140, alpha: 1 };
-const brandHex = '#70088c';
+const brandBg = { r: 15, g: 23, b: 42, alpha: 1 };
+const brandHex = '#0f172a';
 
 const sourceOut = path.join(assets, 'app-icon-source.png');
 const logoOut = path.join(assets, 'logo.png');
@@ -86,11 +86,11 @@ const trimmed = await trimmedLogo(source);
 /** Trimmed white glyph for flexible in-app sizing */
 await sharp(trimmed).resize(320, 320, { fit: 'inside' }).png({ compressionLevel: 9 }).toFile(logoGlyphOut);
 
-/** In-app branding: white cutout logo on theme purple */
+/** In-app branding: white cutout logo on theme primary */
 await (await logoOnBrandBackground(trimmed, 512, 0.9)).toFile(logoOut);
 await (await logoOnBrandBackground(trimmed, 256, 0.92)).toFile(notificationLogoOut);
 
-/** Compact splash centre icon (128×128 purple tile). */
+/** Compact splash centre icon (128×128 brand tile). */
 await (await logoOnBrandBackground(trimmed, 128, 0.72)).toFile(
   path.join(assets, 'splash-screen-logo.png')
 );

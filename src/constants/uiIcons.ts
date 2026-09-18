@@ -33,7 +33,9 @@ export type UiIconName =
   | 'clock'
   | 'plus'
   | 'share'
-  | 'bell';
+  | 'bell'
+  | 'more'
+  | 'sync';
 
 /**
  * Legacy Icons8 slug map — kept for reference only.
@@ -74,11 +76,15 @@ export const ICONS8_SLUGS: Record<UiIconName, string> = {
   plus: 'plus',
   share: 'share',
   bell: 'appointment-reminders',
+  more: 'menu',
+  sync: 'synchronize',
 };
 
 export function iconFromPrimeIcon(icon: string): UiIconName {
   if (icon.includes('home')) return 'home';
   if (icon.includes('th-large')) return 'grid';
+  if (icon.includes('ellipsis')) return 'more';
+  if (icon.includes('sync') || icon.includes('refresh')) return 'sync';
   if (icon.includes('credit') || icon.includes('list')) return 'bank-card';
   if (icon.includes('subscription') || icon.includes('id-card')) return 'id-card';
   if (icon.includes('wallet') || icon.includes('folder')) return 'wallet';

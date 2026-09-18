@@ -137,7 +137,7 @@ export function SplashLoadingRings({ size }: Props) {
         dasharray={`${midC * 0.06} ${midC * 0.1}`}
       />
 
-      {/* Outermost thin lavender dashes — slow */}
+      {/* Outermost thin brand dashes — slow */}
       <RotatingLayer size={size} duration={6400} reverse>
         <TrackRing
           size={size}
@@ -153,7 +153,7 @@ export function SplashLoadingRings({ size }: Props) {
         <ArcDots size={size} radius={outerR - 1} />
       </RotatingLayer>
 
-      {/* Middle thin purple segments */}
+      {/* Middle thin brand segments */}
       <RotatingLayer size={size} duration={4200}>
         <TrackRing
           size={size}
@@ -165,7 +165,7 @@ export function SplashLoadingRings({ size }: Props) {
         />
       </RotatingLayer>
 
-      {/* Inner thick purple arc — main spinner (~58% of circle) */}
+      {/* Inner thick brand arc — main spinner (~58% of circle) */}
       <RotatingLayer size={size} duration={2200}>
         <TrackRing
           size={size}

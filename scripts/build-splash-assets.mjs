@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
 const assets = path.join(root, 'assets');
 
-const brandBg = { r: 112, g: 8, b: 140, alpha: 1 };
+const brandBg = { r: 15, g: 23, b: 42, alpha: 1 };
 const videoPath = 'C:\\Users\\DELL\\Downloads\\VIDEO-2026-07-12-00-23-14.mp4';
 
 const splashScreenLogoOut = path.join(assets, 'splash-screen-logo.png');
@@ -25,7 +25,7 @@ async function fileExists(p) {
   }
 }
 
-/** Compact purple tile for the in-app splash centre (no extra white padding). */
+/** Compact brand tile for the in-app splash centre (no extra white padding). */
 async function buildSplashScreenLogo() {
   const glyph = await sharp(glyphPath)
     .resize(92, 92, { fit: 'inside' })
@@ -63,7 +63,16 @@ async function buildBottomArt() {
     { stdio: 'pipe' }
   );
 
-  const { data, info } = await sharp(bottomArtOut)
+  // Reference video is purple-tinted; shift hue toward Admin Panel blue.
+  const bottomTmp = `${bottomArtOut}.tmp.png`;
+  await sharp(bottomArtOut).modulate({ hue: 280 }).png().toFile(bottomTmp);
+  const { rename, unlink } = await import('node:fs/promises');
+  await rename(bottomTmp, bottomArtOut).catch(async () => {
+    await sharp(bottomTmp).toFile(bottomArtOut);
+    await unlink(bottomTmp);
+  });
+
+  const { data } = await sharp(bottomArtOut)
     .extract({ left: 360, top: 30, width: 1, height: 1 })
     .raw()
     .toBuffer({ resolveWithObject: true });

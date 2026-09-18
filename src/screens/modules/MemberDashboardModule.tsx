@@ -17,7 +17,7 @@ import {
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
 
-const VISITOR_ALERT_BORDER = '#D8B4E8';
+const VISITOR_ALERT_BORDER = '#cbd5e1';
 
 type Props = {
   onOpenProfile?: () => void;

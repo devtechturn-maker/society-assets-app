@@ -5,4 +5,6 @@ export { PhoneVerifiedChip } from './PhoneVerifiedChip';
 export { SelectableOptionCard } from './SelectableOptionCard';
 export { FormatOptionCard } from './FormatOptionCard';
 export { FlatNumberFullList } from './FlatNumberFullList';
+export { FlatNumberChipEditor } from './FlatNumberChipEditor';
+export { BuildingFlatConfigEditor } from './BuildingFlatConfigEditor';
 export { wizardStyles } from './wizardStyles';
