@@ -1,4 +1,5 @@
-import { AppLogoLoader } from '../AppLogoLoader';
+import { AppLoader } from '../AppLoader';
+import { useGlobalLoadingVisible } from '../../hooks/useGlobalLoadingVisible';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { UiIcon } from '../UiIcon';
 import { fetchSocietyJoinCode } from '../../services/api';
@@ -8,6 +9,7 @@ import { formatJoinCodeDisplay, shareSocietyJoinInvite } from '../../utils/socie
 
 export function SocietyJoinCodeHeader() {
   const { alert } = useAppAlert();
+  const globalLoading = useGlobalLoadingVisible();
   const joinCode = useAsyncLoad(fetchSocietyJoinCode, []);
 
   async function shareCode() {
@@ -22,9 +24,12 @@ export function SocietyJoinCodeHeader() {
   }
 
   if (joinCode.loading) {
+    if (globalLoading) {
+      return null;
+    }
     return (
       <View style={styles.row}>
-        <AppLogoLoader size="sm" minimal />
+        <AppLoader size="sm" onDark />
       </View>
     );
   }

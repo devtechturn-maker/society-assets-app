@@ -101,6 +101,11 @@ function scheduleOverlay() {
   }, HIDE_DELAY_MS);
 }
 
+/** True when the single global overlay is showing or pending. */
+export function isGlobalLoadingVisible(): boolean {
+  return overlayVisible || wantsOverlay();
+}
+
 export function trackApiRequestStart(config: InternalAxiosRequestConfig): void {
   if (!shouldTrack(config)) {
     return;

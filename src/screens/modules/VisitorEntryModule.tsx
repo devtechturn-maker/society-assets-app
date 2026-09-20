@@ -20,6 +20,7 @@ import type { ResidentSearchResult } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { SectionCard } from '../../components/dashboard/SectionCard';
+import { FlatNumberSelect } from '../../components/FlatNumberSelect';
 import { useKeyboardAwareScroll } from '../../hooks/useKeyboardAwareScroll';
 import {
   pickPhotoFromCamera,
@@ -68,7 +69,7 @@ export function VisitorEntryModule() {
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [visitorCount, setVisitorCount] = useState('1');
   const [purpose, setPurpose] = useState('');
-  const [flatSearch, setFlatSearch] = useState('');
+  const [flatNumber, setFlatNumber] = useState('');
   const [residents, setResidents] = useState<ResidentSearchResult[]>([]);
   const [selected, setSelected] = useState<ResidentSearchResult | null>(null);
   const [expectedDuration, setExpectedDuration] = useState('60');
@@ -100,21 +101,30 @@ export function VisitorEntryModule() {
     scrollToField({ current: focusedRef.current });
   }, [keyboardScrollPadding, scrollToField]);
 
-  const searchResidents = useCallback(async (q: string) => {
-    setSearching(true);
-    try {
-      setResidents(await searchResidentsForVisitor(q));
-    } catch {
-      setResidents([]);
-    } finally {
-      setSearching(false);
-    }
-  }, []);
-
   useEffect(() => {
-    const timer = setTimeout(() => searchResidents(flatSearch), 300);
+    if (!flatNumber.trim()) {
+      setResidents([]);
+      setSelected(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      void (async () => {
+        setSearching(true);
+        try {
+          const rows = await searchResidentsForVisitor(flatNumber.trim());
+          setResidents(rows);
+          if (rows.length === 1) {
+            setSelected(rows[0]);
+          }
+        } catch {
+          setResidents([]);
+        } finally {
+          setSearching(false);
+        }
+      })();
+    }, 150);
     return () => clearTimeout(timer);
-  }, [flatSearch, searchResidents]);
+  }, [flatNumber]);
 
   const inputStyle = [
     styles.input,
@@ -180,7 +190,7 @@ export function VisitorEntryModule() {
       setRemarks('');
       setVisitorPhoto(null);
       setSelected(null);
-      setFlatSearch('');
+      setFlatNumber('');
       setResidents([]);
     } catch (e) {
       toast(apiErrorMessage(e, 'Registration failed'), 'error');
@@ -300,14 +310,17 @@ export function VisitorEntryModule() {
           </View>
         </SectionCard>
 
-        <SectionCard title="Host flat *" subtitle="Search by flat number or resident name">
-          <FormField label="Search" fieldRef={flatRef}>
-            <TextInput
-              value={flatSearch}
-              onChangeText={setFlatSearch}
-              style={inputStyle}
-              placeholder="e.g. A-101 or Rahul"
-              {...fieldProps(flatRef)}
+        <SectionCard title="Host flat *" subtitle="Select the flat, then choose the resident">
+          <FormField label="Flat Number" fieldRef={flatRef}>
+            <FlatNumberSelect
+              value={flatNumber}
+              onChange={(next) => {
+                setFlatNumber(next);
+                setSelected(null);
+                focusField(flatRef);
+              }}
+              mode="registered"
+              placeholder="Select Flat Number"
             />
           </FormField>
 
@@ -332,7 +345,7 @@ export function VisitorEntryModule() {
                   key={r.memberId}
                   onPress={() => {
                     setSelected(r);
-                    setFlatSearch(r.flatNumber);
+                    setFlatNumber(r.flatNumber);
                     Keyboard.dismiss();
                   }}
                   style={({ pressed }) => [
@@ -353,9 +366,9 @@ export function VisitorEntryModule() {
             </View>
           ) : null}
 
-          {!searching && !selected && flatSearch.trim() && residents.length === 0 ? (
+          {!searching && !selected && flatNumber.trim() && residents.length === 0 ? (
             <Text style={[styles.emptyHint, { color: theme.textMuted }]}>
-              No registered resident found for this search.
+              No registered resident found for this flat.
             </Text>
           ) : null}
         </SectionCard>

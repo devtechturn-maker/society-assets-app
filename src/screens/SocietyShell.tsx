@@ -63,7 +63,8 @@ import { subscribeMemberProfileNavigation } from '../services/memberProfileNavig
 import { useAppAlert } from '../context/AppAlertContext';
 import { mergeLoginUserPatch, userDisplayName } from '../utils/userDisplayName';
 import { AppLogo } from '../components/AppLogo';
-import { AppLogoLoader } from '../components/AppLogoLoader';
+import { AppLoader } from '../components/AppLoader';
+import { useGlobalLoadingVisible } from '../hooks/useGlobalLoadingVisible';
 import { MoreBottomMenu } from '../components/MoreBottomMenu';
 import { SocietyJoinCodeHeader } from '../components/society/SocietyJoinCodeHeader';
 import { runHardwareBackHandlers } from '../services/hardwareBackNavigation';
@@ -80,6 +81,14 @@ function tabLabel(title: string): string {
   const trimmed = title.trim();
   if (trimmed.length <= 11) return trimmed;
   return `${trimmed.slice(0, 10)}…`;
+}
+
+function SocietyBootLoader() {
+  const globalVisible = useGlobalLoadingVisible();
+  if (globalVisible) {
+    return null;
+  }
+  return <AppLoader size="lg" label="Loading your society…" />;
 }
 
 export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Props) {
@@ -594,9 +603,10 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
   }, []);
 
   if (!contextReady) {
+    // Prefer the single global overlay when APIs are in flight; otherwise show one local boot loader.
     return (
       <View style={[styles.root, styles.boot, { backgroundColor: theme.pageBg }]}>
-        <AppLogoLoader size="lg" tone="onLight" label="Loading your society…" />
+        <SocietyBootLoader />
       </View>
     );
   }

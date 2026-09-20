@@ -1,33 +1,30 @@
+import { Modal, StyleSheet, View } from 'react-native';
 import { useEffect, useState } from 'react';
-import { Modal, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { PremiumLoaderIndicator } from './splash/PremiumLoaderIndicator';
-import { globalLoaderSizes, SPLASH_COLORS } from './splash/splashTheme';
+import { AppLoader } from './AppLoader';
 import { subscribeGlobalLoading } from '../services/globalApiLoading';
 
-/** Small centred loader over a light scrim — not a full-screen splash layout. */
+/**
+ * Single full-app loading overlay driven by the global API / blocking loader service.
+ * Do not stack screen-level full-page loaders on top of this.
+ */
 export function GlobalLoadingOverlay() {
-  const { width } = useWindowDimensions();
-  const { ringSize, logoSize } = globalLoaderSizes(width);
   const [visible, setVisible] = useState(false);
   const [message, setMessage] = useState('Loading...');
 
-  useEffect(() => subscribeGlobalLoading((nextVisible, nextMessage) => {
-    setVisible(nextVisible);
-    setMessage(nextMessage);
-  }), []);
+  useEffect(
+    () =>
+      subscribeGlobalLoading((nextVisible, nextMessage) => {
+        setVisible(nextVisible);
+        setMessage(nextMessage);
+      }),
+    []
+  );
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <PremiumLoaderIndicator
-            label={message}
-            compact
-            ringSize={ringSize}
-            logoSize={logoSize}
-            logoVariant="splashScreen"
-            logoRoundedSquare
-          />
+          <AppLoader size="lg" label={message || 'Loading...'} />
         </View>
       </View>
     </Modal>
@@ -39,20 +36,19 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(248, 237, 247, 0.55)',
+    backgroundColor: 'rgba(15, 23, 42, 0.28)',
   },
   card: {
+    minWidth: 120,
     paddingHorizontal: 28,
     paddingVertical: 24,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 8,
-    borderWidth: 1,
-    borderColor: SPLASH_COLORS.lavenderLight,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    elevation: 6,
   },
 });
