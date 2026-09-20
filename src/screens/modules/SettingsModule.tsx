@@ -58,6 +58,10 @@ export function SettingsModule() {
   const settingsLoad = useAsyncLoad(fetchMaintenanceSettings, []);
   const paymentSettingsLoad = useAsyncLoad(fetchMemberPaymentSettings, []);
   const typesLoad = useAsyncLoad(fetchContractTypes, []);
+  const pageLoading =
+    (settingsLoad.loading && !settingsLoad.data) ||
+    (paymentSettingsLoad.loading && !paymentSettingsLoad.data) ||
+    (typesLoad.loading && !typesLoad.data);
 
   const [defaultMaintenance, setDefaultMaintenance] = useState('');
   const [penaltyGraceDay, setPenaltyGraceDay] = useState('');
@@ -352,6 +356,9 @@ export function SettingsModule() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} />}
       keyboardShouldPersistTaps="handled"
     >
+      {pageLoading ? <ListLoading /> : null}
+
+      {!pageLoading ? (
       <ServicesAccordionSection
         title="Account security"
         expanded={expandedSections.security}
@@ -359,13 +366,14 @@ export function SettingsModule() {
       >
         <ChangePasswordFlow />
       </ServicesAccordionSection>
+      ) : null}
 
+      {!pageLoading ? (
       <ServicesAccordionSection
         title="Maintenance Rules & Penalty Settings"
         expanded={expandedSections.maintenance}
         onToggle={() => toggleSection('maintenance')}
       >
-        {settingsLoad.loading ? <ListLoading /> : null}
         {settingsLoad.error ? <ListError message={settingsLoad.error} /> : null}
         {settingsLoad.data ? (
           <View style={styles.form}>
@@ -414,13 +422,15 @@ export function SettingsModule() {
           </View>
         ) : null}
       </ServicesAccordionSection>
+      ) : null}
 
+      {!pageLoading ? (
+      <>
       <ServicesAccordionSection
         title="Member online payments"
         expanded={expandedSections.payments}
         onToggle={() => toggleSection('payments')}
       >
-        {paymentSettingsLoad.loading ? <ListLoading /> : null}
         {paymentSettingsLoad.error ? <ListError message={paymentSettingsLoad.error} /> : null}
         {paymentSettingsLoad.data ? (
           <View style={styles.form}>
@@ -651,7 +661,6 @@ export function SettingsModule() {
         expanded={expandedSections.contracts}
         onToggle={() => toggleSection('contracts')}
       >
-        {typesLoad.loading ? <ListLoading /> : null}
         {typesLoad.error ? <ListError message={typesLoad.error} /> : null}
         {typesLoad.data?.length === 0 ? <ListEmpty message="No contract types defined." /> : null}
         {typesLoad.data?.map((t) => (
@@ -695,6 +704,8 @@ export function SettingsModule() {
           </Pressable>
         </View>
       </ServicesAccordionSection>
+      </>
+      ) : null}
     </ScrollView>
   );
 }

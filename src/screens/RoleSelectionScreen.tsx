@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AppLogoLoader } from '../components/AppLogoLoader';
+import { AppLoader } from '../components/AppLoader';
+import { useGlobalLoadingVisible } from '../hooks/useGlobalLoadingVisible';
 import { AppLogo } from '../components/AppLogo';
 import { SelectableOptionCard, WIZARD_ACCENT } from '../components/wizard';
 import { isMemberRole } from '../services/api';
@@ -40,6 +41,7 @@ type ScreenMode = 'roles' | 'link' | 'create';
 
 export function RoleSelectionScreen({ user, onSelected, onUserUpdated, onLogout }: Props) {
   const { theme } = useTheme();
+  const globalLoading = useGlobalLoadingVisible();
   const [mode, setMode] = useState<ScreenMode>('roles');
   const roles = useMemo(() => getAvailableLoginRoles(user), [user]);
   const [selected, setSelected] = useState<AppViewContext | null>(null);
@@ -165,9 +167,9 @@ export function RoleSelectionScreen({ user, onSelected, onUserUpdated, onLogout 
           </View>
         ) : null}
 
-        {loading ? (
+        {loading && !globalLoading ? (
           <View style={styles.loadingRow}>
-            <AppLogoLoader size="md" tone="onLight" label="Opening your workspace…" />
+            <AppLoader size="md" label="Opening your workspace…" />
           </View>
         ) : null}
 

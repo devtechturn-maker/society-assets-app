@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   createBuildingDraft,
@@ -24,6 +25,8 @@ export function BuildingFlatConfigEditor({
   chairmanFlatDigits,
   onChairmanChange,
 }: Props) {
+  const [buildingMenuOpen, setBuildingMenuOpen] = useState(false);
+  const [flatMenuOpen, setFlatMenuOpen] = useState(false);
   function updateBuilding(id: string, patch: Partial<BuildingFlatDraft>) {
     const nextBuildings = buildings.map((b) => {
       if (b.id !== id) return b;
@@ -152,49 +155,90 @@ export function BuildingFlatConfigEditor({
       <Text style={[styles.sectionTitle, styles.chairmanSection]}>Chairman Assignment</Text>
       <Text style={styles.sectionHint}>Select the building and exact flat for the chairman.</Text>
 
-      <Text style={styles.pickerLabel}>Chairman building</Text>
-      <View style={styles.chipRow}>
-        {buildings.map((b) => {
-          const selected = chairmanBuildingId === b.id;
-          return (
-            <Pressable
-              key={b.id}
-              style={[styles.choiceChip, selected && styles.choiceChipSelected]}
-              onPress={() => onChairmanChange(b.id, null)}
-            >
-              <Text style={[styles.choiceChipText, selected && styles.choiceChipTextSelected]}>
-                {b.name.trim() || '—'}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <Text style={styles.pickerLabel}>Building</Text>
+      <Pressable
+        style={styles.select}
+        onPress={() => {
+          setFlatMenuOpen(false);
+          setBuildingMenuOpen((open) => !open);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Select building"
+      >
+        <Text style={[styles.selectText, !chairmanBuilding && styles.selectPlaceholder]}>
+          {chairmanBuilding?.name.trim() || 'Select Building'}
+        </Text>
+        <Text style={styles.selectCaret}>{buildingMenuOpen ? '▲' : '▼'}</Text>
+      </Pressable>
+      {buildingMenuOpen ? (
+        <View style={styles.selectMenu}>
+          {buildings.length === 0 ? (
+            <Text style={styles.selectEmpty}>Add a building first.</Text>
+          ) : (
+            buildings.map((b) => {
+              const selected = chairmanBuildingId === b.id;
+              return (
+                <Pressable
+                  key={b.id}
+                  style={[styles.selectItem, selected && styles.selectItemActive]}
+                  onPress={() => {
+                    onChairmanChange(b.id, null);
+                    setBuildingMenuOpen(false);
+                    setFlatMenuOpen(false);
+                  }}
+                >
+                  <Text style={[styles.selectItemText, selected && styles.selectItemTextActive]}>
+                    {b.name.trim() || '—'}
+                  </Text>
+                </Pressable>
+              );
+            })
+          )}
+        </View>
+      ) : null}
 
-      <Text style={styles.pickerLabel}>Chairman flat</Text>
-      {chairmanBuildingId && chairmanFlatOptions.length > 0 ? (
-        <View style={styles.chipRow}>
+      <Text style={styles.pickerLabel}>Chairman Flat</Text>
+      <Pressable
+        style={[styles.select, !chairmanBuildingId && styles.selectDisabled]}
+        onPress={() => {
+          if (!chairmanBuildingId || chairmanFlatOptions.length === 0) return;
+          setBuildingMenuOpen(false);
+          setFlatMenuOpen((open) => !open);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Select Flat Number"
+      >
+        <Text style={[styles.selectText, !chairmanFlatDigits && styles.selectPlaceholder]}>
+          {chairmanFlatDigits || 'Select Flat Number'}
+        </Text>
+        <Text style={styles.selectCaret}>{flatMenuOpen ? '▲' : '▼'}</Text>
+      </Pressable>
+      {flatMenuOpen && chairmanBuildingId && chairmanFlatOptions.length > 0 ? (
+        <View style={styles.selectMenu}>
           {chairmanFlatOptions.map((flat) => {
             const selected = chairmanFlatDigits === flat;
             return (
               <Pressable
                 key={`${chairmanBuildingId}-${flat}`}
-                style={[styles.choiceChip, selected && styles.choiceChipSelected]}
-                onPress={() => onChairmanChange(chairmanBuildingId, flat)}
+                style={[styles.selectItem, selected && styles.selectItemActive]}
+                onPress={() => {
+                  onChairmanChange(chairmanBuildingId, flat);
+                  setFlatMenuOpen(false);
+                }}
               >
-                <Text style={[styles.choiceChipText, selected && styles.choiceChipTextSelected]}>
+                <Text style={[styles.selectItemText, selected && styles.selectItemTextActive]}>
                   {flat}
                 </Text>
               </Pressable>
             );
           })}
         </View>
-      ) : (
-        <Text style={styles.emptyFlats}>
-          {chairmanBuildingId
-            ? 'Enter numeric flat numbers in the selected building first.'
-            : 'Select a chairman building first.'}
-        </Text>
-      )}
+      ) : null}
+      {!chairmanBuildingId ? (
+        <Text style={styles.emptyFlats}>Select a building first.</Text>
+      ) : chairmanFlatOptions.length === 0 ? (
+        <Text style={styles.emptyFlats}>Enter numeric flat numbers in the selected building first.</Text>
+      ) : null}
     </View>
   );
 }
@@ -329,30 +373,65 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.navy900,
   },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  select: {
     marginTop: 6,
-  },
-  choiceChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    minHeight: 46,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
-    backgroundColor: '#f1f5f9',
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    gap: 8,
   },
-  choiceChipSelected: {
-    backgroundColor: ACCENT,
-    borderColor: ACCENT,
+  selectDisabled: {
+    opacity: 0.55,
   },
-  choiceChipText: {
-    fontSize: 13,
+  selectText: {
+    flex: 1,
+    fontSize: 14,
     fontWeight: '700',
     color: ACCENT,
   },
-  choiceChipTextSelected: {
-    color: '#fff',
+  selectPlaceholder: {
+    color: colors.muted,
+    fontWeight: '600',
+  },
+  selectCaret: {
+    fontSize: 12,
+    color: colors.muted,
+  },
+  selectMenu: {
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+    maxHeight: 220,
+  },
+  selectItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e2e8f0',
+  },
+  selectItemActive: {
+    backgroundColor: '#e2e8f0',
+  },
+  selectItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: ACCENT,
+  },
+  selectItemTextActive: {
+    fontWeight: '800',
+  },
+  selectEmpty: {
+    padding: 14,
+    fontSize: 13,
+    color: colors.muted,
+    textAlign: 'center',
   },
 });

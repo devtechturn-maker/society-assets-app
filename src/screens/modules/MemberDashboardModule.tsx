@@ -136,8 +136,8 @@ export function MemberDashboardModule({ onOpenProfile, onOpenNotice, onOpenVisit
         </View>
       ) : null}
 
-      {overview.loading ? <ListLoading /> : null}
       {overview.error ? <ListError message={overview.error} /> : null}
+      {overview.loading && !overview.data ? <ListLoading /> : null}
       {overview.data ? (
         <KpiGrid
           columns={3}

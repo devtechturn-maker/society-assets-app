@@ -14,6 +14,7 @@ import axios from 'axios';
 import { addMember } from '../../services/api';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useTheme } from '../../theme/ThemeContext';
+import { FlatNumberSelect } from '../FlatNumberSelect';
 
 type Props = {
   visible: boolean;
@@ -62,7 +63,7 @@ export function AddMemberModal({ visible, onClose, onSaved }: Props) {
       return;
     }
     if (!trimmedFlat) {
-      alert('Flat required', 'Enter a flat number.', { variant: 'error' });
+      alert('Flat required', 'Select a flat number.', { variant: 'error' });
       return;
     }
 
@@ -142,13 +143,11 @@ export function AddMemberModal({ visible, onClose, onSaved }: Props) {
             </Field>
 
             <Field label="Flat Number" theme={theme}>
-              <TextInput
-                style={inputStyle(theme)}
+              <FlatNumberSelect
                 value={flatNumber}
-                onChangeText={setFlatNumber}
-                placeholder="B-204"
-                placeholderTextColor={theme.placeholder}
-                autoCapitalize="characters"
+                onChange={setFlatNumber}
+                mode="available"
+                placeholder="Select Flat Number"
               />
             </Field>
 

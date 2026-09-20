@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { AppLogo } from './AppLogo';
 import { APP_TAGLINE } from '../constants/branding';
-import { PremiumLoadingScreen } from './splash/PremiumLoadingScreen';
+import { AppLoader } from './AppLoader';
 
 export type AppLogoLoaderSize = 'sm' | 'md' | 'lg' | 'xl';
 
@@ -134,8 +134,21 @@ export function AppLogoLoader({
 
 /** Full-screen branded boot loader (session check after splash). */
 export function AppBootLoader({ label = 'Loading...' }: { backgroundColor?: string; label?: string }) {
-  return <PremiumLoadingScreen label={label} />;
+  return (
+    <View style={bootStyles.root}>
+      <AppLoader size="lg" label={label} />
+    </View>
+  );
 }
+
+const bootStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+});
 
 const styles = StyleSheet.create({
   wrap: {

@@ -30,6 +30,13 @@ export function ReportsModule() {
     modes.refreshing ||
     memberPending.refreshing;
 
+  const pageLoading =
+    (summary.loading && !summary.data) ||
+    (monthly.loading && !monthly.data) ||
+    (categories.loading && !categories.data) ||
+    (modes.loading && !modes.data) ||
+    (memberPending.loading && !memberPending.data);
+
   function refreshAll() {
     summary.refresh();
     monthly.refresh();
@@ -43,9 +50,10 @@ export function ReportsModule() {
       contentContainerStyle={[styles.scroll, { backgroundColor: theme.pageBg }]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} />}
     >
-      {summary.loading ? <ListLoading /> : null}
-      {summary.error ? <ListError message={summary.error} /> : null}
-      {summary.data ? (
+      {pageLoading ? <ListLoading /> : null}
+
+      {!pageLoading && summary.error ? <ListError message={summary.error} /> : null}
+      {!pageLoading && summary.data ? (
         <KpiGrid
           items={[
             { label: 'Maintenance Collected', value: summary.data.totalMaintenanceCollected },
@@ -58,30 +66,33 @@ export function ReportsModule() {
         />
       ) : null}
 
-      <SectionCard title="Monthly Maintenance Report" subtitle="Month-wise collection, dues and pending">
-        {monthly.loading ? <ListLoading /> : null}
-        {monthly.error ? <ListError message={monthly.error} /> : null}
-        {monthly.data?.length === 0 ? <ListEmpty message="No monthly data." /> : null}
-        {monthly.data?.map((r) => (
-          <View key={r.month} style={[styles.row, { borderTopColor: theme.divider }]}>
-            <Text style={[styles.rowTitle, { color: theme.text }]}>{r.month}</Text>
-            <Text style={[styles.meta, { color: theme.textSoft }]}>
-              Collected {formatInr(r.collected)} · Pending {formatInr(r.pending)}
-            </Text>
-          </View>
-        ))}
-      </SectionCard>
+      {!pageLoading ? (
+        <SectionCard title="Monthly Maintenance Report" subtitle="Month-wise collection, dues and pending">
+          {monthly.error ? <ListError message={monthly.error} /> : null}
+          {monthly.data?.length === 0 ? <ListEmpty message="No monthly data." /> : null}
+          {monthly.data?.map((r) => (
+            <View key={r.month} style={[styles.row, { borderTopColor: theme.divider }]}>
+              <Text style={[styles.rowTitle, { color: theme.text }]}>{r.month}</Text>
+              <Text style={[styles.meta, { color: theme.textSoft }]}>
+                Collected {formatInr(r.collected)} · Pending {formatInr(r.pending)}
+              </Text>
+            </View>
+          ))}
+        </SectionCard>
+      ) : null}
 
-      <SectionCard title="Expense Category Report">
-        {categories.data?.map((r) => (
-          <View key={r.category} style={[styles.row, { borderTopColor: theme.divider }]}>
-            <Badge label={r.category} tone="info" />
-            <Text style={[styles.amount, { color: theme.text }]}>{formatInr(r.amount)}</Text>
-          </View>
-        ))}
-      </SectionCard>
+      {!pageLoading ? (
+        <SectionCard title="Expense Category Report">
+          {categories.data?.map((r) => (
+            <View key={r.category} style={[styles.row, { borderTopColor: theme.divider }]}>
+              <Badge label={r.category} tone="info" />
+              <Text style={[styles.amount, { color: theme.text }]}>{formatInr(r.amount)}</Text>
+            </View>
+          ))}
+        </SectionCard>
+      ) : null}
 
-      {modes.data ? (
+      {!pageLoading && modes.data ? (
         <KpiGrid
           items={[
             { label: 'Cash In', value: modes.data.cashIn },
@@ -92,20 +103,22 @@ export function ReportsModule() {
         />
       ) : null}
 
-      <SectionCard title="Member Pending Report">
-        {memberPending.data?.map((r) => (
-          <View key={r.memberId} style={[styles.row, { borderTopColor: theme.divider }]}>
-            <Text style={[styles.rowTitle, { color: theme.text }]}>{r.memberName}</Text>
-            <Text style={[styles.meta, { color: theme.textSoft }]}>
-              Flat {r.flatNumber} · Pending {formatInr(r.remainingDueAmount)}
-            </Text>
-            <Badge label={r.lastPaymentType || '—'} tone={paymentBadgeTone(r.lastPaymentType)} />
-            <Text style={[styles.meta, { color: theme.textSoft }]}>{formatDate(r.lastPaymentDate)}</Text>
-          </View>
-        ))}
-      </SectionCard>
+      {!pageLoading ? (
+        <SectionCard title="Member Pending Report">
+          {memberPending.data?.map((r) => (
+            <View key={r.memberId} style={[styles.row, { borderTopColor: theme.divider }]}>
+              <Text style={[styles.rowTitle, { color: theme.text }]}>{r.memberName}</Text>
+              <Text style={[styles.meta, { color: theme.textSoft }]}>
+                Flat {r.flatNumber} · Pending {formatInr(r.remainingDueAmount)}
+              </Text>
+              <Badge label={r.lastPaymentType || '—'} tone={paymentBadgeTone(r.lastPaymentType)} />
+              <Text style={[styles.meta, { color: theme.textSoft }]}>{formatDate(r.lastPaymentDate)}</Text>
+            </View>
+          ))}
+        </SectionCard>
+      ) : null}
 
-      <ReportEmailForm />
+      {!pageLoading ? <ReportEmailForm /> : null}
     </ScrollView>
   );
 }

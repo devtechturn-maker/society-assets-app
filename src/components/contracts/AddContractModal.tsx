@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -172,15 +171,15 @@ export function AddContractModal({ visible, onClose, onSaved }: Props) {
               </Pressable>
               {showTypeList && types.length > 0 ? (
                 <View style={[styles.typeListWrap, { borderColor: theme.inputBorder }]}>
-                  <FlatList
-                    data={types}
-                    keyExtractor={(t) => t.id}
-                    nestedScrollEnabled={true}
+                  <ScrollView
                     keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled
+                    showsVerticalScrollIndicator
                     style={styles.typeListScroll}
-                    renderItem={({ item: t }) => (
+                  >
+                    {types.map((t) => (
                       <Pressable
+                        key={t.id}
                         style={[
                           styles.typeItem,
                           { borderBottomColor: theme.divider },
@@ -194,8 +193,8 @@ export function AddContractModal({ visible, onClose, onSaved }: Props) {
                         <Text style={{ color: theme.text, fontWeight: '600' }}>{t.label}</Text>
                         <Text style={{ color: theme.textMuted, fontSize: 12 }}>{t.code}</Text>
                       </Pressable>
-                    )}
-                  />
+                    ))}
+                  </ScrollView>
                 </View>
               ) : null}
             </Field>

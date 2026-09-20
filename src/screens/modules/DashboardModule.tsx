@@ -11,6 +11,8 @@ export function DashboardModule() {
   const recent = useAsyncLoad(fetchRecentExpenses, []);
 
   const refreshing = overview.refreshing || recent.refreshing;
+  const pageLoading =
+    (overview.loading && !overview.data) || (recent.loading && !recent.data);
 
   return (
     <ScrollView
@@ -25,9 +27,9 @@ export function DashboardModule() {
         />
       }
     >
-      {overview.loading ? <ListLoading /> : null}
+      {pageLoading ? <ListLoading /> : null}
       {overview.error ? <ListError message={overview.error} /> : null}
-      {overview.data ? (
+      {!pageLoading && overview.data ? (
         <KpiGrid
           items={[
             { label: 'Total Income', value: overview.data.totalIncome },
@@ -40,12 +42,13 @@ export function DashboardModule() {
         />
       ) : null}
 
-      <SectionCard title="Recent 5 Expenses">
-        {recent.loading ? <ListLoading /> : null}
-        {recent.error ? <ListError message={recent.error} /> : null}
-        {recent.data?.length === 0 ? <ListEmpty message="No recent expenses." /> : null}
-        {recent.data?.map((row) => <ExpenseRowCard key={row.expenseId} row={row} />)}
-      </SectionCard>
+      {!pageLoading ? (
+        <SectionCard title="Recent 5 Expenses">
+          {recent.error ? <ListError message={recent.error} /> : null}
+          {recent.data?.length === 0 ? <ListEmpty message="No recent expenses." /> : null}
+          {recent.data?.map((row) => <ExpenseRowCard key={row.expenseId} row={row} />)}
+        </SectionCard>
+      ) : null}
     </ScrollView>
   );
 }

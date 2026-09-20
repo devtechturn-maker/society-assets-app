@@ -41,6 +41,8 @@ export function MaintenanceModule() {
   }
 
   const refreshing = pending.refreshing || history.refreshing;
+  const pageLoading =
+    (pending.loading && !pending.data) || (history.loading && !history.data);
 
   return (
     <>
@@ -48,61 +50,65 @@ export function MaintenanceModule() {
         contentContainerStyle={[styles.scroll, { backgroundColor: theme.pageBg }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} />}
       >
-        <SectionCard
-          title="Member Pending Summary (Audit View)"
-          subtitle="Latest pending status by member for year-end audit"
-        >
-          {pending.loading ? <ListLoading /> : null}
-          {pending.error ? <ListError message={pending.error} /> : null}
-          {pending.data?.length === 0 ? <ListEmpty message="No pending maintenance." /> : null}
-          {pending.data?.map((row) => (
-            <View key={row.memberId} style={[styles.pendingCard, { borderTopColor: theme.divider }]}>
-              <Text style={[styles.name, { color: theme.text }]}>{row.memberName}</Text>
-              <Text style={[styles.email, { color: theme.textMuted }]}>{row.memberEmail}</Text>
-              <Text style={[styles.meta, { color: theme.textSoft }]}>Flat {row.flatNumber}</Text>
-              <Text style={[styles.meta, { color: theme.textSoft }]}>
-                Pending {formatInr(row.remainingDueAmount)}
-              </Text>
-              <View style={styles.row}>
-                <Badge label={row.lastPaymentType || '—'} tone={paymentBadgeTone(row.lastPaymentType)} />
-                <Text style={[styles.meta, { color: theme.textSoft }]}>{formatDate(row.lastPaymentDate)}</Text>
-              </View>
-              <Pressable
-                style={[
-                  styles.reminderBtn,
-                  { backgroundColor: theme.accent },
-                  (row.remainingDueAmount ?? 0) <= 0 ? styles.disabled : null,
-                ]}
-                disabled={(row.remainingDueAmount ?? 0) <= 0 || sendingId === row.memberId}
-                onPress={() => onReminder(row.memberId)}
-              >
-                <Text style={styles.reminderText}>
-                  {sendingId === row.memberId ? 'Sending…' : 'Send Reminder'}
-                </Text>
-              </Pressable>
-            </View>
-          ))}
-        </SectionCard>
+        {pageLoading ? <ListLoading /> : null}
 
-        <SectionCard
-          title="Maintenance History"
-          subtitle="Latest maintenance entries for this society"
-          headerRight={
-            <Pressable
-              style={[styles.addBtn, { backgroundColor: theme.accent }]}
-              onPress={() => setModalOpen(true)}
+        {!pageLoading ? (
+          <>
+            <SectionCard
+              title="Member Pending Summary (Audit View)"
+              subtitle="Latest pending status by member for year-end audit"
             >
-              <Text style={styles.addBtnText}>+ Add</Text>
-            </Pressable>
-          }
-        >
-          {history.loading ? <ListLoading /> : null}
-          {history.error ? <ListError message={history.error} /> : null}
-          {history.data?.length === 0 ? <ListEmpty message="No maintenance entries yet." /> : null}
-          {history.data?.map((row) => (
-            <ExpenseRowCard key={row.expenseId} row={row} showMember={true} />
-          ))}
-        </SectionCard>
+              {pending.error ? <ListError message={pending.error} /> : null}
+              {pending.data?.length === 0 ? <ListEmpty message="No pending maintenance." /> : null}
+              {pending.data?.map((row) => (
+                <View key={row.memberId} style={[styles.pendingCard, { borderTopColor: theme.divider }]}>
+                  <Text style={[styles.name, { color: theme.text }]}>{row.memberName}</Text>
+                  <Text style={[styles.email, { color: theme.textMuted }]}>{row.memberEmail}</Text>
+                  <Text style={[styles.meta, { color: theme.textSoft }]}>Flat {row.flatNumber}</Text>
+                  <Text style={[styles.meta, { color: theme.textSoft }]}>
+                    Pending {formatInr(row.remainingDueAmount)}
+                  </Text>
+                  <View style={styles.row}>
+                    <Badge label={row.lastPaymentType || '—'} tone={paymentBadgeTone(row.lastPaymentType)} />
+                    <Text style={[styles.meta, { color: theme.textSoft }]}>{formatDate(row.lastPaymentDate)}</Text>
+                  </View>
+                  <Pressable
+                    style={[
+                      styles.reminderBtn,
+                      { backgroundColor: theme.accent },
+                      (row.remainingDueAmount ?? 0) <= 0 ? styles.disabled : null,
+                    ]}
+                    disabled={(row.remainingDueAmount ?? 0) <= 0 || sendingId === row.memberId}
+                    onPress={() => onReminder(row.memberId)}
+                  >
+                    <Text style={styles.reminderText}>
+                      {sendingId === row.memberId ? 'Sending…' : 'Send Reminder'}
+                    </Text>
+                  </Pressable>
+                </View>
+              ))}
+            </SectionCard>
+
+            <SectionCard
+              title="Maintenance History"
+              subtitle="Latest maintenance entries for this society"
+              headerRight={
+                <Pressable
+                  style={[styles.addBtn, { backgroundColor: theme.accent }]}
+                  onPress={() => setModalOpen(true)}
+                >
+                  <Text style={styles.addBtnText}>+ Add</Text>
+                </Pressable>
+              }
+            >
+              {history.error ? <ListError message={history.error} /> : null}
+              {history.data?.length === 0 ? <ListEmpty message="No maintenance entries yet." /> : null}
+              {history.data?.map((row) => (
+                <ExpenseRowCard key={row.expenseId} row={row} showMember={true} />
+              ))}
+            </SectionCard>
+          </>
+        ) : null}
       </ScrollView>
 
       <AddMaintenanceModal

@@ -15,6 +15,7 @@ import { updateMember } from '../../services/api';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useTheme } from '../../theme/ThemeContext';
 import type { SocietyMember } from '../../types/api';
+import { FlatNumberSelect } from '../FlatNumberSelect';
 
 type Props = {
   visible: boolean;
@@ -66,7 +67,7 @@ export function EditMemberModal({ visible, member, onClose, onSaved }: Props) {
       return;
     }
     if (!trimmedFlat) {
-      alert('Flat required', 'Enter a flat number.', { variant: 'error' });
+      alert('Flat required', 'Select a flat number.', { variant: 'error' });
       return;
     }
     if (trimmedPhone && !PHONE_RE.test(trimmedPhone)) {
@@ -147,13 +148,12 @@ export function EditMemberModal({ visible, member, onClose, onSaved }: Props) {
                 </Field>
 
                 <Field label="Flat Number" theme={theme}>
-                  <TextInput
-                    style={inputStyle(theme)}
+                  <FlatNumberSelect
                     value={flatNumber}
-                    onChangeText={setFlatNumber}
-                    placeholder="B-204"
-                    placeholderTextColor={theme.placeholder}
-                    autoCapitalize="characters"
+                    onChange={setFlatNumber}
+                    mode="available"
+                    allowFlatNumber={member?.flatNumber}
+                    placeholder="Select Flat Number"
                   />
                 </Field>
 
