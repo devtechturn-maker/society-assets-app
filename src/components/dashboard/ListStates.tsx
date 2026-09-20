@@ -1,13 +1,22 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppLoader } from '../AppLoader';
 import { UiIcon } from '../UiIcon';
 import type { UiIconName } from '../../constants/uiIcons';
+import { useGlobalLoadingVisible } from '../../hooks/useGlobalLoadingVisible';
 import { useTheme } from '../../theme/ThemeContext';
 
+/**
+ * Inline section/page loader. Hidden while the global overlay is showing
+ * so API-driven screens never stack duplicate full loaders.
+ */
 export function ListLoading() {
-  const { theme } = useTheme();
+  const globalVisible = useGlobalLoadingVisible();
+  if (globalVisible) {
+    return null;
+  }
   return (
     <View style={styles.center}>
-      <ActivityIndicator size="large" color={theme.accentGold} />
+      <AppLoader size="md" label="Loading..." />
     </View>
   );
 }
@@ -64,7 +73,7 @@ export function ListEmpty({ message, title, subtitle, icon }: ListEmptyProps) {
 }
 
 const styles = StyleSheet.create({
-  center: { paddingVertical: 24, alignItems: 'center' },
+  center: { paddingVertical: 28, alignItems: 'center' },
   errorWrap: { paddingVertical: 16, alignItems: 'center', gap: 12 },
   error: { color: '#dc2626', fontSize: 14, lineHeight: 20, textAlign: 'center' },
   retryBtn: {

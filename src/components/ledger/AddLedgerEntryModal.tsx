@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from 'react';
 import {
-  FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,6 +16,7 @@ import { addExpense, addOtherIncome, type PaymentType } from '../../services/api
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { isValidIsoDate, todayIsoDate } from '../../utils/dates';
+import { FlatNumberSelect } from '../FlatNumberSelect';
 
 type LedgerEntryType = 'EXPENSE' | 'INCOME';
 
@@ -297,15 +297,15 @@ export function AddLedgerEntryModal({ visible, onClose, onSaved }: Props) {
                   </Pressable>
                   {showCategoryList ? (
                     <View style={[styles.categoryListWrap, { borderColor: theme.inputBorder }]}>
-                      <FlatList
-                        data={OTHER_INCOME_CATEGORY_OPTIONS}
-                        keyExtractor={(o) => o.value}
-                        nestedScrollEnabled={true}
+                      <ScrollView
                         keyboardShouldPersistTaps="handled"
-                        showsVerticalScrollIndicator={true}
+                        nestedScrollEnabled
+                        showsVerticalScrollIndicator
                         style={styles.categoryListScroll}
-                        renderItem={({ item: opt }) => (
+                      >
+                        {OTHER_INCOME_CATEGORY_OPTIONS.map((opt) => (
                           <Pressable
+                            key={opt.value}
                             style={[
                               styles.categoryItem,
                               { borderBottomColor: theme.divider },
@@ -318,8 +318,8 @@ export function AddLedgerEntryModal({ visible, onClose, onSaved }: Props) {
                           >
                             <Text style={{ color: theme.text, fontSize: 14 }}>{opt.label}</Text>
                           </Pressable>
-                        )}
-                      />
+                        ))}
+                      </ScrollView>
                     </View>
                   ) : null}
                 </Field>
@@ -338,13 +338,12 @@ export function AddLedgerEntryModal({ visible, onClose, onSaved }: Props) {
                 ) : null}
 
                 <Field label="Flat Number (Optional)" theme={theme}>
-                  <TextInput
-                    style={inputStyle(theme)}
+                  <FlatNumberSelect
                     value={flatNumber}
-                    onChangeText={setFlatNumber}
-                    placeholder="e.g. A-101 for transfer fees"
-                    placeholderTextColor={theme.placeholder}
-                    autoCapitalize="characters"
+                    onChange={setFlatNumber}
+                    mode="registered"
+                    optional
+                    placeholder="Select Flat Number"
                   />
                 </Field>
 

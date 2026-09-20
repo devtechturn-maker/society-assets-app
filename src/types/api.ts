@@ -130,6 +130,15 @@ export interface OnboardingOpenFlat {
   memberId?: string | null;
 }
 
+/** Society flat inventory row for office dropdowns (add/edit member, income, etc.). */
+export interface SocietyInventoryFlat {
+  flatId: string;
+  flatNumber: string;
+  status?: string | null;
+  available: boolean;
+  memberId?: string | null;
+}
+
 export interface LoginData {
   token: string;
   role: string;

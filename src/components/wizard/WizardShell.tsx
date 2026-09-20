@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { AppLogoLoader } from '../AppLogoLoader';
+import { AppLoader } from '../AppLoader';
 import { WIZARD_ACCENT, wizardStyles as styles } from './wizardStyles';
 
 type Props = {
@@ -107,7 +107,7 @@ export function WizardShell({
               disabled={primaryLoading || primaryDisabled}
             >
               {primaryLoading ? (
-                <AppLogoLoader size="sm" minimal />
+                <AppLoader size="sm" onDark />
               ) : (
                 <Text style={styles.primaryBtnText}>{primaryLabel}</Text>
               )}

@@ -11,6 +11,7 @@ import type {
   LoginData,
   LoginAccountOption,
   OnboardingOpenFlat,
+  SocietyInventoryFlat,
   OnboardingSocietyOption,
   SmsLoginVerifyResult,
   MaintenanceSettings,
@@ -284,6 +285,11 @@ export async function joinSocietyMobile(payload: {
 
 export async function fetchClaimableFlats(): Promise<OnboardingOpenFlat[]> {
   const { data } = await client.get<ApiResponse<OnboardingOpenFlat[]>>('/society/members/claimable-flats');
+  return data.data ?? [];
+}
+
+export async function fetchSocietyInventoryFlats(): Promise<SocietyInventoryFlat[]> {
+  const { data } = await client.get<ApiResponse<SocietyInventoryFlat[]>>('/society/members/flats');
   return data.data ?? [];
 }
 

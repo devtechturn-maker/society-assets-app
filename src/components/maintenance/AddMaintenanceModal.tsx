@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -161,37 +160,38 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
               </Pressable>
               {showMemberList ? (
                 <View style={[styles.memberListWrap, { borderColor: theme.inputBorder }]}>
-                  <FlatList
-                    data={members}
-                    keyExtractor={(m) => m.id}
-                    nestedScrollEnabled={true}
+                  <ScrollView
                     keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled
+                    showsVerticalScrollIndicator
                     style={styles.memberListScroll}
-                    ListEmptyComponent={
+                  >
+                    {members.length === 0 ? (
                       <Text style={[styles.memberEmpty, { color: theme.textMuted }]}>
                         {loadingMembers ? 'Loading members…' : 'No members found.'}
                       </Text>
-                    }
-                    renderItem={({ item: m }) => (
-                      <Pressable
-                        style={[
-                          styles.memberItem,
-                          { borderBottomColor: theme.divider },
-                          memberId === m.id ? { backgroundColor: theme.accentSoft } : null,
-                        ]}
-                        onPress={() => {
-                          setMemberId(m.id);
-                          setShowMemberList(false);
-                        }}
-                      >
-                        <Text style={{ color: theme.text, fontWeight: '600' }}>{m.name}</Text>
-                        <Text style={{ color: theme.textMuted, fontSize: 12 }}>
-                          {m.flatNumber} · {m.email}
-                        </Text>
-                      </Pressable>
+                    ) : (
+                      members.map((m) => (
+                        <Pressable
+                          key={m.id}
+                          style={[
+                            styles.memberItem,
+                            { borderBottomColor: theme.divider },
+                            memberId === m.id ? { backgroundColor: theme.accentSoft } : null,
+                          ]}
+                          onPress={() => {
+                            setMemberId(m.id);
+                            setShowMemberList(false);
+                          }}
+                        >
+                          <Text style={{ color: theme.text, fontWeight: '600' }}>{m.name}</Text>
+                          <Text style={{ color: theme.textMuted, fontSize: 12 }}>
+                            {m.flatNumber} · {m.email}
+                          </Text>
+                        </Pressable>
+                      ))
                     )}
-                  />
+                  </ScrollView>
                 </View>
               ) : null}
             </Field>
