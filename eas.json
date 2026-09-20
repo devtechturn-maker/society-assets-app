@@ -8,7 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
+        "EXPO_PUBLIC_API_URL": "http://187.127.180.221"
       },
       "android": {
         "buildType": "apk"
