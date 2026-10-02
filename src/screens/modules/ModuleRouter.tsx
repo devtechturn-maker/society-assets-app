@@ -29,6 +29,7 @@ import { VisitorHistoryModule } from './VisitorHistoryModule';
 import { MemberVisitorModule } from './MemberVisitorModule';
 import { SocietyVisitorAdminModule } from './SocietyVisitorAdminModule';
 import { NotificationsModule } from './NotificationsModule';
+import { EventsModule } from './EventsModule';
 import type { AppNotification } from '../../types/api';
 
 export function ModuleRouter({
@@ -52,6 +53,8 @@ export function ModuleRouter({
   onBookingConsumed,
   initialVisitorId,
   onVisitorConsumed,
+  initialEventId,
+  onEventConsumed,
   onUserUpdated,
   onNavigateProfile,
   onLogout,
@@ -83,6 +86,8 @@ export function ModuleRouter({
   onBookingConsumed?: () => void;
   initialVisitorId?: string | null;
   onVisitorConsumed?: () => void;
+  initialEventId?: string | null;
+  onEventConsumed?: () => void;
   gatekeeperPortal?: boolean;
   onUserUpdated?: (patch: Partial<import('../../types/api').LoginData>) => void;
   onNavigateProfile?: () => void;
@@ -214,6 +219,8 @@ export function ModuleRouter({
             onInitialVisitorConsumed={onVisitorConsumed}
           />
         );
+      case 'events':
+        return <EventsModule memberPortal initialEventId={initialEventId} onInitialEventConsumed={onEventConsumed} />;
       case 'profile':
         return <MemberProfileModule onUserUpdated={onUserUpdated} onLogout={onLogout} />;
       case 'help':
@@ -248,6 +255,8 @@ export function ModuleRouter({
       return <ContractsModule />;
     case 'reports':
       return <ReportsModule />;
+    case 'events':
+      return <EventsModule initialEventId={initialEventId} onInitialEventConsumed={onEventConsumed} />;
     case 'settings':
       return <SettingsModule />;
     case 'chat':

@@ -17,6 +17,7 @@ export const ACTIVITY_HUB_ROUTE_PATHS = new Set([
   'complaints',
   'amenities',
   'directory',
+  'events',
 ]);
 
 export const ACTIVITY_MODULE: NavModule = {
@@ -40,6 +41,7 @@ const MEMBER_TILES: ActivityTile[] = [
   { title: 'Notices', routePath: 'notices', icon: 'megaphone' },
   { title: 'Complaints', routePath: 'complaints', icon: 'flag' },
   { title: 'Amenities', routePath: 'amenities', icon: 'calendar' },
+  { title: 'Events', routePath: 'events', icon: 'sparkles' },
   { title: 'Directory', routePath: 'directory', icon: 'directory' },
 ];
 
@@ -49,12 +51,14 @@ const SOCIETY_TILES: ActivityTile[] = [
   { title: 'Notices', routePath: 'notices', icon: 'megaphone' },
   { title: 'Amenities', routePath: 'amenities', icon: 'calendar' },
   { title: 'Complaints', routePath: 'complaints', icon: 'flag' },
+  { title: 'Events', routePath: 'events', icon: 'sparkles' },
   { title: 'Directory', routePath: 'directory', icon: 'directory' },
 ];
 
 const TREASURER_TILES: ActivityTile[] = [
   { title: 'Maintenance', routePath: 'maintenance', icon: 'bank-card' },
   { title: 'Members', routePath: 'members', icon: 'users' },
+  { title: 'Events', routePath: 'events', icon: 'sparkles' },
   { title: 'Directory', routePath: 'directory', icon: 'directory' },
 ];
 
