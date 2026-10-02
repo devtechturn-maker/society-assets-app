@@ -22,6 +22,7 @@ const IONICON_BY_NAME: Record<UiIconName, keyof typeof Ionicons.glyphMap> = {
   megaphone: 'megaphone-outline',
   flag: 'flag-outline',
   calendar: 'calendar-outline',
+  sparkles: 'sparkles-outline',
   comments: 'chatbubbles-outline',
   wallet: 'wallet-outline',
   'chart-line': 'stats-chart-outline',

@@ -64,6 +64,20 @@ import type {
   GateKeeperAssignment,
   ResidentSearchResult,
 } from '../types/api';
+import type {
+  CreateSocietyEventPayload,
+  EventCategoryOption,
+  EventContributionRow,
+  EventEntryAction,
+  EventEntryPayload,
+  EventPaymentMethod,
+  EventReportType,
+  EventTransaction,
+  MemberEventDetail,
+  MyEventContribution,
+  SocietyEventDetail,
+  SocietyEventListItem,
+} from '../types/api';
 import type { NotificationAudience } from '../utils/notificationAudience';
 import { encryptPasswordForLogin } from '../crypto/rsaEncrypt';
 import { attachGlobalLoadingInterceptors } from './globalApiLoading';
@@ -1480,6 +1494,189 @@ export async function setGateKeeperActive(assignmentId: string, active: boolean)
 
 export async function resetGateKeeperPassword(assignmentId: string): Promise<void> {
   await client.post(`/society/gatekeeper/${assignmentId}/reset-password`);
+}
+
+// ---------------------------------------------------------------- Society events & festivals
+
+/** Staff / committee: event cards with totals. */
+export async function fetchSocietyEvents(): Promise<{ events: SocietyEventListItem[]; canCreate: boolean }> {
+  return getData<{ events: SocietyEventListItem[]; canCreate: boolean }>('/society/events');
+}
+
+/** Members: event cards with society totals + own contribution. */
+export async function fetchMemberEvents(): Promise<SocietyEventListItem[]> {
+  const data = await getData<{ events: SocietyEventListItem[] }>('/member/events');
+  return data.events ?? [];
+}
+
+export async function fetchSocietyEventDetail(eventId: string): Promise<SocietyEventDetail> {
+  return getData<SocietyEventDetail>(`/society/events/${eventId}`);
+}
+
+export async function fetchMemberEventDetail(eventId: string): Promise<MemberEventDetail> {
+  return getData<MemberEventDetail>(`/member/events/${eventId}`);
+}
+
+export async function createSocietyEvent(payload: CreateSocietyEventPayload): Promise<SocietyEventDetail> {
+  const { data } = await client.post<ApiResponse<SocietyEventDetail>>('/society/events', payload);
+  return data.data;
+}
+
+export async function closeSocietyEvent(eventId: string, notifyMembers: boolean): Promise<SocietyEventDetail> {
+  const { data } = await client.post<ApiResponse<SocietyEventDetail>>(`/society/events/${eventId}/close`, {
+    notifyMembers,
+  });
+  return data.data;
+}
+
+export async function reopenSocietyEvent(eventId: string): Promise<SocietyEventDetail> {
+  const { data } = await client.post<ApiResponse<SocietyEventDetail>>(`/society/events/${eventId}/reopen`, {});
+  return data.data;
+}
+
+export async function fetchEventContributions(
+  eventId: string
+): Promise<{ contributionRequired: boolean; items: EventContributionRow[] }> {
+  return getData<{ contributionRequired: boolean; items: EventContributionRow[] }>(
+    `/society/events/${eventId}/contributions`
+  );
+}
+
+export async function setEventContributionAmount(
+  eventId: string,
+  payload: { amount: number; applyTo: 'ALL_FLATS' | 'OCCUPIED_FLATS' | 'SELECTED'; flatIds?: string[] }
+): Promise<{ updatedCount: number }> {
+  const { data } = await client.put<ApiResponse<{ updatedCount: number }>>(
+    `/society/events/${eventId}/contributions`,
+    { mode: 'BULK', overwrite: true, ...payload }
+  );
+  return data.data;
+}
+
+export async function fetchEventTransactions(
+  eventId: string,
+  query: { view?: string; search?: string; page?: number; size?: number } = {}
+): Promise<{ content: EventTransaction[]; totalElements: number; totalPages: number; number: number }> {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') params.set(key, String(value));
+  });
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return getData(`/society/events/${eventId}/transactions${suffix}`);
+}
+
+export async function recordEventEntry(
+  eventId: string,
+  payload: EventEntryPayload,
+  receipts: { uri: string; fileName: string; mimeType: string }[] = []
+): Promise<EventTransaction> {
+  const url = `/society/events/${eventId}/transactions`;
+  if (receipts.length === 0) {
+    const { data } = await client.post<ApiResponse<EventTransaction>>(url, payload);
+    return data.data;
+  }
+  const formData = new FormData();
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') formData.append(key, String(value));
+  });
+  receipts.forEach((file) => {
+    formData.append('files', { uri: file.uri, name: file.fileName, type: file.mimeType } as unknown as Blob);
+  });
+  const { data } = await client.post<ApiResponse<EventTransaction>>(url, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data.data;
+}
+
+export async function eventEntryAction(
+  eventId: string,
+  txnId: string,
+  action: EventEntryAction,
+  extra: { reason?: string; paymentMethod?: EventPaymentMethod; referenceNo?: string } = {}
+): Promise<EventTransaction> {
+  const { data } = await client.post<ApiResponse<EventTransaction>>(
+    `/society/events/${eventId}/transactions/${txnId}/action`,
+    { action, ...extra }
+  );
+  return data.data;
+}
+
+export async function remindPendingEventContributions(
+  eventId: string
+): Promise<{ sentCount: number; skippedNoAppCount: number; skippedRecentlyRemindedCount: number }> {
+  const { data } = await client.post<
+    ApiResponse<{ sentCount: number; skippedNoAppCount: number; skippedRecentlyRemindedCount: number }>
+  >(`/society/events/${eventId}/reminders`, {});
+  return data.data;
+}
+
+export async function fetchEventCategories(): Promise<{ income: EventCategoryOption[]; expense: EventCategoryOption[] }> {
+  return getData<{ income: EventCategoryOption[]; expense: EventCategoryOption[] }>(
+    '/society/settings/event-categories'
+  );
+}
+
+type MemberEventPayment = NonNullable<MyEventContribution['payments']>[number];
+
+/** Member "I have paid" with UPI / bank reference and optional screenshot. */
+export async function submitMemberEventPayment(
+  eventId: string,
+  payload: { amount: number; paymentMethod: EventPaymentMethod; referenceNo: string; txnDate?: string; note?: string },
+  proof?: { uri: string; fileName: string; mimeType: string } | null
+): Promise<MemberEventPayment> {
+  const url = `/member/events/${eventId}/payments`;
+  if (!proof) {
+    const { data } = await client.post<ApiResponse<MemberEventPayment>>(url, payload);
+    return data.data;
+  }
+  const formData = new FormData();
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') formData.append(key, String(value));
+  });
+  formData.append('proof', { uri: proof.uri, name: proof.fileName, type: proof.mimeType } as unknown as Blob);
+  const { data } = await client.post<ApiResponse<MemberEventPayment>>(url, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data.data;
+}
+
+async function downloadToCache(path: string, fallbackName: string): Promise<{ uri: string; mimeType: string }> {
+  const response = await client.get<ArrayBuffer>(path, { responseType: 'arraybuffer' });
+  const disposition = response.headers['content-disposition'];
+  const filename =
+    parseContentDispositionFilename(typeof disposition === 'string' ? disposition : null) ?? fallbackName;
+  const contentType = response.headers['content-type'];
+  const mimeType = typeof contentType === 'string' ? contentType.split(';')[0] : 'application/pdf';
+  const cacheDir = FileSystem.cacheDirectory;
+  if (!cacheDir) {
+    throw new Error('Unable to save the file on this device.');
+  }
+  const fileUri = `${cacheDir}${filename.replace(/[^\w.-]+/g, '_')}`;
+  await FileSystem.writeAsStringAsync(fileUri, uint8ArrayToBase64(new Uint8Array(response.data)), {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return { uri: fileUri, mimeType };
+}
+
+/** PDF report saved to cache (staff: any type; members: summary only). */
+export async function downloadEventReport(
+  eventId: string,
+  type: EventReportType,
+  memberScope: boolean
+): Promise<{ uri: string; mimeType: string }> {
+  const path = memberScope ? `/member/events/${eventId}/report` : `/society/events/${eventId}/report?type=${type}`;
+  return downloadToCache(path, `event-${type.toLowerCase()}.pdf`);
+}
+
+export async function downloadEventReceipt(
+  eventId: string,
+  txnId: string,
+  index: number
+): Promise<{ uri: string; mimeType: string }> {
+  return downloadToCache(
+    `/society/events/${eventId}/transactions/${txnId}/attachments/${index}`,
+    `receipt-${txnId.slice(0, 8)}-${index + 1}`
+  );
 }
 
 export { isEmailNotVerifiedError };
