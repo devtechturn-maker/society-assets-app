@@ -121,11 +121,25 @@ export function SubscriptionModule() {
       <Text style={[styles.sectionTitle, { color: theme.text }]}>Current plan</Text>
       {status ? (
         <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-          <Text style={[styles.planName, { color: theme.text }]}>{status.planName}</Text>
-          <Text style={[styles.meta, { color: theme.textMuted }]}>
-            ₹{Math.round(status.price ?? 0).toLocaleString('en-IN')}
-            {status.billingCycle === 'MONTHLY' ? ' / month' : ' / year'} · {memberUsageLabel()}
-          </Text>
+          {status.status === 'TRIAL' || !status.planName ? (
+            <>
+              <Text style={[styles.planName, { color: theme.text }]}>
+                {status.status === 'TRIAL' ? 'Free trial' : 'No plan selected'}
+              </Text>
+              <Text style={[styles.meta, { color: theme.textMuted }]}>
+                {status.daysRemaining != null ? `${status.daysRemaining} days left · ` : ''}
+                {memberUsageLabel()}
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.planName, { color: theme.text }]}>{status.planName}</Text>
+              <Text style={[styles.meta, { color: theme.textMuted }]}>
+                ₹{Math.round(status.price ?? 0).toLocaleString('en-IN')}
+                {status.billingCycle === 'MONTHLY' ? ' / month' : ' / year'} · {memberUsageLabel()}
+              </Text>
+            </>
+          )}
           {(status.additionalMemberSlots ?? 0) > 0 ? (
             <Text style={[styles.meta, { color: theme.textMuted }]}>
               Extra slots: {status.additionalMemberSlots}
