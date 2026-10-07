@@ -319,7 +319,7 @@ export function VisitorEntryModule() {
                 setSelected(null);
                 focusField(flatRef);
               }}
-              mode="registered"
+              mode="gate"
               placeholder="Select Flat Number"
             />
           </FormField>

@@ -9,11 +9,13 @@ import {
 import {
   fetchRegisteredMembers,
   fetchSocietyInventoryFlats,
+  searchResidentsForVisitor,
 } from '../services/api';
 import type { SocietyInventoryFlat } from '../types/api';
 import { useTheme } from '../theme/ThemeContext';
 
-type Mode = 'available' | 'all' | 'registered';
+/** 'gate' lists resident flats via the gatekeeper API (gatekeepers cannot read the member list). */
+type Mode = 'available' | 'all' | 'registered' | 'gate';
 
 type FlatOption = {
   key: string;
@@ -62,7 +64,19 @@ export function FlatNumberSelect({
     setError(null);
 
     const load =
-      mode === 'registered'
+      mode === 'gate'
+        ? searchResidentsForVisitor('').then((residents) => {
+            const seen = new Set<string>();
+            const rows: FlatOption[] = [];
+            for (const resident of residents) {
+              const num = (resident.flatNumber ?? '').trim().toUpperCase();
+              if (!num || seen.has(num)) continue;
+              seen.add(num);
+              rows.push({ key: resident.memberId || num, flatNumber: num });
+            }
+            return rows;
+          })
+        : mode === 'registered'
         ? fetchRegisteredMembers().then((members) => {
             const seen = new Set<string>();
             const rows: FlatOption[] = [];
