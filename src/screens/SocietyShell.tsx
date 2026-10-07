@@ -78,10 +78,20 @@ type Props = {
   onSwitchRole?: () => void;
 };
 
+/** Short bottom-tab names for module titles that do not fit (the tab shows ~11 characters). */
+const SHORT_TAB_LABELS: Record<string, string> = {
+  'income & expenses': 'Accounts',
+  'visitor entry': 'New Visitor',
+  'events & festivals': 'Events',
+};
+
 function tabLabel(title: string): string {
   const trimmed = title.trim();
   if (trimmed.length <= 11) return trimmed;
-  return `${trimmed.slice(0, 10)}…`;
+  const short = SHORT_TAB_LABELS[trimmed.toLowerCase()];
+  if (short) return short;
+  const firstWord = trimmed.split(/\s+/)[0];
+  return firstWord.length <= 11 ? firstWord : `${trimmed.slice(0, 10)}…`;
 }
 
 function SocietyBootLoader() {
