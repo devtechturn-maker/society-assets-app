@@ -35,7 +35,8 @@ export type UiIconName =
   | 'share'
   | 'bell'
   | 'more'
-  | 'sync';
+  | 'sync'
+  | 'sparkles';
 
 /**
  * Legacy Icons8 slug map — kept for reference only.
@@ -78,6 +79,7 @@ export const ICONS8_SLUGS: Record<UiIconName, string> = {
   bell: 'appointment-reminders',
   more: 'menu',
   sync: 'synchronize',
+  sparkles: 'sparkling',
 };
 
 export function iconFromPrimeIcon(icon: string): UiIconName {
@@ -94,6 +96,7 @@ export function iconFromPrimeIcon(icon: string): UiIconName {
   if (icon.includes('flag')) return 'flag';
   if (icon.includes('briefcase')) return 'briefcase';
   if (icon.includes('calendar')) return 'calendar';
+  if (icon.includes('star') || icon.includes('sparkles')) return 'sparkles';
   if (icon.includes('megaphone')) return 'megaphone';
   if (icon.includes('building')) return 'building';
   if (icon.includes('comment')) return 'comments';
@@ -119,6 +122,8 @@ export function iconForRoutePath(routePath: string): UiIconName {
       return 'flag';
     case 'amenities':
       return 'calendar';
+    case 'events':
+      return 'sparkles';
     case 'chat':
       return 'comments';
     case 'ledger':

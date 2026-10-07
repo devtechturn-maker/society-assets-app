@@ -157,6 +157,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
   const [initialNoticeId, setInitialNoticeId] = useState<string | null>(null);
   const [initialBookingId, setInitialBookingId] = useState<string | null>(null);
   const [initialVisitorId, setInitialVisitorId] = useState<string | null>(null);
+  const [initialEventId, setInitialEventId] = useState<string | null>(null);
   const [bannerNotification, setBannerNotification] = useState<AppPushNotification | null>(null);
   const inbox = useNotificationInbox(user.userId, notificationAudience);
 
@@ -341,6 +342,13 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
     }
   }, []);
 
+  const openEventFromNotification = useCallback((eventId?: string) => {
+    setActivePath('events');
+    if (eventId) {
+      setInitialEventId(eventId);
+    }
+  }, []);
+
   const openVisitorFromNotification = useCallback(
     (visitorId?: string, type?: AppPushNotification['type']) => {
       if (!visitorId) {
@@ -389,6 +397,10 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
           openAmenityFromNotification(opened.amenityBookingId);
           return;
         }
+        if (opened.eventId || opened.type.startsWith('EVENT_')) {
+          openEventFromNotification(opened.eventId);
+          return;
+        }
         if (opened.ruleId || opened.type.startsWith('RULE')) {
           openRuleFromNotification(opened.ruleId);
           return;
@@ -411,6 +423,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
       inbox.handleOpenNotification,
       openAmenityFromNotification,
       openChatFromNotification,
+      openEventFromNotification,
       openComplaintFromNotification,
       openNoticeFromNotification,
       openPollFromNotification,
@@ -718,6 +731,8 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
           onBookingConsumed={() => setInitialBookingId(null)}
           initialVisitorId={initialVisitorId}
           onVisitorConsumed={() => setInitialVisitorId(null)}
+          initialEventId={initialEventId}
+          onEventConsumed={() => setInitialEventId(null)}
           onUserUpdated={(patch) => {
             handleUserUpdated(patch);
             void updateStoredUser(patch).then((next) => {

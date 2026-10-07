@@ -658,6 +658,7 @@ export interface AppNotification {
   ruleId?: string;
   noticeId?: string;
   visitorId?: string;
+  eventId?: string;
   societyId?: string;
   read: boolean;
   readAt: string | null;
@@ -738,4 +739,218 @@ export interface ResidentSearchResult {
   flatNumber: string;
   name: string;
   phone?: string | null;
+}
+
+// ---------------------------------------------------------------- Society events & festivals
+
+export type SocietyEventType = 'FESTIVAL' | 'EVENT' | 'FUNCTION' | 'SPORTS' | 'CULTURAL' | 'OTHER';
+export type SocietyEventPhase = 'UPCOMING' | 'ONGOING' | 'ENDED' | 'CLOSED' | 'CANCELLED';
+export type EventEntryKind = 'CONTRIBUTION' | 'INCOME' | 'EXPENSE';
+export type EventEntryStatus = 'CONFIRMED' | 'PENDING_VERIFICATION' | 'PENDING_APPROVAL' | 'UNPAID' | 'REJECTED';
+export type EventPaymentMethod = 'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE' | 'OTHER';
+export type EventContributionStatus = 'PAID' | 'PARTIAL' | 'PENDING' | 'EXEMPT';
+export type EventEntryAction = 'APPROVE' | 'REJECT' | 'VERIFY' | 'MARK_PAID' | 'VOID';
+export type EventReportType = 'SUMMARY' | 'FLATS' | 'EXPENSES' | 'STATEMENT';
+
+export interface SocietyEventTotals {
+  collected: number;
+  contributionCollected: number;
+  otherIncome: number;
+  spent: number;
+  balance: number;
+  expected: number;
+  pendingContribution: number;
+  flatCount: number;
+  paidCount: number;
+  partialCount: number;
+  pendingCount: number;
+  exemptCount: number;
+  collectionProgress: number;
+  expenseCount?: number;
+}
+
+export interface SocietyEventInfo {
+  eventId: string;
+  name: string;
+  eventType: SocietyEventType;
+  customTypeLabel?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  description?: string | null;
+  status: 'PLANNED' | 'CLOSED' | 'CANCELLED';
+  phase: SocietyEventPhase;
+  contributionRequired: boolean;
+  defaultContributionAmount?: number | null;
+  showContributorList: boolean;
+  closedAt?: string | null;
+}
+
+export interface MyEventContribution {
+  contributionId: string;
+  flatNumber: string;
+  expected: number;
+  paid: number;
+  pendingVerification: number;
+  remaining: number;
+  status: EventContributionStatus;
+  payments?: {
+    transactionId: string;
+    amount: number;
+    txnDate: string;
+    paymentMethod?: EventPaymentMethod | null;
+    referenceNo?: string | null;
+    status: EventEntryStatus | 'VOID';
+    reviewNote?: string | null;
+  }[];
+}
+
+/** Staff list rows carry totals at top level; member rows also carry `myContribution`. */
+export interface SocietyEventListItem extends SocietyEventInfo, SocietyEventTotals {
+  needsAttentionCount?: number;
+  myContribution?: MyEventContribution | null;
+  canManage?: boolean;
+}
+
+export interface EventCategoryAmount {
+  categoryCode: string;
+  label: string;
+  amount: number;
+}
+
+export interface EventBudgetLine {
+  categoryCode: string;
+  label: string;
+  budget: number;
+  used: number;
+  remaining: number;
+  usedPercent: number;
+  alert: 'OK' | 'NEAR' | 'OVER';
+}
+
+export interface EventTransaction {
+  transactionId: string;
+  kind: EventEntryKind;
+  direction: 'IN' | 'OUT';
+  categoryCode?: string | null;
+  categoryLabel: string;
+  amount: number;
+  txnDate: string;
+  paymentMethod?: EventPaymentMethod | null;
+  referenceNo?: string | null;
+  partyName?: string | null;
+  description?: string | null;
+  status: EventEntryStatus;
+  reviewNote?: string | null;
+  flatId?: string;
+  flatNumber?: string;
+  payerName?: string | null;
+  recordedByName?: string | null;
+  voided: boolean;
+  voidReason?: string | null;
+  attachmentCount: number;
+  canEdit: boolean;
+  canVoid: boolean;
+  canApprove: boolean;
+  canVerify: boolean;
+  canMarkPaid: boolean;
+  budgetWarning?: string;
+}
+
+export interface SocietyEventDetail extends SocietyEventInfo {
+  totals: SocietyEventTotals;
+  workQueue: {
+    billsToPay: number;
+    pendingApprovalCount: number;
+    pendingApprovalAmount: number;
+    toVerifyCount: number;
+    toVerifyAmount: number;
+    expenseCount: number;
+  };
+  permissions: {
+    isStaff: boolean;
+    isCommittee: boolean;
+    canEdit: boolean;
+    canRecord: boolean;
+    canApprove: boolean;
+    canManageCommittee: boolean;
+    canClose: boolean;
+    canCancel: boolean;
+    canReopen: boolean;
+  };
+  committee: { memberId: string; name: string; flatNumber: string }[];
+  incomeByCategory: EventCategoryAmount[];
+  expenseByCategory: EventCategoryAmount[];
+  budget: {
+    total: number;
+    used: number;
+    remaining: number;
+    unbudgetedSpend: number;
+    usedPercent: number;
+    items: EventBudgetLine[];
+  };
+  recentTransactions: EventTransaction[];
+  topPending: {
+    contributionId: string;
+    flatNumber: string;
+    memberName?: string | null;
+    remaining: number;
+  }[];
+}
+
+export interface MemberEventDetail extends SocietyEventInfo {
+  totals: SocietyEventTotals;
+  incomeByCategory: EventCategoryAmount[];
+  expenseByCategory: EventCategoryAmount[];
+  expenses: { txnDate: string; categoryLabel: string; paidTo?: string | null; description?: string | null; amount: number }[];
+  myContribution: MyEventContribution | null;
+  committee: { name: string; flatNumber: string }[];
+  contributorList?: { flatNumber: string; status: EventContributionStatus }[];
+  canManage: boolean;
+  canSubmitPayment: boolean;
+}
+
+export interface EventContributionRow {
+  contributionId: string;
+  flatId: string;
+  flatNumber: string;
+  memberName?: string | null;
+  expected: number;
+  paid: number;
+  pendingVerification: number;
+  remaining: number;
+  status: EventContributionStatus;
+}
+
+export interface EventCategoryOption {
+  id: string;
+  kind: 'INCOME' | 'EXPENSE';
+  code: string;
+  label: string;
+}
+
+export interface CreateSocietyEventPayload {
+  name: string;
+  eventType: SocietyEventType;
+  startDate?: string | null;
+  endDate?: string | null;
+  description?: string | null;
+  contributionRequired: boolean;
+  defaultContributionAmount?: number | null;
+  applyDefaultTo?: 'ALL_FLATS' | 'OCCUPIED_FLATS' | 'SELECTED';
+  copyFromEventId?: string | null;
+  notifyMembers?: boolean;
+}
+
+export interface EventEntryPayload {
+  kind: EventEntryKind;
+  amount: number;
+  txnDate?: string;
+  paymentMethod?: EventPaymentMethod | null;
+  referenceNo?: string | null;
+  description?: string | null;
+  flatId?: string;
+  categoryCode?: string;
+  partyName?: string | null;
+  paid?: boolean;
+  confirmDuplicate?: boolean;
 }
