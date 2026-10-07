@@ -4,6 +4,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import type { VisitorPhotoPortal } from '../../utils/visitorPhoto';
 import { VisitorApprovalActions } from './VisitorApprovalActions';
 import { VisitorAvatar } from './VisitorAvatar';
+import { VisitorGateActions } from './VisitorGateActions';
 import { visitorStatusLabel, visitorStatusTone } from '../../utils/visitorStatus';
 import { formatDateTime } from '../../utils/format';
 
@@ -14,6 +15,8 @@ type Props = {
   compact?: boolean;
   onPress?: () => void;
   memberPendingActions?: boolean;
+  /** Gate desk: show "Mark entered" / "Mark exited" for approved or inside visitors. */
+  gateActions?: boolean;
   onResolved?: () => void;
 };
 
@@ -24,11 +27,13 @@ export function VisitorHistoryRow({
   compact = false,
   onPress,
   memberPendingActions = false,
+  gateActions = false,
   onResolved,
 }: Props) {
   const { theme } = useTheme();
   const tone = visitorStatusTone(item.status);
   const showActions = memberPendingActions && item.status === 'PENDING_APPROVAL';
+  const showGateActions = gateActions && (item.status === 'APPROVED' || item.status === 'CHECKED_IN');
 
   const header = (
     <View style={styles.rowHeader}>
@@ -66,7 +71,7 @@ export function VisitorHistoryRow({
       style={[
         styles.row,
         compact ? styles.rowCompact : null,
-        showActions ? styles.rowWithActions : null,
+        showActions || showGateActions ? styles.rowWithActions : null,
         { backgroundColor: theme.chipBg, borderColor: theme.cardBorder },
       ]}
     >
@@ -79,6 +84,14 @@ export function VisitorHistoryRow({
         <VisitorApprovalActions
           visitorId={item.id}
           visitorName={item.visitorName}
+          onResolved={onResolved}
+        />
+      ) : null}
+      {showGateActions ? (
+        <VisitorGateActions
+          visitorId={item.id}
+          visitorName={item.visitorName}
+          status={item.status}
           onResolved={onResolved}
         />
       ) : null}

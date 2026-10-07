@@ -223,6 +223,7 @@ export function VisitorHistoryModule({
     photoPortal,
     expandable: expandablePhotos,
     memberPendingActions: memberMode,
+    gateActions: gateKeeper === true,
     onResolved: onVisitorResolved ?? load,
     onPress: onVisitorPress ? (visitorId: string) => onVisitorPress(visitorId) : undefined,
   };
@@ -244,6 +245,7 @@ export function VisitorHistoryModule({
               photoPortal={photoPortal}
               expandablePhotos={expandablePhotos}
               memberPendingActions={memberMode}
+              gateActions={gateKeeper === true}
               onVisitorPress={onVisitorPress}
               onVisitorResolved={onVisitorResolved ?? load}
               onToggle={() => toggleFlat(item.flatNumber)}
@@ -279,6 +281,7 @@ export function VisitorHistoryModule({
             photoPortal={rowProps.photoPortal}
             expandable={rowProps.expandable}
             memberPendingActions={rowProps.memberPendingActions}
+            gateActions={rowProps.gateActions}
             onResolved={rowProps.onResolved}
             onPress={rowProps.onPress ? () => rowProps.onPress!(item.id) : undefined}
           />

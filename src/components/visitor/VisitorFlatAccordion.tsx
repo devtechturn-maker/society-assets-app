@@ -34,6 +34,7 @@ type Props = {
   photoPortal?: VisitorPhotoPortal;
   expandablePhotos?: boolean;
   memberPendingActions?: boolean;
+  gateActions?: boolean;
   onVisitorPress?: (visitorId: string) => void;
   onVisitorResolved?: () => void;
   onToggle: () => void;
@@ -45,6 +46,7 @@ export function VisitorFlatAccordion({
   photoPortal = 'gatekeeper',
   expandablePhotos = false,
   memberPendingActions = false,
+  gateActions = false,
   onVisitorPress,
   onVisitorResolved,
   onToggle,
@@ -83,6 +85,7 @@ export function VisitorFlatAccordion({
               photoPortal={photoPortal}
               expandable={expandablePhotos}
               memberPendingActions={memberPendingActions}
+              gateActions={gateActions}
               onPress={onVisitorPress ? () => onVisitorPress(visitor.id) : undefined}
               onResolved={onVisitorResolved}
               compact
