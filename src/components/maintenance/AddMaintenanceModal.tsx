@@ -16,6 +16,12 @@ import { useAppAlert } from '../../context/AppAlertContext';
 import { useTheme } from '../../theme/ThemeContext';
 import type { SocietyMember } from '../../types/api';
 import {
+  pickPhotoFromCamera,
+  pickPhotoFromLibrary,
+  showPhotoSourcePicker,
+  type PickedPhoto,
+} from '../../utils/pickPhoto';
+import {
   compareYearMonth,
   currentYearMonth,
   isValidIsoDate,
@@ -44,6 +50,7 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
   const [toMonth, setToMonth] = useState('');
   const [paymentType, setPaymentType] = useState<PaymentType>('CASH');
   const [description, setDescription] = useState('');
+  const [screenshot, setScreenshot] = useState<PickedPhoto | null>(null);
 
   const selectedMember = members.find((m) => m.id === memberId);
 
@@ -64,6 +71,7 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
     setToMonth('');
     setPaymentType('CASH');
     setDescription('');
+    setScreenshot(null);
     setShowMemberList(false);
   }
 
@@ -99,6 +107,11 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
       return;
     }
 
+    if (paymentType === 'ONLINE' && !screenshot) {
+      alert('Payment screenshot', 'Attach a screenshot of the online payment.', { variant: 'error' });
+      return;
+    }
+
     setSaving(true);
     try {
       await addMaintenance({
@@ -109,7 +122,7 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
         paymentType,
         maintenanceFromMonth: fromMonth.trim(),
         maintenanceToMonth: toMonth.trim() ? toMonth.trim() : null,
-      });
+      }, paymentType === 'ONLINE' ? screenshot : null);
       alert('Success', 'Maintenance added successfully.', { variant: 'success' });
       resetForm();
       onSaved();
@@ -250,6 +263,24 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
                 />
               </View>
             </Field>
+
+            {paymentType === 'ONLINE' ? (
+              <Field label="Payment Screenshot" theme={theme}>
+                <Pressable
+                  style={[inputStyle(theme), styles.screenshotBtn]}
+                  onPress={() =>
+                    showPhotoSourcePicker(
+                      () => void pickPhotoFromCamera().then((photo) => photo && setScreenshot(photo)),
+                      () => void pickPhotoFromLibrary().then((photo) => photo && setScreenshot(photo))
+                    )
+                  }
+                >
+                  <Text style={{ color: screenshot ? theme.text : theme.placeholder }} numberOfLines={1}>
+                    {screenshot ? `Attached: ${screenshot.fileName}` : 'Attach payment screenshot'}
+                  </Text>
+                </Pressable>
+              </Field>
+            ) : null}
 
             <Field label="Description" theme={theme}>
               <TextInput
@@ -397,6 +428,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   payRow: { flexDirection: 'row', gap: 10 },
+  screenshotBtn: { justifyContent: 'center' },
   payChip: {
     flex: 1,
     paddingVertical: 10,

@@ -824,8 +824,11 @@ export async function addOtherIncome(payload: AddOtherIncomePayload): Promise<vo
   });
 }
 
-export async function addMaintenance(payload: AddMaintenancePayload): Promise<void> {
-  await client.post<ApiResponse<null>>('/expenses/maintenance', {
+export async function addMaintenance(
+  payload: AddMaintenancePayload,
+  paymentScreenshot?: { uri: string; fileName: string; mimeType: string } | null
+): Promise<void> {
+  const body = {
     memberId: payload.memberId,
     amount: payload.amount,
     description: payload.description,
@@ -833,6 +836,21 @@ export async function addMaintenance(payload: AddMaintenancePayload): Promise<vo
     paymentType: payload.paymentType,
     maintenanceFromMonth: payload.maintenanceFromMonth,
     maintenanceToMonth: payload.maintenanceToMonth,
+  };
+  if (!paymentScreenshot) {
+    await client.post<ApiResponse<null>>('/expenses/maintenance', body);
+    return;
+  }
+  // Online payments need proof: send the details as a 'payload' field plus the screenshot file.
+  const formData = new FormData();
+  formData.append('payload', JSON.stringify(body));
+  formData.append('paymentScreenshot', {
+    uri: paymentScreenshot.uri,
+    name: paymentScreenshot.fileName,
+    type: paymentScreenshot.mimeType,
+  } as unknown as Blob);
+  await client.post<ApiResponse<null>>('/expenses/maintenance', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
   });
 }
 
