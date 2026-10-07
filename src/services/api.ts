@@ -995,12 +995,7 @@ export async function sendGroupChatMessageWithPhoto(
     type: mimeType,
   } as unknown as Blob);
   const { data } = await client.post<ApiResponse<ChatMessage>>(url, formData, {
-    transformRequest: (payload, headers) => {
-      if (headers) {
-        delete headers['Content-Type'];
-      }
-      return payload;
-    },
+    headers: { 'Content-Type': 'multipart/form-data' },
   });
   return data.data;
 }
