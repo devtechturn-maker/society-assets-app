@@ -19,6 +19,7 @@ import {
   clearAppViewContext,
   getAvailableLoginRoles,
   setAppViewContext,
+  staffModeTitle,
   type AppViewContext,
   type LoginRoleOption,
 } from '../services/appContext';
@@ -103,7 +104,7 @@ export function RoleSelectionScreen({ user, onSelected, onUserUpdated, onLogout 
             ? ` · Flat ${user.memberProfile.flatNumber}`
             : ''}
           {'\n'}
-          Switch between Chairman Mode and Member Mode anytime — no need to log out.
+          {`Switch between ${staffModeTitle(user.role)} and Member Mode anytime — no need to log out.`}
         </Text>
       </LinearGradient>
 

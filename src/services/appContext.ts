@@ -51,6 +51,11 @@ function formatStaffRole(role: string | undefined): string {
   }
 }
 
+/** Office-view label for the signed-in role, e.g. "Chairman Mode" or "Treasurer Mode". */
+export function staffModeTitle(role: string | undefined): string {
+  return `${formatStaffRole(role)} Mode`;
+}
+
 export function canSwitchAppView(user: LoginData): boolean {
   return user.canSwitchToMemberView === true && !!user.memberProfile;
 }
@@ -61,7 +66,7 @@ export function getAvailableLoginRoles(user: LoginData): LoginRoleOption[] {
   if (!isMemberRole(user.role)) {
     roles.push({
       context: 'CHAIRMAN',
-      title: 'Chairman Mode',
+      title: staffModeTitle(user.role),
       subtitle: `${formatStaffRole(user.role)} · manage society modules`,
     });
   }

@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { clearSession, updateStoredUser } from '../services/storage';
 import {
   canSwitchAppView,
+  staffModeTitle,
   isMemberPortalView,
   resolveInitialAppViewContext,
   type AppViewContext,
@@ -703,7 +704,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
             : memberPortal
               ? `Member Mode · ${societyName} · Flat ${sessionUser.memberProfile?.flatNumber ?? '—'}`
               : canSwitchView
-                ? `Chairman Mode · ${societyName}`
+                ? `${staffModeTitle(sessionUser.role ?? user.role)} · ${societyName}`
                 : societyName}
         </Text>
         {!memberPortal && !gatekeeperPortal ? <SocietyJoinCodeHeader /> : null}
