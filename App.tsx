@@ -201,6 +201,7 @@ function AppRoot() {
         <PlanPurchaseScreen
           status={subscriptionStatus}
           societyId={user.societyId}
+          canPurchase={['CHAIRMAN', 'TREASURER'].includes(String(user.role ?? '').toUpperCase())}
           onLogout={handleLogout}
           onRefreshStatus={fetchSubscriptionStatus}
           onActivated={(next) => {

@@ -5,6 +5,7 @@ import { clearSession, getToken } from './storage';
 import { notifySessionInvalid } from './session';
 import { cachedGet } from './requestCache';
 import type {
+  DurationPlanCard,
   ApiResponse,
   ExpenseCategoryReportRow,
   FlatNumberFormat,
@@ -545,44 +546,31 @@ export const fetchSubscriptionStatus = (options?: {
   timeoutMs?: number;
 }) => getData<SocietySubscriptionStatus>('/society/subscription/status', options);
 
-export async function createDurationPlanCheckout(months: number): Promise<{
+export interface DurationPlanCheckout {
   societyId: string;
   months: number;
   flatCount: number;
-  pricePerFlat: number;
   amount: number;
+  quote: DurationPlanCard;
+  period?: { startsAt: string; endsAt: string };
   payment: {
     required?: boolean;
     activated?: boolean;
     status?: string;
     amountInr?: number;
+    gstAmount?: number;
     keyId?: string;
     orderId?: string;
     amount?: number;
     currency?: string;
     planName?: string;
+    message?: string;
   };
-}> {
-  const { data } = await client.post<
-    ApiResponse<{
-      societyId: string;
-      months: number;
-      flatCount: number;
-      pricePerFlat: number;
-      amount: number;
-      payment: {
-        required?: boolean;
-        activated?: boolean;
-        status?: string;
-        amountInr?: number;
-        keyId?: string;
-        orderId?: string;
-        amount?: number;
-        currency?: string;
-        planName?: string;
-      };
-    }>
-  >('/society/subscription/duration/checkout', { months });
+}
+
+/** Starts checkout for a 3/6/9/12 month plan. The server prices it; the app only shows the result. */
+export async function createDurationPlanCheckout(planId: string): Promise<DurationPlanCheckout> {
+  const { data } = await client.post<ApiResponse<DurationPlanCheckout>>('/society/subscription/duration/checkout', { planId });
   return data.data;
 }
 

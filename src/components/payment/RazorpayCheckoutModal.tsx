@@ -16,6 +16,8 @@ type Props = {
   onSuccess: (payload: RazorpaySuccessPayload) => void;
   onDismiss: () => void;
   onFailed: (message: string) => void;
+  /** Header title; defaults to maintenance payments. */
+  title?: string;
 };
 
 function escapeHtml(value: string): string {
@@ -102,7 +104,7 @@ function buildCheckoutHtml(checkout: MemberMaintenanceCheckout): string {
 </html>`;
 }
 
-export function RazorpayCheckoutModal({ visible, checkout, onSuccess, onDismiss, onFailed }: Props) {
+export function RazorpayCheckoutModal({ visible, checkout, onSuccess, onDismiss, onFailed, title = 'Pay maintenance' }: Props) {
   const { theme } = useTheme();
   const html = useMemo(() => (checkout ? buildCheckoutHtml(checkout) : ''), [checkout]);
 
@@ -136,7 +138,7 @@ export function RazorpayCheckoutModal({ visible, checkout, onSuccess, onDismiss,
     <Modal visible={visible} animationType="slide" onRequestClose={onDismiss}>
       <View style={[styles.container, { backgroundColor: theme.pageBg }]}>
         <View style={[styles.header, { borderBottomColor: theme.divider, backgroundColor: theme.cardBg }]}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Pay maintenance</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>{title}</Text>
           <Pressable accessibilityRole="button" onPress={onDismiss} style={styles.closeBtn}>
             <Text style={[styles.closeText, { color: theme.accent }]}>Close</Text>
           </Pressable>

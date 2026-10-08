@@ -4,14 +4,56 @@ export interface ApiResponse<T> {
   timestamp: string;
 }
 
+/** A 3/6/9/12 month plan priced by the server for this society's flats (prices for the whole period). */
 export interface DurationPlanCard {
+  id: string;
+  planId: string;
+  name: string;
   months: number;
   label: string;
-  pricePerFlat: number;
   flatCount: number;
+  includedFlats: number;
+  extraFlats: number;
+  pricePerFlat: number;
+  extraFlatPrice: number;
+  baseAmount: number;
+  extraFlatAmount: number;
+  subtotal: number;
+  gstPercent: number;
+  gstAmount: number;
+  total: number;
+  /** Same as total (kept for older screens). */
   amount: number;
   monthlyEquivalent: number;
+  trialDays: number;
+  graceDays: number;
+  /** When the paid period would start/end if bought now. */
+  startsAt?: string;
+  endsAt?: string;
 }
+
+/** Pricing snapshot stored with the society's last plan purchase. */
+export interface SubscriptionPurchase {
+  planCode: string;
+  months: number;
+  flatCount: number;
+  includedFlats: number;
+  extraFlats: number;
+  pricePerFlat: number;
+  extraFlatPrice: number;
+  baseAmount: number;
+  extraFlatAmount: number;
+  subtotal: number;
+  gstPercent: number;
+  gstAmount: number;
+  total: number;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  paidAt?: string | null;
+}
+
+/** TRIAL, ACTIVE, EXPIRING (last days), GRACE_PERIOD, EXPIRED, PENDING. */
+export type SubscriptionLifecycle = 'TRIAL' | 'ACTIVE' | 'EXPIRING' | 'GRACE_PERIOD' | 'EXPIRED' | 'PENDING' | string;
 
 export interface SocietySubscriptionStatus {
   status: string;
@@ -42,6 +84,14 @@ export interface SocietySubscriptionStatus {
   daysRemaining?: number;
   validUntil?: string | null;
   paidAt?: string | null;
+  periodStart?: string | null;
+  lifecycleStatus?: SubscriptionLifecycle;
+  graceDays?: number;
+  graceEndsAt?: string | null;
+  graceDaysRemaining?: number;
+  inGracePeriod?: boolean;
+  expiringSoon?: boolean;
+  lastPurchase?: SubscriptionPurchase;
 }
 
 export interface PlanPriceBreakdown {
