@@ -8,8 +8,15 @@ import {
   Text,
   View,
 } from 'react-native';
-import { fetchGateKeeperDashboard } from '../../services/api';
-import type { GateKeeperDashboard } from '../../types/api';
+import { checkInVisitor, fetchExpectedGuests, fetchGateKeeperDashboard } from '../../services/api';
+import type { GateKeeperDashboard, VisitorSummary } from '../../types/api';
+import { useAppAlert } from '../../context/AppAlertContext';
+import { apiErrorMessage } from '../../utils/apiError';
+
+function when(iso?: string | null): string {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+}
 import { useTheme } from '../../theme/ThemeContext';
 import { ListError } from '../../components/dashboard/ListStates';
 import { KpiGrid } from '../../components/dashboard/KpiGrid';
@@ -22,6 +29,9 @@ export function GateKeeperDashboardModule() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expected, setExpected] = useState<VisitorSummary[]>([]);
+  const [admitting, setAdmitting] = useState<string | null>(null);
+  const { toast } = useAppAlert();
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
@@ -31,7 +41,12 @@ export function GateKeeperDashboardModule() {
     }
     setError(null);
     try {
-      setData(await fetchGateKeeperDashboard());
+      const [dashboard, guests] = await Promise.all([
+        fetchGateKeeperDashboard(),
+        fetchExpectedGuests().catch(() => [] as VisitorSummary[]),
+      ]);
+      setData(dashboard);
+      setExpected(guests);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load dashboard');
     } finally {
@@ -76,6 +91,59 @@ export function GateKeeperDashboardModule() {
           { label: 'Rejected', value: data.rejected, isCurrency: false },
         ]}
       />
+
+      <SectionCard
+        title="Expected guests"
+        subtitle={expected.length === 0 ? 'No guest passes for now' : 'Added in advance by residents. Check the time before letting them in.'}
+      >
+        {expected.map((g) => {
+          const notYet = !!g.validFrom && new Date(g.validFrom).getTime() > Date.now();
+          return (
+            <View key={g.id} style={[styles.row, { borderColor: theme.cardBorder, backgroundColor: theme.cardBg }]}>
+              <View style={styles.rowMain}>
+                <Text style={[styles.rowTitle, { color: theme.text }]}>
+                  {g.visitorName}
+                  {g.visitorCount > 1 ? ` +${g.visitorCount - 1}` : ''}
+                </Text>
+                <Text style={[styles.rowMeta, { color: theme.textMuted }]}>
+                  Flat {g.flatNumber} · {g.residentName}
+                  {g.currentTenantName ? ' (tenant)' : ''} · {g.mobileNumber}
+                </Text>
+                <Text style={[styles.rowMeta, { color: theme.textMuted }]}>
+                  Valid {when(g.validFrom)} to {when(g.validUntil)}
+                </Text>
+              </View>
+              <Pressable
+                disabled={notYet || admitting === g.id}
+                onPress={async () => {
+                  setAdmitting(g.id);
+                  try {
+                    await checkInVisitor(g.id);
+                    toast(`${g.visitorName} checked in`, 'success');
+                    await load(true);
+                  } catch (e) {
+                    toast(apiErrorMessage(e, 'Could not check in'), 'error');
+                  } finally {
+                    setAdmitting(null);
+                  }
+                }}
+                style={({ pressed }) => [
+                  styles.statusPill,
+                  {
+                    borderColor: notYet ? theme.cardBorder : theme.accent,
+                    backgroundColor: notYet ? theme.chipBg : theme.accent,
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                ]}
+              >
+                <Text style={[styles.statusText, { color: notYet ? theme.textMuted : '#fff' }]}>
+                  {admitting === g.id ? '…' : notYet ? 'Not yet' : 'Check in'}
+                </Text>
+              </Pressable>
+            </View>
+          );
+        })}
+      </SectionCard>
 
       <SectionCard
         title="Recent visitors"

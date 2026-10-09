@@ -268,6 +268,12 @@ export interface MemberOverview {
   maintenanceFromMonth?: string;
   maintenanceToMonth?: string;
   paymentUnavailableMessage?: string;
+  /** OWNER, OWNER_RENTED_OUT (owner while a tenant lives there) or TENANT. */
+  occupancy?: 'OWNER' | 'OWNER_RENTED_OUT' | 'TENANT';
+  canManageGuests?: boolean;
+  maintenanceVisible?: boolean;
+  rentalStartDate?: string;
+  rentalEndDate?: string;
 }
 
 export interface MemberMaintenanceDue {
@@ -738,6 +744,13 @@ export interface VisitorSummary {
   approvedAt?: string | null;
   entryTime?: string | null;
   exitTime?: string | null;
+  ownerName?: string | null;
+  currentTenantName?: string | null;
+  addedByName?: string | null;
+  addedByResident?: boolean;
+  guestRelationship?: string | null;
+  validFrom?: string | null;
+  validUntil?: string | null;
 }
 
 export interface VisitorDetail extends VisitorSummary {
@@ -1003,4 +1016,40 @@ export interface EventEntryPayload {
   partyName?: string | null;
   paid?: boolean;
   confirmDuplicate?: boolean;
+}
+
+/** Guest added in advance by the resident (owner or active tenant). */
+export interface GuestPassInput {
+  guestName: string;
+  mobileNumber: string;
+  relationship?: string;
+  purpose?: string;
+  visitorCount?: number;
+  vehicleNumber?: string;
+  validFrom: string;
+  validUntil: string;
+}
+
+export interface FlatTenancy {
+  id: string;
+  flatMemberId: string;
+  flatNumber: string;
+  ownerName: string;
+  tenantName: string;
+  tenantPhone: string;
+  tenantEmail: string;
+  startDate: string;
+  endDate: string;
+  /** ACTIVE, UPCOMING, EXPIRED or ENDED */
+  status: string;
+  endedAt?: string | null;
+}
+
+export interface FlatTenancyInput {
+  flatMemberId: string;
+  tenantName: string;
+  tenantPhone: string;
+  tenantEmail: string;
+  startDate: string;
+  endDate: string;
 }

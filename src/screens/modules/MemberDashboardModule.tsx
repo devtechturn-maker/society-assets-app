@@ -138,7 +138,20 @@ export function MemberDashboardModule({ onOpenProfile, onOpenNotice, onOpenVisit
 
       {overview.error ? <ListError message={overview.error} /> : null}
       {overview.loading && !overview.data ? <ListLoading /> : null}
-      {overview.data ? (
+      {overview.data?.maintenanceVisible === false ? (
+        <SectionCard
+          title={`You rent flat ${overview.data.flatNumber}`}
+          subtitle={
+            overview.data.rentalEndDate
+              ? `Rental ${overview.data.rentalStartDate ?? ''} to ${overview.data.rentalEndDate}`
+              : 'Tenant'
+          }
+        >
+          <Text style={{ color: theme.textMuted, fontSize: 13, lineHeight: 19 }}>
+            You manage visitors and guests for this flat from Visitors. Maintenance is handled by the flat owner.
+          </Text>
+        </SectionCard>
+      ) : overview.data ? (
         <KpiGrid
           columns={3}
           items={[
@@ -175,7 +188,7 @@ export function MemberDashboardModule({ onOpenProfile, onOpenNotice, onOpenVisit
         </SectionCard>
       ) : null}
 
-      {overview.data ? (
+      {overview.data && overview.data.maintenanceVisible !== false ? (
         <SectionCard
           title="Pay maintenance"
           subtitle={

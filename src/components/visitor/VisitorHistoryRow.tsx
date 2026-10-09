@@ -54,9 +54,16 @@ export function VisitorHistoryRow({
         ) : (
           <Text style={[styles.meta, { color: theme.textMuted }]}>{item.mobileNumber}</Text>
         )}
-        <Text style={[styles.arrived, { color: theme.textMuted }]}>
-          Arrived {formatDateTime(item.createdAt)}
-        </Text>
+        {item.addedByResident ? (
+          <Text style={[styles.arrived, { color: theme.textMuted }]}>
+            Guest pass by {item.addedByName ?? 'resident'} · {formatDateTime(item.validFrom ?? item.createdAt)} to{' '}
+            {formatDateTime(item.validUntil ?? null)}
+          </Text>
+        ) : (
+          <Text style={[styles.arrived, { color: theme.textMuted }]}>
+            Arrived {formatDateTime(item.createdAt)}
+          </Text>
+        )}
         {item.purpose ? (
           <Text style={[styles.purpose, { color: theme.textSoft }]} numberOfLines={1}>
             {item.purpose}

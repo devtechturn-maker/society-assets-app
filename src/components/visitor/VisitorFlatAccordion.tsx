@@ -21,7 +21,10 @@ export function groupVisitorsByFlat(items: VisitorSummary[]): FlatVisitorGroup[]
     }
     map.set(visitor.flatNumber, {
       flatNumber: visitor.flatNumber,
-      residentName: visitor.residentName,
+      // Rented flat: show who lives there and who owns it.
+      residentName: visitor.currentTenantName
+        ? `${visitor.currentTenantName} (tenant) · owner ${visitor.ownerName ?? ''}`.trim()
+        : visitor.residentName,
       visitors: [visitor],
     });
   }

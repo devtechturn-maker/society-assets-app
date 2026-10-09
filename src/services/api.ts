@@ -43,6 +43,9 @@ import type {
   SocietyOverview,
   SocietyMemberPaymentSettings,
   MemberOverview,
+  GuestPassInput,
+  FlatTenancy,
+  FlatTenancyInput,
   MemberMaintenanceDue,
   MemberMaintenanceCheckout,
   MemberMaintenanceVerifyResult,
@@ -1469,6 +1472,36 @@ export async function approveVisitor(visitorId: string): Promise<VisitorDetail> 
 
 export async function rejectVisitor(visitorId: string, reason?: string): Promise<VisitorDetail> {
   const { data } = await client.put<ApiResponse<VisitorDetail>>(`/member/visitors/${visitorId}/reject`, { reason });
+  return data.data;
+}
+
+export async function addGuestPass(input: GuestPassInput): Promise<VisitorSummary> {
+  const { data } = await client.post<ApiResponse<VisitorSummary>>('/member/visitors', input);
+  return data.data;
+}
+
+export async function cancelGuestPass(visitorId: string): Promise<VisitorDetail> {
+  const { data } = await client.put<ApiResponse<VisitorDetail>>(`/member/visitors/${visitorId}/cancel`);
+  return data.data;
+}
+
+export async function fetchExpectedGuests(): Promise<VisitorSummary[]> {
+  return getData<VisitorSummary[]>('/gatekeeper/visitors/expected');
+}
+
+export async function fetchFlatTenancies(): Promise<FlatTenancy[]> {
+  return getData<FlatTenancy[]>('/society/flat-tenancies');
+}
+
+export async function addFlatTenancy(input: FlatTenancyInput): Promise<FlatTenancy> {
+  const { data } = await client.post<ApiResponse<FlatTenancy>>('/society/flat-tenancies', input);
+  return data.data;
+}
+
+export async function endFlatTenancy(tenancyId: string): Promise<FlatTenancy & { guestPassesEnded?: number }> {
+  const { data } = await client.put<ApiResponse<FlatTenancy & { guestPassesEnded?: number }>>(
+    `/society/flat-tenancies/${tenancyId}/end`
+  );
   return data.data;
 }
 

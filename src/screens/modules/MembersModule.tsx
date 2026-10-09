@@ -14,6 +14,7 @@ import { ExcelValidationPreview } from '../../components/members/ExcelValidation
 import { ListEmpty, ListError, ListLoading } from '../../components/dashboard/ListStates';
 
 import { SectionCard } from '../../components/dashboard/SectionCard';
+import { FlatTenantsSection } from '../../components/members/FlatTenantsSection';
 
 import { fetchMembers, uploadMembersExcel, validateMembersExcel } from '../../services/api';
 
@@ -254,6 +255,8 @@ export function MembersModule() {
         </SectionCard>
 
 
+
+        <FlatTenantsSection members={data ?? []} />
 
         <SectionCard title="Members List" subtitle="All members in this society">
 
