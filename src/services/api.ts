@@ -1716,3 +1716,6 @@ export async function downloadEventReceipt(
 export { isEmailNotVerifiedError };
 
 export { API_BASE_URL };
+
+/** Shared HTTP client (auth + client-type headers) for feature service modules. */
+export { client as apiClient };

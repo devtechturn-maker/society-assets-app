@@ -18,6 +18,9 @@ export const ACTIVITY_HUB_ROUTE_PATHS = new Set([
   'amenities',
   'directory',
   'events',
+  'meetings',
+  'tharav',
+  'staff',
 ]);
 
 export const ACTIVITY_MODULE: NavModule = {
@@ -42,23 +45,31 @@ const MEMBER_TILES: ActivityTile[] = [
   { title: 'Complaints', routePath: 'complaints', icon: 'flag' },
   { title: 'Amenities', routePath: 'amenities', icon: 'calendar' },
   { title: 'Events', routePath: 'events', icon: 'sparkles' },
+  { title: 'Meetings', routePath: 'meetings', icon: 'calendar' },
+  { title: 'Tharav', routePath: 'tharav', icon: 'megaphone' },
   { title: 'Directory', routePath: 'directory', icon: 'directory' },
 ];
 
 const SOCIETY_TILES: ActivityTile[] = [
   { title: 'Maintenance', routePath: 'maintenance', icon: 'bank-card' },
   { title: 'Members', routePath: 'members', icon: 'users' },
+  { title: 'Staff', routePath: 'staff', icon: 'users' },
   { title: 'Notices', routePath: 'notices', icon: 'megaphone' },
   { title: 'Amenities', routePath: 'amenities', icon: 'calendar' },
   { title: 'Complaints', routePath: 'complaints', icon: 'flag' },
   { title: 'Events', routePath: 'events', icon: 'sparkles' },
+  { title: 'Meetings', routePath: 'meetings', icon: 'calendar' },
+  { title: 'Tharav', routePath: 'tharav', icon: 'megaphone' },
   { title: 'Directory', routePath: 'directory', icon: 'directory' },
 ];
 
 const TREASURER_TILES: ActivityTile[] = [
   { title: 'Maintenance', routePath: 'maintenance', icon: 'bank-card' },
   { title: 'Members', routePath: 'members', icon: 'users' },
+  { title: 'Staff', routePath: 'staff', icon: 'users' },
   { title: 'Events', routePath: 'events', icon: 'sparkles' },
+  { title: 'Meetings', routePath: 'meetings', icon: 'calendar' },
+  { title: 'Tharav', routePath: 'tharav', icon: 'megaphone' },
   { title: 'Directory', routePath: 'directory', icon: 'directory' },
 ];
 

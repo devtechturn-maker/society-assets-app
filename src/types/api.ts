@@ -715,6 +715,8 @@ export interface AppNotification {
   noticeId?: string;
   visitorId?: string;
   eventId?: string;
+  meetingId?: string;
+  tharavId?: string;
   societyId?: string;
   read: boolean;
   readAt: string | null;

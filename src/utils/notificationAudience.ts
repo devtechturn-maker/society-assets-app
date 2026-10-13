@@ -2,7 +2,7 @@ import type { AppNotification } from '../types/api';
 
 export type NotificationAudience = 'CHAIRMAN' | 'MEMBER' | 'GATEKEEPER';
 
-const CHAIRMAN_TYPES = new Set(['COMPLAINT_CREATED', 'POLL_VOTED']);
+const CHAIRMAN_TYPES = new Set(['COMPLAINT_CREATED', 'POLL_VOTED', 'THARAV_SIGNED']);
 const MEMBER_TYPES = new Set([
   'COMPLAINT_UPDATED',
   'POLL_CREATED',
@@ -12,6 +12,11 @@ const MEMBER_TYPES = new Set([
   'RULE_PUBLISHED',
   'NOTICE_PUBLISHED',
   'VISITOR_ARRIVED',
+  'MEETING_SCHEDULED',
+  'MEETING_UPDATED',
+  'MEETING_CANCELLED',
+  'THARAV_PUBLISHED',
+  'STAFF_SALARY_PAID',
 ]);
 const GATEKEEPER_TYPES = new Set(['VISITOR_APPROVED', 'VISITOR_REJECTED']);
 const SHARED_TYPES = new Set(['GROUP_CHAT', 'GENERAL']);

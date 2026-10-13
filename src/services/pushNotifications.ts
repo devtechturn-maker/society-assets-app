@@ -55,6 +55,15 @@ export type AppPushNotification = {
   preview: string;
   type: 'NOTICE_PUBLISHED';
 } | {
+  /** Meeting or Tharav notification; opens the exact record. */
+  kind: 'record';
+  notificationId?: string;
+  module: 'meetings' | 'tharav';
+  recordId: string;
+  subject: string;
+  preview: string;
+  type: string;
+} | {
   kind: 'visitor';
   notificationId?: string;
   visitorId: string;
@@ -308,6 +317,8 @@ export async function unregisterPushNotificationsFromBackend(): Promise<void> {
 
 type PushData = {
   type?: string;
+  meetingId?: string;
+  tharavId?: string;
   groupId?: string;
   groupName?: string;
   senderName?: string;
@@ -408,6 +419,20 @@ function parseAppPushNotification(
       ruleId,
       subject,
       preview,
+      type: data.type,
+    };
+  }
+  if (typeof data?.type === 'string' && (data.type.startsWith('MEETING_') || data.type.startsWith('THARAV_'))) {
+    const meeting = data.type.startsWith('MEETING_');
+    const recordId = String((meeting ? data.meetingId : data.tharavId) ?? '');
+    if (!recordId) return null;
+    return {
+      kind: 'record',
+      notificationId: readNotificationId(data),
+      module: meeting ? 'meetings' : 'tharav',
+      recordId,
+      subject: (content.subtitle && String(content.subtitle).trim()) || (content.title && String(content.title).trim()) || 'Society update',
+      preview: (content.body && String(content.body).trim()) || '',
       type: data.type,
     };
   }
@@ -527,6 +552,7 @@ export function openNotificationResponse(
     onOpenRule?: (ruleId?: string) => void;
     onOpenNotice?: (noticeId?: string) => void;
     onOpenVisitor?: (visitorId?: string, type?: AppPushNotification['type']) => void;
+    onOpenRecord?: (module: 'meetings' | 'tharav', recordId: string) => void;
   }
 ): boolean {
   const parsed = parseAppPushFromResponse(response);
@@ -558,6 +584,10 @@ export function openNotificationResponse(
     handlers.onOpenVisitor?.(parsed.visitorId, parsed.type);
     return true;
   }
+  if (parsed.kind === 'record') {
+    handlers.onOpenRecord?.(parsed.module, parsed.recordId);
+    return true;
+  }
   handlers.onOpenChat?.(parsed.groupId);
   return true;
 }
@@ -577,6 +607,8 @@ export async function resolveInitialNotificationTargets(): Promise<{
   ruleId?: string;
   noticeId?: string;
   visitorId?: string;
+  meetingId?: string;
+  tharavId?: string;
 }> {
   if (!isRemotePushAvailable()) return {};
   const response = await Notifications.getLastNotificationResponseAsync();
@@ -588,6 +620,7 @@ export async function resolveInitialNotificationTargets(): Promise<{
   if (parsed.kind === 'rule') return { ruleId: parsed.ruleId };
   if (parsed.kind === 'notice') return { noticeId: parsed.noticeId };
   if (parsed.kind === 'visitor') return { visitorId: parsed.visitorId };
+  if (parsed.kind === 'record') return parsed.module === 'meetings' ? { meetingId: parsed.recordId } : { tharavId: parsed.recordId };
   return { groupId: parsed.groupId };
 }
 
@@ -605,6 +638,7 @@ export function addNotificationResponseListener(handlers: {
   onOpenRule?: (ruleId?: string) => void;
   onOpenNotice?: (noticeId?: string) => void;
   onOpenVisitor?: (visitorId?: string, type?: AppPushNotification['type']) => void;
+  onOpenRecord?: (module: 'meetings' | 'tharav', recordId: string) => void;
 }): Notifications.Subscription {
   if (!isRemotePushAvailable()) {
     return { remove: () => undefined };

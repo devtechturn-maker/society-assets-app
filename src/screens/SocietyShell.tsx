@@ -166,6 +166,8 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
   const [initialComplaintId, setInitialComplaintId] = useState<string | null>(null);
   const [initialRuleId, setInitialRuleId] = useState<string | null>(null);
   const [initialNoticeId, setInitialNoticeId] = useState<string | null>(null);
+  const [initialMeetingId, setInitialMeetingId] = useState<string | null>(null);
+  const [initialTharavId, setInitialTharavId] = useState<string | null>(null);
   const [initialBookingId, setInitialBookingId] = useState<string | null>(null);
   const [initialVisitorId, setInitialVisitorId] = useState<string | null>(null);
   const [initialEventId, setInitialEventId] = useState<string | null>(null);
@@ -338,6 +340,15 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
     }
   }, []);
 
+  const openRecordFromNotification = useCallback((module: 'meetings' | 'tharav', recordId?: string) => {
+    setActivePath(module);
+    lastTabPathRef.current = module;
+    if (recordId) {
+      if (module === 'meetings') setInitialMeetingId(recordId);
+      else setInitialTharavId(recordId);
+    }
+  }, []);
+
   const openNoticeFromNotification = useCallback((noticeId?: string) => {
     setActivePath('notices');
     lastTabPathRef.current = 'notices';
@@ -416,6 +427,14 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
           openRuleFromNotification(opened.ruleId);
           return;
         }
+        if (opened.meetingId || opened.type.startsWith('MEETING_')) {
+          openRecordFromNotification('meetings', opened.meetingId);
+          return;
+        }
+        if (opened.tharavId || opened.type.startsWith('THARAV_')) {
+          openRecordFromNotification('tharav', opened.tharavId);
+          return;
+        }
         if (opened.noticeId || opened.type.startsWith('NOTICE')) {
           openNoticeFromNotification(opened.noticeId);
           return;
@@ -483,6 +502,10 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
         openNoticeFromNotification(parsed.noticeId);
         return;
       }
+      if (parsed.kind === 'record') {
+        openRecordFromNotification(parsed.module, parsed.recordId);
+        return;
+      }
       if (parsed.kind === 'visitor') {
         openVisitorFromNotification(parsed.visitorId, parsed.type);
         return;
@@ -515,6 +538,9 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
       },
       onOpenVisitor: (visitorId, type) => {
         openVisitorFromNotification(visitorId, type);
+      },
+      onOpenRecord: (module, recordId) => {
+        openRecordFromNotification(module, recordId);
       },
     });
     const receivedSubscription = addNotificationReceivedListener((notification) => {
@@ -666,6 +692,10 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
               openNoticeFromNotification(item.noticeId);
               return;
             }
+            if (item.kind === 'record') {
+              openRecordFromNotification(item.module, item.recordId);
+              return;
+            }
             if (item.kind === 'visitor') {
               openVisitorFromNotification(item.visitorId, item.type);
               return;
@@ -738,6 +768,10 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
           onRuleConsumed={() => setInitialRuleId(null)}
           initialNoticeId={initialNoticeId}
           onNoticeConsumed={() => setInitialNoticeId(null)}
+          initialMeetingId={initialMeetingId}
+          onMeetingConsumed={() => setInitialMeetingId(null)}
+          initialTharavId={initialTharavId}
+          onTharavConsumed={() => setInitialTharavId(null)}
           initialBookingId={initialBookingId}
           onBookingConsumed={() => setInitialBookingId(null)}
           initialVisitorId={initialVisitorId}

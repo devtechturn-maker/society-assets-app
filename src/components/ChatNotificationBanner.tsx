@@ -78,7 +78,9 @@ export function ChatNotificationBanner({ notification, onPress, onDismiss }: Pro
               ? notification.subject
               : notification.kind === 'visitor'
                 ? notification.visitorName
-                : notification.groupName;
+                : notification.kind === 'record'
+                  ? notification.subject
+                  : notification.groupName;
   const glyph =
     notification.kind === 'poll'
       ? '📊'
@@ -92,7 +94,9 @@ export function ChatNotificationBanner({ notification, onPress, onDismiss }: Pro
               ? '📢'
               : notification.kind === 'visitor'
                 ? '🚪'
-                : '💬';
+                : notification.kind === 'record'
+                  ? notification.module === 'tharav' ? '📜' : '🗓'
+                  : '💬';
 
   return (
     <Animated.View

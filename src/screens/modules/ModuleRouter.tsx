@@ -30,6 +30,9 @@ import { MemberVisitorModule } from './MemberVisitorModule';
 import { SocietyVisitorAdminModule } from './SocietyVisitorAdminModule';
 import { NotificationsModule } from './NotificationsModule';
 import { EventsModule } from './EventsModule';
+import { MeetingsModule } from './MeetingsModule';
+import { TharavModule } from './TharavModule';
+import { StaffModule } from './StaffModule';
 import type { AppNotification } from '../../types/api';
 
 export function ModuleRouter({
@@ -50,6 +53,10 @@ export function ModuleRouter({
   onRuleConsumed,
   initialNoticeId,
   onNoticeConsumed,
+  initialMeetingId,
+  onMeetingConsumed,
+  initialTharavId,
+  onTharavConsumed,
   initialBookingId,
   onBookingConsumed,
   initialVisitorId,
@@ -84,6 +91,10 @@ export function ModuleRouter({
   onRuleConsumed?: () => void;
   initialNoticeId?: string | null;
   onNoticeConsumed?: () => void;
+  initialMeetingId?: string | null;
+  onMeetingConsumed?: () => void;
+  initialTharavId?: string | null;
+  onTharavConsumed?: () => void;
   initialBookingId?: string | null;
   onBookingConsumed?: () => void;
   initialVisitorId?: string | null;
@@ -223,6 +234,10 @@ export function ModuleRouter({
         );
       case 'events':
         return <EventsModule memberPortal initialEventId={initialEventId} onInitialEventConsumed={onEventConsumed} />;
+      case 'meetings':
+        return <MeetingsModule memberPortal initialMeetingId={initialMeetingId} onInitialMeetingConsumed={onMeetingConsumed} />;
+      case 'tharav':
+        return <TharavModule memberPortal initialTharavId={initialTharavId} onInitialTharavConsumed={onTharavConsumed} />;
       case 'profile':
         return <MemberProfileModule onUserUpdated={onUserUpdated} onLogout={onLogout} />;
       case 'help':
@@ -259,6 +274,12 @@ export function ModuleRouter({
       return <ReportsModule />;
     case 'events':
       return <EventsModule initialEventId={initialEventId} onInitialEventConsumed={onEventConsumed} />;
+    case 'meetings':
+      return <MeetingsModule initialMeetingId={initialMeetingId} onInitialMeetingConsumed={onMeetingConsumed} />;
+    case 'tharav':
+      return <TharavModule initialTharavId={initialTharavId} onInitialTharavConsumed={onTharavConsumed} />;
+    case 'staff':
+      return <StaffModule userRole={userRole} />;
     case 'settings':
       return <SettingsModule onMaintenanceConfigured={onMaintenanceConfigured} />;
     case 'chat':
