@@ -25,7 +25,8 @@ module.exports = ({ config }) => {
             ...options,
             android: {
               ...(options.android ?? {}),
-              usesCleartextTraffic: true,
+              // Production talks only to https://societyassets.in; test builds may still use http://IP:8080.
+              usesCleartextTraffic: profile !== 'production',
               enableMinifyInReleaseBuilds: false,
               enableShrinkResourcesInReleaseBuilds: false,
             },
