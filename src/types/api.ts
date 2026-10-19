@@ -84,6 +84,12 @@ export interface SocietySubscriptionStatus {
   daysRemaining?: number;
   validUntil?: string | null;
   paidAt?: string | null;
+  /** True while a Razorpay mandate renews the plan automatically. */
+  autoRenew?: boolean;
+  /** ACTIVE, PENDING (charge failed, retrying), HALTED, CANCELLED, COMPLETED; null when never set up. */
+  autoRenewStatus?: string | null;
+  nextChargeAt?: string | null;
+  nextChargeAmount?: number | null;
   periodStart?: string | null;
   lifecycleStatus?: SubscriptionLifecycle;
   graceDays?: number;
@@ -302,6 +308,8 @@ export interface MemberMaintenanceCheckout {
   maintenanceToMonth: string;
   keyId?: string;
   orderId?: string;
+  /** Auto-renew mandate (Razorpay Subscriptions); Checkout uses it instead of orderId. */
+  subscriptionId?: string;
   amount?: number;
   currency?: string;
   societyName?: string;

@@ -7,6 +7,8 @@ import type { MemberMaintenanceCheckout } from '../../types/api';
 export type RazorpaySuccessPayload = {
   razorpay_payment_id: string;
   razorpay_order_id: string;
+  /** Set instead of the order id when the payment authorised an auto-renew mandate. */
+  razorpay_subscription_id?: string;
   razorpay_signature: string;
 };
 
@@ -32,6 +34,11 @@ function escapeHtml(value: string): string {
 function buildCheckoutHtml(checkout: MemberMaintenanceCheckout): string {
   const keyId = escapeHtml(checkout.keyId ?? '');
   const orderId = escapeHtml(checkout.orderId ?? '');
+  const subscriptionId = escapeHtml(checkout.subscriptionId ?? '');
+  // A mandate checkout takes its amount from the subscription's plan, so only orders pass an amount.
+  const target = subscriptionId
+    ? `subscription_id: "${subscriptionId}",`
+    : `order_id: "${orderId}",`;
   const amount = checkout.amount ?? Math.round((checkout.amountInr ?? 0) * 100);
   const name = escapeHtml(checkout.societyName ?? 'Society maintenance');
   const description = escapeHtml(checkout.description ?? 'Maintenance payment');
@@ -69,8 +76,8 @@ function buildCheckoutHtml(checkout: MemberMaintenanceCheckout): string {
     try {
       var options = {
         key: "${keyId}",
-        order_id: "${orderId}",
-        amount: ${amount},
+        ${target}
+        ${subscriptionId ? '' : `amount: ${amount},`}
         currency: "INR",
         name: "${name}",
         description: "${description}",
@@ -118,6 +125,7 @@ export function RazorpayCheckoutModal({ visible, checkout, onSuccess, onDismiss,
         onSuccess({
           razorpay_payment_id: parsed.payload.razorpay_payment_id ?? '',
           razorpay_order_id: parsed.payload.razorpay_order_id ?? '',
+          razorpay_subscription_id: parsed.payload.razorpay_subscription_id || undefined,
           razorpay_signature: parsed.payload.razorpay_signature ?? '',
         });
         return;
@@ -143,7 +151,7 @@ export function RazorpayCheckoutModal({ visible, checkout, onSuccess, onDismiss,
             <Text style={[styles.closeText, { color: theme.accent }]}>Close</Text>
           </Pressable>
         </View>
-        {checkout?.orderId ? (
+        {checkout?.orderId || checkout?.subscriptionId ? (
           <WebView
             originWhitelist={['*']}
             source={{ html }}

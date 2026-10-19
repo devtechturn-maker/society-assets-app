@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useAppAlert } from '../../context/AppAlertContext';
 import { PlanPicker } from '../../components/subscription/PlanPicker';
-import { fetchSubscriptionStatus } from '../../services/api';
+import { cancelSubscriptionAutoRenew, fetchSubscriptionStatus } from '../../services/api';
+import { apiErrorMessage } from '../../utils/apiError';
 import { getUser } from '../../services/storage';
 import type { SocietySubscriptionStatus } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
@@ -32,6 +34,29 @@ export function SubscriptionModule() {
   const [status, setStatus] = useState<SocietySubscriptionStatus | null>(null);
   const [canPurchase, setCanPurchase] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [cancellingAutoRenew, setCancellingAutoRenew] = useState(false);
+  const { alert, confirm } = useAppAlert();
+
+  function turnOffAutoRenew() {
+    confirm({
+      title: 'Turn off auto-renew?',
+      message: `Your plan stays active until ${day(status?.validUntil)}. After that you will need to renew it yourself.`,
+      confirmText: 'Turn off',
+      cancelText: 'Keep on',
+      destructive: true,
+      onConfirm: async () => {
+        setCancellingAutoRenew(true);
+        try {
+          setStatus(await cancelSubscriptionAutoRenew());
+          alert('Auto-renew turned off', undefined, { variant: 'success' });
+        } catch (e: unknown) {
+          alert('Could not turn off auto-renew', apiErrorMessage(e), { variant: 'error' });
+        } finally {
+          setCancellingAutoRenew(false);
+        }
+      },
+    });
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,6 +119,29 @@ export function SubscriptionModule() {
           <Text style={[styles.label, { color: theme.textMuted }]}>Flats in your society</Text>
           <Text style={[styles.value, { color: theme.text }]}>{status.flatCount ?? 0}</Text>
         </View>
+        {status.autoRenew ? (
+          <View style={[styles.autoRenew, status.autoRenewStatus === 'PENDING' ? styles.autoRenewWarn : null]}>
+            <Text style={[styles.autoRenewTitle, status.autoRenewStatus === 'PENDING' ? styles.warnText : null]}>
+              Auto-renew is on
+            </Text>
+            <Text style={[styles.autoRenewText, status.autoRenewStatus === 'PENDING' ? styles.warnText : null]}>
+              {status.autoRenewStatus === 'PENDING'
+                ? 'The last automatic payment failed. Razorpay will retry, or renew now to avoid interruption.'
+                : `Next charge${status.nextChargeAmount ? ` of ${inr(status.nextChargeAmount)}` : ''} on ${day(status.nextChargeAt)}. You get a reminder before every charge.`}
+            </Text>
+            {canPurchase ? (
+              <Pressable onPress={turnOffAutoRenew} disabled={cancellingAutoRenew} hitSlop={8}>
+                <Text style={[styles.autoRenewAction, status.autoRenewStatus === 'PENDING' ? styles.warnText : null]}>
+                  {cancellingAutoRenew ? 'Turning off…' : 'Turn off auto-renew'}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : status.autoRenewStatus === 'HALTED' || status.autoRenewStatus === 'CANCELLED' ? (
+          <Text style={[styles.meta, { color: theme.textMuted }]}>
+            Auto-renew is off. Renewing a plan turns it on again.
+          </Text>
+        ) : null}
       </View>
 
       {purchase ? (
@@ -148,4 +196,18 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   label: { fontSize: 13, flexShrink: 1 },
   value: { fontSize: 13, fontWeight: '700' },
+  autoRenew: {
+    marginTop: 8,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    backgroundColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+    gap: 4,
+  },
+  autoRenewWarn: { backgroundColor: '#fffbeb', borderColor: '#fde68a' },
+  autoRenewTitle: { fontSize: 14, fontWeight: '800', color: '#065f46' },
+  autoRenewText: { fontSize: 13, lineHeight: 18, color: '#065f46' },
+  autoRenewAction: { fontSize: 13, fontWeight: '800', color: '#065f46', textDecorationLine: 'underline', marginTop: 4 },
+  warnText: { color: '#92400e' },
 });

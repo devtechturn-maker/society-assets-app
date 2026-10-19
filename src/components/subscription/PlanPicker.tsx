@@ -55,7 +55,7 @@ export function PlanPicker({ plans, flatCount, canPurchase, buyLabel = 'Buy plan
         onActivated();
         return;
       }
-      if (!payment?.orderId || !payment.keyId) {
+      if ((!payment?.orderId && !payment?.subscriptionId) || !payment.keyId) {
         alert('Could not start payment', 'Payment details are missing. Please try again.', { variant: 'error' });
         return;
       }
@@ -69,6 +69,7 @@ export function PlanPicker({ plans, flatCount, canPurchase, buyLabel = 'Buy plan
         maintenanceToMonth: '',
         keyId: payment.keyId,
         orderId: payment.orderId,
+        subscriptionId: payment.subscriptionId,
         amount: payment.amount,
         currency: payment.currency,
         societyName: 'Society Assets',
@@ -87,11 +88,17 @@ export function PlanPicker({ plans, flatCount, canPurchase, buyLabel = 'Buy plan
     try {
       const result = await verifySubscriptionPayment({
         societyId: checkoutSocietyId,
-        razorpayOrderId: payload.razorpay_order_id,
+        razorpayOrderId: payload.razorpay_order_id || undefined,
+        razorpaySubscriptionId: payload.razorpay_subscription_id,
         razorpayPaymentId: payload.razorpay_payment_id,
         razorpaySignature: payload.razorpay_signature,
       });
-      alert('Payment successful', `Your plan is active until ${day(result.validUntil)}.`, { variant: 'success' });
+      alert(
+        'Payment successful',
+        `Your plan is active until ${day(result.validUntil)}.` +
+          (result.autoRenew ? ' It renews automatically; you can turn this off in Subscription.' : ''),
+        { variant: 'success' },
+      );
       onActivated();
     } catch (e: unknown) {
       alert('Payment not confirmed', apiErrorMessage(e), { variant: 'error' });

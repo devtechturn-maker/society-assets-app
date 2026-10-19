@@ -564,6 +564,9 @@ export interface DurationPlanCheckout {
     gstAmount?: number;
     keyId?: string;
     orderId?: string;
+    /** Auto-renew mandate id; present instead of orderId when the plan renews automatically. */
+    subscriptionId?: string;
+    autoRenew?: boolean;
     amount?: number;
     currency?: string;
     planName?: string;
@@ -579,13 +582,20 @@ export async function createDurationPlanCheckout(planId: string): Promise<Durati
 
 export async function verifySubscriptionPayment(payload: {
   societyId: string;
-  razorpayOrderId: string;
+  razorpayOrderId?: string;
+  razorpaySubscriptionId?: string;
   razorpayPaymentId: string;
   razorpaySignature: string;
-}): Promise<{ status: string; validUntil?: string; planName?: string }> {
+}): Promise<{ status: string; validUntil?: string; planName?: string; autoRenew?: boolean }> {
   const { data } = await client.post<
-    ApiResponse<{ status: string; validUntil?: string; planName?: string }>
+    ApiResponse<{ status: string; validUntil?: string; planName?: string; autoRenew?: boolean }>
   >('/payments/verify', payload);
+  return data.data;
+}
+
+/** Stops automatic renewal; the current paid period continues. */
+export async function cancelSubscriptionAutoRenew(): Promise<SocietySubscriptionStatus> {
+  const { data } = await client.post<ApiResponse<SocietySubscriptionStatus>>('/society/subscription/auto-renew/cancel', {});
   return data.data;
 }
 
