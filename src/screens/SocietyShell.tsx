@@ -51,7 +51,7 @@ import {
   NotificationInboxPanel,
 } from '../components/NotificationInboxPanel';
 import { useNotificationInbox } from '../hooks/useNotificationInbox';
-import {
+import { type RecordModule,
   addNotificationReceivedListener,
   addNotificationResponseListener,
   parseAppPushFromResponse,
@@ -340,10 +340,10 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
     }
   }, []);
 
-  const openRecordFromNotification = useCallback((module: 'meetings' | 'tharav', recordId?: string) => {
+  const openRecordFromNotification = useCallback((module: RecordModule, recordId?: string) => {
     setActivePath(module);
     lastTabPathRef.current = module;
-    if (recordId) {
+    if (recordId && (module === 'meetings' || module === 'tharav')) {
       if (module === 'meetings') setInitialMeetingId(recordId);
       else setInitialTharavId(recordId);
     }
@@ -425,6 +425,10 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
         }
         if (opened.ruleId || opened.type.startsWith('RULE')) {
           openRuleFromNotification(opened.ruleId);
+          return;
+        }
+        if (opened.type.startsWith('MAINTENANCE_PAYMENT_')) {
+          openRecordFromNotification(opened.type === 'MAINTENANCE_PAYMENT_SUBMITTED' ? 'member-payments' : 'maintenance');
           return;
         }
         if (opened.meetingId || opened.type.startsWith('MEETING_')) {

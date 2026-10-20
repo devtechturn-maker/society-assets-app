@@ -250,9 +250,41 @@ export interface SocietyOverview {
   totalMaintenanceIncome?: number;
   totalOtherIncome?: number;
   totalExpenses: number;
+  /** Opening cash in hand plus cash received minus cash paid since the start date. */
   cashOnHand: number;
+  /** Opening bank balance plus online money in minus online money out since the start date. */
+  bankBalance?: number;
+  /** Start date of the society's books in the app; null until opening balances are set. */
+  openingBalanceDate?: string | null;
   expenseCount: number;
   totalUsers: number;
+}
+
+export interface OpeningDueRow {
+  memberId: string;
+  flatNumber: string;
+  memberName: string;
+  openingDue: number;
+  note: string;
+  /** Maintenance was already recorded after this due, so it can no longer be changed. */
+  locked: boolean;
+}
+
+export interface OpeningBalances {
+  asOfDate: string | null;
+  openingCashBalance: number;
+  openingBankBalance: number;
+  configured: boolean;
+  updatedAt?: string | null;
+  canEdit: boolean;
+  totalOpeningDues: number;
+  openingDuesStillPending: number;
+  memberDues: OpeningDueRow[];
+}
+
+export interface OpeningDuesValidation {
+  summary: { total: number; valid: number; invalid: number; totalOpeningDues: number; canImport: boolean };
+  rows: { rowNumber: number; flatNumber: string; memberName: string; openingDue: number; note: string; valid: boolean; errors: string[] }[];
 }
 
 export interface MemberOverview {
@@ -268,9 +300,11 @@ export interface MemberOverview {
   totalDueAmount: number;
   remainingDueAmount: number;
   paymentType: string;
-  onlinePaymentEnabled?: boolean;
+  /** The society has added the bank details members pay into. */
+  bankDetailsConfigured?: boolean;
   payableAmount?: number;
-  canPayOnline?: boolean;
+  /** Something is due and the member can submit a payment with a screenshot. */
+  canSubmitPayment?: boolean;
   maintenanceFromMonth?: string;
   maintenanceToMonth?: string;
   paymentUnavailableMessage?: string;
@@ -282,10 +316,56 @@ export interface MemberOverview {
   rentalEndDate?: string;
 }
 
+/** Bank account members pay maintenance into (set by the chairman). */
+export interface SocietyBankDetails {
+  configured: boolean;
+  accountHolderName: string;
+  bankName: string;
+  bankBranch: string;
+  accountNumber: string;
+  ifsc: string;
+  upiId: string;
+  paymentInstructions: string;
+  updatedAt?: string | null;
+  /** Office view only: true for the chairman. */
+  canEdit?: boolean;
+}
+
+export type MaintenancePaymentStatus =
+  | 'PENDING_REVIEW'
+  | 'APPROVED'
+  | 'REJECTED'
+  // older online payments, kept as history
+  | 'PENDING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'REFUND_REQUIRED';
+
+export type MaintenancePaymentMethod = 'UPI' | 'BANK_TRANSFER' | 'CHEQUE' | 'OTHER';
+
+/** A maintenance payment a member submitted with a screenshot (or an older online payment). */
+export interface MaintenancePaymentSubmission {
+  id: string;
+  memberId: string;
+  memberName: string;
+  flatNumber: string;
+  maintenanceFromMonth: string;
+  maintenanceToMonth: string;
+  amount: number;
+  paymentMethod?: MaintenancePaymentMethod | null;
+  referenceNo?: string | null;
+  paidOn?: string | null;
+  memberNote?: string | null;
+  hasScreenshot: boolean;
+  status: MaintenancePaymentStatus;
+  rejectionReason?: string | null;
+  reviewedByName?: string | null;
+  reviewedAt?: string | null;
+  expenseId?: string | null;
+  createdAt: string;
+}
+
 export interface MemberMaintenanceDue {
-  onlinePaymentEnabled: boolean;
-  onlinePaymentConfigured?: boolean;
-  paymentUnavailableMessage?: string;
   alreadyPaid: boolean;
   alreadyPaidMessage: string;
   monthlyMaintenanceAmount: number;
@@ -296,7 +376,20 @@ export interface MemberMaintenanceDue {
   maintenanceFromMonth: string;
   maintenanceToMonth: string;
   description: string;
-  canPayOnline: boolean;
+  bankDetails: SocietyBankDetails;
+  hasPendingSubmission: boolean;
+  canSubmit: boolean;
+  submitUnavailableMessage?: string;
+  submissions: MaintenancePaymentSubmission[];
+}
+
+export interface MemberPaymentPage {
+  items: MaintenancePaymentSubmission[];
+  page: number;
+  size: number;
+  totalItems: number;
+  totalPages: number;
+  canReview?: boolean;
 }
 
 export interface MemberMaintenanceCheckout {
@@ -321,14 +414,6 @@ export interface MemberMaintenanceCheckout {
     email?: string;
     contact?: string;
   };
-}
-
-export interface MemberMaintenanceVerifyResult {
-  status: string;
-  expenseId?: string;
-  amount?: number;
-  remainingDueAmount?: number;
-  message?: string;
 }
 
 export interface RecentExpense {
@@ -370,25 +455,6 @@ export interface MaintenanceSettings {
   maintenancePenaltyAmount: number;
   allowCustomMemberMaintenance: boolean;
   configured: boolean;
-}
-
-export interface SocietyMemberPaymentSettings {
-  enabled: boolean;
-  configured: boolean;
-  keyId: string;
-  keySecretMasked: string;
-  testMode: boolean;
-  memberPaymentsReady: boolean;
-  message?: string;
-  routeEnabled?: boolean;
-  usesRoute?: boolean;
-  routeStatus?: string;
-  routeError?: string;
-  linkedAccountId?: string;
-  bankIfsc?: string;
-  bankBeneficiaryName?: string;
-  bankAccountMasked?: string;
-  manualKeysConfigured?: boolean;
 }
 
 export interface ReportSummary {

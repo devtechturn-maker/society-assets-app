@@ -11,6 +11,8 @@ import {
 } from './visitorNotificationSounds';
 import { registerBackgroundVisitorNotificationTask } from './backgroundVisitorNotificationTask';
 
+export type RecordModule = 'meetings' | 'tharav' | 'maintenance' | 'member-payments';
+
 export type AppPushNotification = {
   kind: 'chat';
   notificationId?: string;
@@ -55,10 +57,10 @@ export type AppPushNotification = {
   preview: string;
   type: 'NOTICE_PUBLISHED';
 } | {
-  /** Meeting or Tharav notification; opens the exact record. */
+  /** Meeting, Tharav or maintenance payment notification; opens its module (and the exact meeting / Tharav). */
   kind: 'record';
   notificationId?: string;
-  module: 'meetings' | 'tharav';
+  module: RecordModule;
   recordId: string;
   subject: string;
   preview: string;
@@ -319,6 +321,7 @@ type PushData = {
   type?: string;
   meetingId?: string;
   tharavId?: string;
+  memberPaymentId?: string;
   groupId?: string;
   groupName?: string;
   senderName?: string;
@@ -419,6 +422,18 @@ function parseAppPushNotification(
       ruleId,
       subject,
       preview,
+      type: data.type,
+    };
+  }
+  if (typeof data?.type === 'string' && data.type.startsWith('MAINTENANCE_PAYMENT_')) {
+    return {
+      kind: 'record',
+      notificationId: readNotificationId(data),
+      // The office reviews submissions; members see the result on their maintenance screen.
+      module: data.type === 'MAINTENANCE_PAYMENT_SUBMITTED' ? 'member-payments' : 'maintenance',
+      recordId: String(data.memberPaymentId ?? ''),
+      subject: (content.title && String(content.title).trim()) || 'Maintenance payment',
+      preview: (content.body && String(content.body).trim()) || '',
       type: data.type,
     };
   }
@@ -552,7 +567,7 @@ export function openNotificationResponse(
     onOpenRule?: (ruleId?: string) => void;
     onOpenNotice?: (noticeId?: string) => void;
     onOpenVisitor?: (visitorId?: string, type?: AppPushNotification['type']) => void;
-    onOpenRecord?: (module: 'meetings' | 'tharav', recordId: string) => void;
+    onOpenRecord?: (module: RecordModule, recordId: string) => void;
   }
 ): boolean {
   const parsed = parseAppPushFromResponse(response);
@@ -620,7 +635,11 @@ export async function resolveInitialNotificationTargets(): Promise<{
   if (parsed.kind === 'rule') return { ruleId: parsed.ruleId };
   if (parsed.kind === 'notice') return { noticeId: parsed.noticeId };
   if (parsed.kind === 'visitor') return { visitorId: parsed.visitorId };
-  if (parsed.kind === 'record') return parsed.module === 'meetings' ? { meetingId: parsed.recordId } : { tharavId: parsed.recordId };
+  if (parsed.kind === 'record') {
+    if (parsed.module === 'meetings') return { meetingId: parsed.recordId };
+    if (parsed.module === 'tharav') return { tharavId: parsed.recordId };
+    return {};
+  }
   return { groupId: parsed.groupId };
 }
 
@@ -638,7 +657,7 @@ export function addNotificationResponseListener(handlers: {
   onOpenRule?: (ruleId?: string) => void;
   onOpenNotice?: (noticeId?: string) => void;
   onOpenVisitor?: (visitorId?: string, type?: AppPushNotification['type']) => void;
-  onOpenRecord?: (module: 'meetings' | 'tharav', recordId: string) => void;
+  onOpenRecord?: (module: RecordModule, recordId: string) => void;
 }): Notifications.Subscription {
   if (!isRemotePushAvailable()) {
     return { remove: () => undefined };

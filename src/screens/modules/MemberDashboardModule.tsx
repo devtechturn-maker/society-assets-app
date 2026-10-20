@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { KpiGrid } from '../../components/dashboard/KpiGrid';
 import { ListError, ListLoading } from '../../components/dashboard/ListStates';
 import { SectionCard } from '../../components/dashboard/SectionCard';
-import { PayMaintenanceButton } from '../../components/payment/PayMaintenanceButton';
+import { MaintenancePaymentPanel } from '../../components/payment/MaintenancePayment';
 import { VisitorApprovalActions } from '../../components/visitor/VisitorApprovalActions';
 import { VisitorAvatar } from '../../components/visitor/VisitorAvatar';
 import {
@@ -191,15 +191,12 @@ export function MemberDashboardModule({ onOpenProfile, onOpenNotice, onOpenVisit
       {overview.data && overview.data.maintenanceVisible !== false ? (
         <SectionCard
           title="Pay maintenance"
-          subtitle={
-            due.data?.canPayOnline
-              ? 'Pay your society maintenance securely online'
-              : 'Online payment will be available once your chairman completes society bank setup'
-          }
+          subtitle="Pay the society's bank account, then upload the payment screenshot"
         >
-          <PayMaintenanceButton
+          <MaintenancePaymentPanel
+            compact
             due={due.data}
-            onPaid={() => {
+            onSubmitted={() => {
               void overview.refresh();
               void due.refresh();
             }}

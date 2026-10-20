@@ -4,7 +4,7 @@ import axios from 'axios';
 import { ExpenseRowCard } from '../../components/dashboard/ExpenseRowCard';
 import { ListEmpty, ListError, ListLoading } from '../../components/dashboard/ListStates';
 import { SectionCard } from '../../components/dashboard/SectionCard';
-import { PayMaintenanceButton } from '../../components/payment/PayMaintenanceButton';
+import { MaintenancePaymentPanel, MySubmissions } from '../../components/payment/MaintenancePayment';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { fetchMemberMaintenanceDue, fetchMemberMaintenanceHistory } from '../../services/api';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
@@ -55,17 +55,23 @@ export function MemberMaintenanceModule() {
       }
     >
       <SectionCard
-        title="My maintenance"
-        subtitle="Payments recorded for your flat — download a receipt for any payment"
+        title="Pay maintenance"
+        subtitle="Transfer the amount to your society's bank account, then upload the payment screenshot for verification"
       >
-        <PayMaintenanceButton
-          compact
+        <MaintenancePaymentPanel
           due={due.data}
-          onPaid={() => {
+          onSubmitted={() => {
             void refresh();
             void due.refresh();
           }}
         />
+        {due.data?.submissions?.length ? <MySubmissions items={due.data.submissions} /> : null}
+      </SectionCard>
+
+      <SectionCard
+        title="My maintenance"
+        subtitle="Payments recorded for your flat — download a receipt for any payment"
+      >
         {loading ? <ListLoading /> : null}
         {error ? <ListError message={error} /> : null}
         {data?.length === 0 ? (
@@ -75,6 +81,7 @@ export function MemberMaintenanceModule() {
           const isDownloading = downloadingId === row.expenseId;
           return (
             <ExpenseRowCard key={row.expenseId} row={row} showMember={false}>
+              {row.paymentType === 'OPENING' ? null : (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Download maintenance receipt"
@@ -94,6 +101,7 @@ export function MemberMaintenanceModule() {
                   <Text style={styles.receiptBtnText}>Download Receipt</Text>
                 )}
               </Pressable>
+              )}
             </ExpenseRowCard>
           );
         })}

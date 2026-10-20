@@ -33,6 +33,8 @@ import { EventsModule } from './EventsModule';
 import { MeetingsModule } from './MeetingsModule';
 import { TharavModule } from './TharavModule';
 import { StaffModule } from './StaffModule';
+import { MemberPaymentsModule } from './MemberPaymentsModule';
+import { OpeningBalancesModule } from './OpeningBalancesModule';
 import type { AppNotification } from '../../types/api';
 
 export function ModuleRouter({
@@ -280,6 +282,10 @@ export function ModuleRouter({
       return <TharavModule initialTharavId={initialTharavId} onInitialTharavConsumed={onTharavConsumed} />;
     case 'staff':
       return <StaffModule userRole={userRole} />;
+    case 'member-payments':
+      return <MemberPaymentsModule />;
+    case 'opening-balances':
+      return <OpeningBalancesModule />;
     case 'settings':
       return <SettingsModule onMaintenanceConfigured={onMaintenanceConfigured} />;
     case 'chat':

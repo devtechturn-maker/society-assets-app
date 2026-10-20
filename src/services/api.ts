@@ -3,7 +3,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { API_BASE_URL } from '../config/env';
 import { clearSession, getToken } from './storage';
 import { notifySessionInvalid } from './session';
-import { cachedGet } from './requestCache';
+import { cachedGet, invalidateCachedGet } from './requestCache';
 import type {
   DurationPlanCard,
   ApiResponse,
@@ -41,14 +41,17 @@ import type {
   ReportEmailResult,
   ReportDownloadPayload,
   SocietyOverview,
-  SocietyMemberPaymentSettings,
+  SocietyBankDetails,
+  OpeningBalances,
+  OpeningDuesValidation,
+  MaintenancePaymentSubmission,
+  MemberPaymentPage,
   MemberOverview,
   GuestPassInput,
   FlatTenancy,
   FlatTenancyInput,
   MemberMaintenanceDue,
   MemberMaintenanceCheckout,
-  MemberMaintenanceVerifyResult,
   MemberProfile,
   ChatThread,
   ChatThreadQuery,
@@ -385,21 +388,49 @@ export const fetchGateKeeperDashboard = () =>
 export const fetchMemberMaintenanceHistory = () =>
   getData<RecentExpense[]>('/member/maintenance');
 
-export async function createMemberMaintenanceCheckout(): Promise<MemberMaintenanceCheckout> {
-  const { data } = await client.post<ApiResponse<MemberMaintenanceCheckout>>('/member/maintenance/checkout');
+/** "I have paid": transaction details plus the mandatory payment screenshot. */
+export async function submitMaintenancePayment(input: {
+  paymentMethod: string;
+  referenceNo: string;
+  paidOn: string;
+  note?: string;
+  screenshot: { uri: string; fileName: string; mimeType: string };
+}): Promise<MaintenancePaymentSubmission> {
+  const formData = new FormData();
+  formData.append('paymentMethod', input.paymentMethod);
+  formData.append('referenceNo', input.referenceNo);
+  formData.append('paidOn', input.paidOn);
+  if (input.note) formData.append('note', input.note);
+  formData.append('screenshot', {
+    uri: input.screenshot.uri,
+    name: input.screenshot.fileName,
+    type: input.screenshot.mimeType,
+  } as unknown as Blob);
+  const { data } = await client.post<ApiResponse<MaintenancePaymentSubmission>>('/member/maintenance/payments', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
+  });
+  invalidateCachedGet('maintenance:');
+  invalidateCachedGet('overview:member');
   return data.data;
 }
 
-export async function verifyMemberMaintenancePayment(payload: {
-  paymentId: string;
-  razorpayOrderId?: string;
-  razorpayPaymentId?: string;
-  razorpaySignature?: string;
-}): Promise<MemberMaintenanceVerifyResult> {
-  const { data } = await client.post<ApiResponse<MemberMaintenanceVerifyResult>>(
-    '/member/maintenance/verify',
-    payload
-  );
+export const memberPaymentScreenshotPath = (id: string) => `/member/maintenance/payments/${id}/screenshot`;
+export const officePaymentScreenshotPath = (id: string) => `/society/member-payments/${id}/screenshot`;
+
+/** Society office: submitted maintenance payments (status PENDING_REVIEW, APPROVED or REJECTED). */
+export async function fetchMemberPayments(params: { status?: string; page?: number; size?: number }): Promise<MemberPaymentPage> {
+  const { data } = await client.get<ApiResponse<MemberPaymentPage>>('/society/member-payments', { params });
+  return data.data;
+}
+
+export async function approveMemberPayment(id: string): Promise<MaintenancePaymentSubmission> {
+  const { data } = await client.post<ApiResponse<MaintenancePaymentSubmission>>(`/society/member-payments/${id}/approve`);
+  return data.data;
+}
+
+export async function rejectMemberPayment(id: string, reason: string): Promise<MaintenancePaymentSubmission> {
+  const { data } = await client.post<ApiResponse<MaintenancePaymentSubmission>>(`/society/member-payments/${id}/reject`, { reason });
   return data.data;
 }
 
@@ -712,35 +743,68 @@ export async function updateMaintenanceSettings(
   return data.data;
 }
 
-export const fetchMemberPaymentSettings = () =>
-  getData<SocietyMemberPaymentSettings>('/society/settings/member-payments');
+export const fetchOpeningBalances = () => getData<OpeningBalances>('/society/opening-balances');
 
-export async function updateMemberPaymentSettings(
-  payload: Record<string, unknown>
-): Promise<SocietyMemberPaymentSettings> {
-  const { data } = await client.put<ApiResponse<SocietyMemberPaymentSettings>>(
-    '/society/settings/member-payments',
-    payload
-  );
+export async function saveOpeningBalances(payload: {
+  asOfDate: string;
+  openingCashBalance: string;
+  openingBankBalance: string;
+}): Promise<OpeningBalances> {
+  const { data } = await client.put<ApiResponse<OpeningBalances>>('/society/opening-balances', payload);
+  invalidateCachedGet('overview:');
   return data.data;
 }
 
-export async function requestMemberPaymentSetupOtp(payload: Record<string, unknown>): Promise<{
-  message: string;
-  email: string;
-  expiresInMinutes: number;
-}> {
-  const { data } = await client.post<
-    ApiResponse<{ message: string; email: string; expiresInMinutes: number }>
-  >('/society/settings/member-payments/request-setup-otp', payload);
+export async function saveOpeningDue(memberId: string, openingDue: string, note: string): Promise<OpeningBalances> {
+  const { data } = await client.put<ApiResponse<OpeningBalances>>(`/society/opening-balances/dues/${memberId}`, { openingDue, note });
   return data.data;
 }
 
-export async function verifyMemberPaymentSetupOtp(otp: string): Promise<SocietyMemberPaymentSettings> {
-  const { data } = await client.post<ApiResponse<SocietyMemberPaymentSettings>>(
-    '/society/settings/member-payments/verify-setup-otp',
-    { otp }
-  );
+function excelForm(fileUri: string, fileName: string, mimeType: string | null): FormData {
+  const formData = new FormData();
+  formData.append('file', {
+    uri: fileUri,
+    name: fileName,
+    type: mimeType ?? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  } as unknown as Blob);
+  return formData;
+}
+
+export async function validateOpeningDuesExcel(fileUri: string, fileName: string, mimeType: string | null): Promise<OpeningDuesValidation> {
+  const { data } = await client.post<ApiResponse<OpeningDuesValidation>>('/society/opening-balances/dues/validate-excel',
+    excelForm(fileUri, fileName, mimeType), { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 });
+  return data.data;
+}
+
+export async function uploadOpeningDuesExcel(fileUri: string, fileName: string, mimeType: string | null): Promise<OpeningBalances & { imported: number }> {
+  const { data } = await client.post<ApiResponse<OpeningBalances & { imported: number }>>('/society/opening-balances/dues/upload',
+    excelForm(fileUri, fileName, mimeType), { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 });
+  return data.data;
+}
+
+/** Downloads the sample sheet (flatNumber, openingDue, note) to the cache and returns its local path. */
+export async function downloadOpeningDuesSample(): Promise<string> {
+  const token = await getToken();
+  const target = `${FileSystem.cacheDirectory}opening-dues-sample.xlsx`;
+  const result = await FileSystem.downloadAsync(`${API_BASE_URL}/society/opening-balances/dues/sample-excel`, target, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (result.status !== 200) throw new Error('Could not download the sample file');
+  return result.uri;
+}
+
+export const fetchSocietyBankDetails = () => getData<SocietyBankDetails>('/society/settings/bank-details');
+
+export async function updateSocietyBankDetails(payload: {
+  accountHolderName: string;
+  bankName: string;
+  bankBranch?: string;
+  ifsc: string;
+  accountNumber?: string;
+  upiId?: string;
+  paymentInstructions?: string;
+}): Promise<SocietyBankDetails> {
+  const { data } = await client.put<ApiResponse<SocietyBankDetails>>('/society/settings/bank-details', payload);
   return data.data;
 }
 

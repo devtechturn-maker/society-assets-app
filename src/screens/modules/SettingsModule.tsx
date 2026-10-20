@@ -16,12 +16,11 @@ import {
   deleteContractType,
   fetchContractTypes,
   fetchMaintenanceSettings,
-  fetchMemberPaymentSettings,
-  requestMemberPaymentSetupOtp,
+  fetchSocietyBankDetails,
   updateMaintenanceSettings,
-  updateMemberPaymentSettings,
-  verifyMemberPaymentSetupOtp,
+  updateSocietyBankDetails,
 } from '../../services/api';
+import { BankDetailsCard } from '../../components/payment/MaintenancePayment';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
@@ -56,11 +55,11 @@ export function SettingsModule() {
   const { theme } = useTheme();
   const { alert, confirm } = useAppAlert();
   const settingsLoad = useAsyncLoad(fetchMaintenanceSettings, []);
-  const paymentSettingsLoad = useAsyncLoad(fetchMemberPaymentSettings, []);
+  const bankLoad = useAsyncLoad(fetchSocietyBankDetails, []);
   const typesLoad = useAsyncLoad(fetchContractTypes, []);
   const pageLoading =
     (settingsLoad.loading && !settingsLoad.data) ||
-    (paymentSettingsLoad.loading && !paymentSettingsLoad.data) ||
+    (bankLoad.loading && !bankLoad.data) ||
     (typesLoad.loading && !typesLoad.data);
 
   const [defaultMaintenance, setDefaultMaintenance] = useState('');
@@ -69,23 +68,14 @@ export function SettingsModule() {
   const [allowCustomMaintenance, setAllowCustomMaintenance] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
 
-  const [memberPaymentsEnabled, setMemberPaymentsEnabled] = useState(false);
-  const [razorpayKeyId, setRazorpayKeyId] = useState('');
-  const [razorpayKeySecret, setRazorpayKeySecret] = useState('');
-  const [savingPaymentSettings, setSavingPaymentSettings] = useState(false);
-
-  const [chairmanPhone, setChairmanPhone] = useState('');
-  const [societyPan, setSocietyPan] = useState('');
-  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankHolder, setBankHolder] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankBranch, setBankBranch] = useState('');
+  const [bankAccount, setBankAccount] = useState('');
   const [bankIfsc, setBankIfsc] = useState('');
-  const [bankBeneficiaryName, setBankBeneficiaryName] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [postalCode, setPostalCode] = useState('');
-  const [routeTncAccepted, setRouteTncAccepted] = useState(false);
-  const [paymentSetupStep, setPaymentSetupStep] = useState<'form' | 'otp'>('form');
-  const [paymentSetupEmail, setPaymentSetupEmail] = useState('');
-  const [setupOtp, setSetupOtp] = useState('');
+  const [bankUpi, setBankUpi] = useState('');
+  const [bankInstructions, setBankInstructions] = useState('');
+  const [savingBank, setSavingBank] = useState(false);
 
   const [typeLabel, setTypeLabel] = useState('');
   const [typeCode, setTypeCode] = useState('');
@@ -114,19 +104,25 @@ export function SettingsModule() {
   }, [settingsLoad.data]);
 
   useEffect(() => {
-    if (!paymentSettingsLoad.data) return;
-    setMemberPaymentsEnabled(paymentSettingsLoad.data.enabled);
-    setRazorpayKeyId(paymentSettingsLoad.data.keyId ?? '');
-    setRazorpayKeySecret('');
-    setBankIfsc(paymentSettingsLoad.data.bankIfsc ?? '');
-    setBankBeneficiaryName(paymentSettingsLoad.data.bankBeneficiaryName ?? '');
-  }, [paymentSettingsLoad.data]);
+    const b = bankLoad.data;
+    if (!b) return;
+    setBankHolder(b.accountHolderName);
+    setBankName(b.bankName);
+    setBankBranch(b.bankBranch);
+    setBankAccount(b.accountNumber);
+    setBankIfsc(b.ifsc);
+    setBankUpi(b.upiId);
+    setBankInstructions(b.paymentInstructions);
+    if (!b.configured && b.canEdit) {
+      setExpandedSections((current) => ({ ...current, payments: true }));
+    }
+  }, [bankLoad.data]);
 
-  const refreshing = settingsLoad.refreshing || paymentSettingsLoad.refreshing || typesLoad.refreshing;
+  const refreshing = settingsLoad.refreshing || bankLoad.refreshing || typesLoad.refreshing;
 
   function refreshAll() {
     settingsLoad.refresh();
-    paymentSettingsLoad.refresh();
+    bankLoad.refresh();
     typesLoad.refresh();
   }
 
@@ -176,129 +172,31 @@ export function SettingsModule() {
     }
   }
 
-  function buildBankSetupPayload() {
-    return {
-      routeTncAccepted,
-      chairmanPhone: chairmanPhone.trim(),
-      societyPan: societyPan.trim(),
-      bankAccountNumber: bankAccountNumber.trim(),
-      bankIfsc: bankIfsc.trim(),
-      bankBeneficiaryName: bankBeneficiaryName.trim(),
-      city: city.trim(),
-      state: state.trim(),
-      postalCode: postalCode.trim(),
-    };
-  }
-
-  async function savePaymentSettings() {
-    const paymentData = paymentSettingsLoad.data;
-    const routeEnabled = paymentData?.routeEnabled === true;
-
-    if (routeEnabled) {
-      if (paymentSetupStep === 'otp') {
-        const otp = setupOtp.trim();
-        if (!/^\d{6}$/.test(otp)) {
-          alert('Invalid code', 'Enter the 6-digit verification code from your email.', { variant: 'error' });
-          return;
-        }
-        setSavingPaymentSettings(true);
-        try {
-          const result = await verifyMemberPaymentSetupOtp(otp);
-          alert('Saved', result.message ?? 'Bank account submitted to Razorpay.', { variant: 'success' });
-          setPaymentSetupStep('form');
-          setSetupOtp('');
-          setBankAccountNumber('');
-          paymentSettingsLoad.refresh();
-        } catch (e: unknown) {
-          const msg = axios.isAxiosError(e)
-            ? (e.response?.data as { message?: string } | undefined)?.message
-            : undefined;
-          alert('Verification failed', msg ?? (e instanceof Error ? e.message : 'Invalid verification code'), {
-            variant: 'error',
-          });
-        } finally {
-          setSavingPaymentSettings(false);
-        }
-        return;
-      }
-
-      if (!routeTncAccepted) {
-        alert('Terms required', 'Please accept the payment account terms.', { variant: 'error' });
-        return;
-      }
-      if (!chairmanPhone.trim() || !societyPan.trim() || !bankAccountNumber.trim() || !bankIfsc.trim() || !bankBeneficiaryName.trim() || !city.trim() || !state.trim() || !postalCode.trim()) {
-        alert('Missing fields', 'Please fill all bank and KYC fields.', { variant: 'error' });
-        return;
-      }
-
-      setSavingPaymentSettings(true);
-      try {
-        const result = await requestMemberPaymentSetupOtp(buildBankSetupPayload());
-        setPaymentSetupStep('otp');
-        setPaymentSetupEmail(result.email ?? '');
-        setSetupOtp('');
-        alert('Code sent', result.message ?? 'Verification code sent to your email.', { variant: 'success' });
-      } catch (e: unknown) {
-        const msg = axios.isAxiosError(e)
-          ? (e.response?.data as { message?: string } | undefined)?.message
-          : undefined;
-        alert('Save failed', msg ?? (e instanceof Error ? e.message : 'Unable to send verification code'), {
-          variant: 'error',
-        });
-      } finally {
-        setSavingPaymentSettings(false);
-      }
+  async function saveBankDetails() {
+    if (!bankHolder.trim() || !bankName.trim() || !bankIfsc.trim() || !bankAccount.trim()) {
+      alert('Missing details', 'Enter the account holder name, bank name, account number and IFSC.', { variant: 'error' });
       return;
     }
-
-    const keyId = razorpayKeyId.trim();
-    const keySecret = razorpayKeySecret.trim();
-    if (memberPaymentsEnabled && !keyId) {
-      alert('Razorpay Key ID required', 'Enter your society Razorpay Key ID.', { variant: 'error' });
-      return;
-    }
-    if (memberPaymentsEnabled && !keySecret && !paymentData?.configured) {
-      alert('Razorpay Key Secret required', 'Enter your society Razorpay Key Secret.', { variant: 'error' });
-      return;
-    }
-
-    setSavingPaymentSettings(true);
+    setSavingBank(true);
     try {
-      const result = await updateMemberPaymentSettings({
-        enabled: memberPaymentsEnabled,
-        keyId,
-        ...(keySecret ? { keySecret } : {}),
+      await updateSocietyBankDetails({
+        accountHolderName: bankHolder.trim(),
+        bankName: bankName.trim(),
+        bankBranch: bankBranch.trim(),
+        accountNumber: bankAccount.trim(),
+        ifsc: bankIfsc.trim(),
+        upiId: bankUpi.trim(),
+        paymentInstructions: bankInstructions.trim(),
       });
-      alert('Saved', result.message ?? 'Member payment settings saved.', { variant: 'success' });
-      setRazorpayKeySecret('');
-      paymentSettingsLoad.refresh();
+      alert('Saved', 'Members will now see these bank details when they pay maintenance.', { variant: 'success' });
+      bankLoad.refresh();
     } catch (e: unknown) {
       const msg = axios.isAxiosError(e)
         ? (e.response?.data as { message?: string } | undefined)?.message
         : undefined;
-      alert('Save failed', msg ?? (e instanceof Error ? e.message : 'Unable to save payment settings'), {
-        variant: 'error',
-      });
+      alert('Save failed', msg ?? (e instanceof Error ? e.message : 'Unable to save bank details'), { variant: 'error' });
     } finally {
-      setSavingPaymentSettings(false);
-    }
-  }
-
-  async function resendPaymentSetupOtp() {
-    setSavingPaymentSettings(true);
-    try {
-      const result = await requestMemberPaymentSetupOtp(buildBankSetupPayload());
-      setPaymentSetupStep('otp');
-      setPaymentSetupEmail(result.email ?? paymentSetupEmail);
-      setSetupOtp('');
-      alert('Code sent', 'Verification code sent again.', { variant: 'success' });
-    } catch (e: unknown) {
-      const msg = axios.isAxiosError(e)
-        ? (e.response?.data as { message?: string } | undefined)?.message
-        : undefined;
-      alert('Failed', msg ?? 'Unable to resend verification code', { variant: 'error' });
-    } finally {
-      setSavingPaymentSettings(false);
+      setSavingBank(false);
     }
   }
 
@@ -427,231 +325,65 @@ export function SettingsModule() {
       {!pageLoading ? (
       <>
       <ServicesAccordionSection
-        title="Member online payments"
+        title="Bank details for maintenance"
         expanded={expandedSections.payments}
         onToggle={() => toggleSection('payments')}
       >
-        {paymentSettingsLoad.error ? <ListError message={paymentSettingsLoad.error} /> : null}
-        {paymentSettingsLoad.data ? (
+        {bankLoad.error ? <ListError message={bankLoad.error} /> : null}
+        {bankLoad.data && !bankLoad.data.canEdit ? (
+          bankLoad.data.configured ? (
+            <View style={styles.form}>
+              <BankDetailsCard details={bankLoad.data} />
+              <Text style={[styles.paymentHint, { color: theme.textMuted }]}>Only the chairman can change these details.</Text>
+            </View>
+          ) : (
+            <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
+              The chairman has not added the society's bank details yet.
+            </Text>
+          )
+        ) : null}
+        {bankLoad.data?.canEdit ? (
           <View style={styles.form}>
-            {paymentSettingsLoad.data.routeEnabled ? (
-              <>
-                {paymentSettingsLoad.data.routeStatus && paymentSettingsLoad.data.routeStatus !== 'NONE' ? (
-                  <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
-                    Status: {paymentSettingsLoad.data.routeStatus}
-                    {paymentSettingsLoad.data.routeError ? ` — ${paymentSettingsLoad.data.routeError}` : ''}
-                  </Text>
-                ) : null}
-                {paymentSettingsLoad.data.routeStatus === 'ACTIVATED' ? (
-                  <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
-                    Your society payment account is active. Members can pay maintenance online.
-                  </Text>
-                ) : paymentSettingsLoad.data.routeStatus === 'PENDING' ? (
-                  <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
-                    Razorpay is verifying your bank account. This usually takes 1–2 business days.
-                  </Text>
-                ) : paymentSetupStep === 'otp' ? (
-                  <>
-                    <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
-                      A verification code was sent to {paymentSetupEmail || 'your email'}. Enter it below to confirm
-                      bank setup.
-                    </Text>
-                    <FormField label="Verification code" theme={theme}>
-                      <TextInput
-                        style={inputStyle(theme)}
-                        value={setupOtp}
-                        onChangeText={setSetupOtp}
-                        placeholder="6-digit code"
-                        placeholderTextColor={theme.placeholder}
-                        keyboardType="number-pad"
-                        maxLength={6}
-                      />
-                    </FormField>
-                    <Pressable
-                      style={[
-                        styles.primaryBtn,
-                        { backgroundColor: theme.accent },
-                        savingPaymentSettings ? styles.disabled : null,
-                      ]}
-                      onPress={savePaymentSettings}
-                      disabled={savingPaymentSettings}
-                    >
-                      <Text style={styles.primaryBtnText}>
-                        {savingPaymentSettings ? 'Verifying…' : 'Verify and set up bank account'}
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      style={styles.linkBtn}
-                      onPress={() => void resendPaymentSetupOtp()}
-                    >
-                      <Text style={[styles.linkBtnText, { color: theme.accent }]}>Resend code</Text>
-                    </Pressable>
-                    <Pressable
-                      style={styles.linkBtn}
-                      onPress={() => {
-                        setPaymentSetupStep('form');
-                        setSetupOtp('');
-                        setPaymentSetupEmail('');
-                      }}
-                    >
-                      <Text style={[styles.linkBtnText, { color: theme.textMuted }]}>Cancel</Text>
-                    </Pressable>
-                  </>
-                ) : (
-                  <>
-                    <FormField label="Chairman phone" theme={theme}>
-                      <TextInput
-                        style={inputStyle(theme)}
-                        value={chairmanPhone}
-                        onChangeText={setChairmanPhone}
-                        placeholder="10-digit mobile"
-                        placeholderTextColor={theme.placeholder}
-                        keyboardType="phone-pad"
-                      />
-                    </FormField>
-                    <FormField label="Society PAN" theme={theme}>
-                      <TextInput
-                        style={inputStyle(theme)}
-                        value={societyPan}
-                        onChangeText={setSocietyPan}
-                        placeholder="AAAAA9999A"
-                        placeholderTextColor={theme.placeholder}
-                        autoCapitalize="characters"
-                      />
-                    </FormField>
-                    <FormField label="Bank account number" theme={theme}>
-                      <TextInput
-                        style={inputStyle(theme)}
-                        value={bankAccountNumber}
-                        onChangeText={setBankAccountNumber}
-                        placeholder="Account number"
-                        placeholderTextColor={theme.placeholder}
-                        keyboardType="number-pad"
-                      />
-                    </FormField>
-                    <FormField label="IFSC code" theme={theme}>
-                      <TextInput
-                        style={inputStyle(theme)}
-                        value={bankIfsc}
-                        onChangeText={setBankIfsc}
-                        placeholder="HDFC0001234"
-                        placeholderTextColor={theme.placeholder}
-                        autoCapitalize="characters"
-                      />
-                    </FormField>
-                    <FormField label="Account holder name" theme={theme}>
-                      <TextInput
-                        style={inputStyle(theme)}
-                        value={bankBeneficiaryName}
-                        onChangeText={setBankBeneficiaryName}
-                        placeholder="As per bank records"
-                        placeholderTextColor={theme.placeholder}
-                      />
-                    </FormField>
-                    <FormField label="City" theme={theme}>
-                      <TextInput
-                        style={inputStyle(theme)}
-                        value={city}
-                        onChangeText={setCity}
-                        placeholder="Pune"
-                        placeholderTextColor={theme.placeholder}
-                      />
-                    </FormField>
-                    <FormField label="State" theme={theme}>
-                      <TextInput
-                        style={inputStyle(theme)}
-                        value={state}
-                        onChangeText={setState}
-                        placeholder="Maharashtra"
-                        placeholderTextColor={theme.placeholder}
-                      />
-                    </FormField>
-                    <FormField label="Postal code" theme={theme}>
-                      <TextInput
-                        style={inputStyle(theme)}
-                        value={postalCode}
-                        onChangeText={setPostalCode}
-                        placeholder="411001"
-                        placeholderTextColor={theme.placeholder}
-                        keyboardType="number-pad"
-                      />
-                    </FormField>
-                    <CheckboxField
-                      label="I authorise SOCIETY-ASSETS to create a Razorpay payment account for our society"
-                      checked={routeTncAccepted}
-                      onChange={setRouteTncAccepted}
-                    />
-                    <Pressable
-                      style={[
-                        styles.primaryBtn,
-                        { backgroundColor: theme.accent },
-                        savingPaymentSettings ? styles.disabled : null,
-                      ]}
-                      onPress={savePaymentSettings}
-                      disabled={savingPaymentSettings}
-                    >
-                      <Text style={styles.primaryBtnText}>
-                        {savingPaymentSettings ? 'Sending code…' : 'Set up bank account'}
-                      </Text>
-                    </Pressable>
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                <CheckboxField
-                  label="Allow members to pay maintenance online"
-                  checked={memberPaymentsEnabled}
-                  onChange={setMemberPaymentsEnabled}
-                />
-                <FormField label="Razorpay Key ID" theme={theme}>
-                  <TextInput
-                    style={inputStyle(theme)}
-                    value={razorpayKeyId}
-                    onChangeText={setRazorpayKeyId}
-                    placeholder="rzp_live_... or rzp_test_..."
-                    placeholderTextColor={theme.placeholder}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                </FormField>
-                <FormField
-                  label={
-                    paymentSettingsLoad.data.keySecretMasked
-                      ? `Razorpay Key Secret (${paymentSettingsLoad.data.keySecretMasked} saved — leave blank to keep)`
-                      : 'Razorpay Key Secret'
-                  }
-                  theme={theme}
-                >
-                  <TextInput
-                    style={inputStyle(theme)}
-                    value={razorpayKeySecret}
-                    onChangeText={setRazorpayKeySecret}
-                    placeholder="Enter key secret"
-                    placeholderTextColor={theme.placeholder}
-                    secureTextEntry
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                </FormField>
-                <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
-                  Get API keys from dashboard.razorpay.com → Settings → API Keys.
-                </Text>
-                <Pressable
-                  style={[
-                    styles.primaryBtn,
-                    { backgroundColor: theme.accent },
-                    savingPaymentSettings ? styles.disabled : null,
-                  ]}
-                  onPress={savePaymentSettings}
-                  disabled={savingPaymentSettings}
-                >
-                  <Text style={styles.primaryBtnText}>
-                    {savingPaymentSettings ? 'Saving…' : 'Save payment settings'}
-                  </Text>
-                </Pressable>
-              </>
-            )}
+            <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
+              Members pay maintenance into this account from their own banking app, then upload a screenshot. You verify
+              each payment under Member payments before it is recorded.
+            </Text>
+            <FormField label="Account holder name" theme={theme}>
+              <TextInput style={inputStyle(theme)} value={bankHolder} onChangeText={setBankHolder} placeholder="As per bank records" placeholderTextColor={theme.placeholder} maxLength={128} />
+            </FormField>
+            <FormField label="Bank name" theme={theme}>
+              <TextInput style={inputStyle(theme)} value={bankName} onChangeText={setBankName} placeholder="HDFC Bank" placeholderTextColor={theme.placeholder} maxLength={128} />
+            </FormField>
+            <FormField label="Branch (optional)" theme={theme}>
+              <TextInput style={inputStyle(theme)} value={bankBranch} onChangeText={setBankBranch} placeholder="Andheri West" placeholderTextColor={theme.placeholder} maxLength={128} />
+            </FormField>
+            <FormField label="Account number" theme={theme}>
+              <TextInput style={inputStyle(theme)} value={bankAccount} onChangeText={setBankAccount} placeholder="9 to 18 digits" placeholderTextColor={theme.placeholder} keyboardType="number-pad" maxLength={18} />
+            </FormField>
+            <FormField label="IFSC code" theme={theme}>
+              <TextInput style={inputStyle(theme)} value={bankIfsc} onChangeText={(v) => setBankIfsc(v.toUpperCase())} placeholder="HDFC0001234" placeholderTextColor={theme.placeholder} autoCapitalize="characters" maxLength={11} />
+            </FormField>
+            <FormField label="UPI ID (optional)" theme={theme}>
+              <TextInput style={inputStyle(theme)} value={bankUpi} onChangeText={setBankUpi} placeholder="society@okhdfcbank" placeholderTextColor={theme.placeholder} autoCapitalize="none" autoCorrect={false} maxLength={100} />
+            </FormField>
+            <FormField label="Instructions for members (optional)" theme={theme}>
+              <TextInput
+                style={[inputStyle(theme), { minHeight: 70, textAlignVertical: 'top' }]}
+                value={bankInstructions}
+                onChangeText={setBankInstructions}
+                placeholder="e.g. Write your flat number in the payment remarks"
+                placeholderTextColor={theme.placeholder}
+                multiline
+                maxLength={1000}
+              />
+            </FormField>
+            <Pressable
+              style={[styles.primaryBtn, { backgroundColor: theme.accent }, savingBank ? styles.disabled : null]}
+              onPress={() => void saveBankDetails()}
+              disabled={savingBank}
+            >
+              <Text style={styles.primaryBtnText}>{savingBank ? 'Saving…' : 'Save bank details'}</Text>
+            </Pressable>
           </View>
         ) : null}
       </ServicesAccordionSection>

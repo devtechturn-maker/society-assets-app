@@ -21,6 +21,8 @@ export const ACTIVITY_HUB_ROUTE_PATHS = new Set([
   'meetings',
   'tharav',
   'staff',
+  'member-payments',
+  'opening-balances',
 ]);
 
 export const ACTIVITY_MODULE: NavModule = {
@@ -52,6 +54,8 @@ const MEMBER_TILES: ActivityTile[] = [
 
 const SOCIETY_TILES: ActivityTile[] = [
   { title: 'Maintenance', routePath: 'maintenance', icon: 'bank-card' },
+  { title: 'Member payments', routePath: 'member-payments', icon: 'bank-card' },
+  { title: 'Opening balances', routePath: 'opening-balances', icon: 'bank-card' },
   { title: 'Members', routePath: 'members', icon: 'users' },
   { title: 'Staff', routePath: 'staff', icon: 'users' },
   { title: 'Notices', routePath: 'notices', icon: 'megaphone' },
@@ -65,6 +69,8 @@ const SOCIETY_TILES: ActivityTile[] = [
 
 const TREASURER_TILES: ActivityTile[] = [
   { title: 'Maintenance', routePath: 'maintenance', icon: 'bank-card' },
+  { title: 'Member payments', routePath: 'member-payments', icon: 'bank-card' },
+  { title: 'Opening balances', routePath: 'opening-balances', icon: 'bank-card' },
   { title: 'Members', routePath: 'members', icon: 'users' },
   { title: 'Staff', routePath: 'staff', icon: 'users' },
   { title: 'Events', routePath: 'events', icon: 'sparkles' },

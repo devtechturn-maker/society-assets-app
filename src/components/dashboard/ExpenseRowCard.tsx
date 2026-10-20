@@ -51,7 +51,10 @@ export function ExpenseRowCard({ row, showMember = false, showEntryType = false,
         Description: {row.description?.trim() ? row.description : '—'}
       </Text>
       <View style={styles.footer}>
-        <Badge label={row.paymentType || '—'} tone={paymentBadgeTone(row.paymentType)} />
+        <Badge
+          label={row.paymentType === 'OPENING' ? 'Opening balance' : row.paymentType || '—'}
+          tone={paymentBadgeTone(row.paymentType)}
+        />
         <Text style={[styles.date, { color: theme.textMuted }]}>{formatDate(row.expenseDate)}</Text>
       </View>
       <Text style={[styles.created, { color: theme.textMuted }]}>Created {formatDateTime(row.createdAt)}</Text>
