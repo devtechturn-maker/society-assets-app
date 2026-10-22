@@ -312,7 +312,7 @@ function DueRow({ row, canEdit, onSaved }: { row: OpeningDueRow; canEdit: boolea
         <Text style={[styles.meta, { color: theme.textMuted }]}>
           {inr(row.openingDue)}
           {row.note ? ` · ${row.note}` : ''}
-          {row.locked ? ' · already being collected' : ''}
+          {row.locked ? (row.openingDue > 0 ? ' · already being collected' : ' · paid in the app already') : ''}
         </Text>
       )}
     </View>

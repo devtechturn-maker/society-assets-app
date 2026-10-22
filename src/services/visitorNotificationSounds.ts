@@ -14,7 +14,8 @@ async function ensureAudioMode(): Promise<void> {
   if (audioModeReady) return;
   await setAudioModeAsync({
     playsInSilentMode: true,
-    shouldPlayInBackground: true,
+    // In the background the visitor notification channel plays this sound itself (no background media service).
+    shouldPlayInBackground: false,
     interruptionMode: 'duckOthers',
   });
   audioModeReady = true;

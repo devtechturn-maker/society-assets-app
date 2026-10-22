@@ -34,7 +34,15 @@
         "backgroundColor": "#0f172a"
       },
       "predictiveBackGestureEnabled": false,
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -79,7 +87,7 @@
       [
         "expo-audio",
         {
-          "enableBackgroundPlayback": true,
+          "enableBackgroundPlayback": false,
           "enableBackgroundRecording": false,
           "microphonePermission": false
         }

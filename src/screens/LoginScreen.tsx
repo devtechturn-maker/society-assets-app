@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -109,6 +109,8 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
   const [accounts, setAccounts] = useState<LoginAccountOption[]>([]);
   const [selectionToken, setSelectionToken] = useState('');
   const [loading, setLoading] = useState(false);
+  // A code works once: a second tap before the button re-renders as disabled would fail and hide a successful login.
+  const verifyingRef = useRef(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [sandboxMode, setSandboxMode] = useState(false);
@@ -192,12 +194,16 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
   }
 
   async function handleVerifyOtp() {
+    if (verifyingRef.current) {
+      return;
+    }
     dismissKeyboard();
     if (!otp.trim() || !/^\d{6}$/.test(otp.trim())) {
       setInlineError('Enter the 6-digit code from your SMS.');
       return;
     }
     setInlineError(null);
+    verifyingRef.current = true;
     setLoading(true);
     try {
       const result = await verifySmsLoginOtp(phone, otp);
@@ -224,6 +230,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
       setInlineError(message);
       alert('Login failed', message, { variant: 'error' });
     } finally {
+      verifyingRef.current = false;
       setLoading(false);
     }
   }

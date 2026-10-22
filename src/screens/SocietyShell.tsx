@@ -17,7 +17,7 @@ import {
   resolveInitialAppViewContext,
   type AppViewContext,
 } from '../services/appContext';
-import {
+import { requestAccountDeletion,
   fetchMemberModules,
   fetchMemberOverview,
   fetchOverview,
@@ -62,6 +62,7 @@ import * as Notifications from 'expo-notifications';
 import { pushTypeMatchesAudience, type NotificationAudience } from '../utils/notificationAudience';
 import { subscribeMemberProfileNavigation } from '../services/memberProfileNavigation';
 import { useAppAlert } from '../context/AppAlertContext';
+import { apiErrorMessage } from '../utils/apiError';
 import { mergeLoginUserPatch, userDisplayName } from '../utils/userDisplayName';
 import { AppLogo } from '../components/AppLogo';
 import { AppLoader } from '../components/AppLoader';
@@ -104,7 +105,29 @@ function SocietyBootLoader() {
 
 export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Props) {
   const { theme } = useTheme();
-  const { toast } = useAppAlert();
+  const { toast, alert, confirm } = useAppAlert();
+
+  function deleteAccount() {
+    confirm({
+      title: 'Delete your account?',
+      message:
+        'Your account and personal data will be deleted within 30 days and you will be signed out. Society financial records that must be kept by law stay with your society without your contact details. This cannot be undone.',
+      confirmText: 'Delete account',
+      cancelText: 'Keep account',
+      destructive: true,
+      onConfirm: async () => {
+        try {
+          const result = await requestAccountDeletion();
+          alert('Deletion requested', result.message, { variant: 'success' });
+          void logout();
+        } catch (e) {
+          alert('Could not send the request', apiErrorMessage(e, 'Please try again or email support@societyassets.in.'), {
+            variant: 'error',
+          });
+        }
+      },
+    });
+  }
   const [sessionUser, setSessionUser] = useState(user);
   const [appContext, setAppContextState] = useState<AppViewContext>('CHAIRMAN');
   const [contextReady, setContextReady] = useState(false);
@@ -731,6 +754,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
         onClose={() => setMoreMenuOpen(false)}
         onSelect={openMoreMenuRoute}
         onLogout={() => void logout()}
+        onDeleteAccount={deleteAccount}
       />
 
       <LinearGradient colors={[...theme.headerGradient]} style={styles.hero}>

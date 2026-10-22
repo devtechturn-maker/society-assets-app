@@ -81,7 +81,9 @@ TaskManager.defineTask<Notifications.NotificationTaskPayload>(
       return;
     }
 
-    await playVisitorNotificationSound(type);
+    // The notification is posted on its visitor channel, which plays the sound while the app is in the background;
+    // playing it here as well would sound twice and needs a media-playback foreground service.
+    void type;
   }
 );
 

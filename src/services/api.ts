@@ -743,6 +743,15 @@ export async function updateMaintenanceSettings(
   return data.data;
 }
 
+/** Asks for the signed-in account (and its personal data) to be deleted; support completes it within 30 days. */
+export async function requestAccountDeletion(reason?: string): Promise<{ message: string; alreadyRequested: boolean }> {
+  const { data } = await client.post<ApiResponse<{ message: string; alreadyRequested: boolean }>>(
+    '/auth/account/delete-request',
+    { reason: reason ?? '' }
+  );
+  return data.data;
+}
+
 export const fetchOpeningBalances = () => getData<OpeningBalances>('/society/opening-balances');
 
 export async function saveOpeningBalances(payload: {

@@ -26,6 +26,8 @@ type Props = {
   onClose: () => void;
   onSelect: (routePath: string) => void;
   onLogout?: () => void;
+  /** Store requirement: a way to ask for the account to be deleted from inside the app. */
+  onDeleteAccount?: () => void;
 };
 
 const COLUMNS = 4;
@@ -52,6 +54,7 @@ export function MoreBottomMenu({
   onClose,
   onSelect,
   onLogout,
+  onDeleteAccount,
 }: Props) {
   const { theme } = useTheme();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -176,6 +179,19 @@ export function MoreBottomMenu({
             <Text style={styles.logoutText}>Log out</Text>
           </Pressable>
         ) : null}
+        {onDeleteAccount ? (
+          <Pressable
+            style={styles.deleteBtn}
+            onPress={() => {
+              onClose();
+              onDeleteAccount();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Delete my account"
+          >
+            <Text style={[styles.deleteText, { color: theme.textMuted }]}>Delete my account</Text>
+          </Pressable>
+        ) : null}
       </Animated.View>
     </View>
   );
@@ -271,6 +287,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     backgroundColor: '#fef2f2',
+  },
+  deleteBtn: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  deleteText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   logoutText: {
     color: '#ef4444',
