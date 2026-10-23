@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -17,9 +17,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAppAlert } from '../context/AppAlertContext';
 import { LoginCityscape } from '../components/LoginCityscape';
 import { AppLogo } from '../components/AppLogo';
-import { PhoneVerifiedChip, SelectableOptionCard } from '../components/wizard';
+import { SelectableOptionCard, VerifiedChip } from '../components/wizard';
 import { PRIMARY_LOGO_ASPECT } from '../constants/branding';
-import { completeSmsLoginOtp, requestSmsLoginOtp, verifySmsLoginOtp } from '../services/api';
+import {
+  completeEmailLoginOtp,
+  loginAsGuard,
+  normalizeLoginEmail,
+  requestEmailLoginOtp,
+  verifyEmailLoginOtp,
+} from '../services/api';
 import { withBlockingLoader } from '../services/globalApiLoading';
 import { initializeAppViewContext, clearAppViewContext, requiresRoleSelection } from '../services/appContext';
 import { saveSession } from '../services/storage';
@@ -34,9 +40,18 @@ type Props = {
   onViewPlans: () => void;
 };
 
-type Step = 'phone' | 'otp' | 'select' | 'onboard' | 'create' | 'join';
+type Step = 'email' | 'otp' | 'select' | 'onboard' | 'create' | 'join' | 'guard';
 
 const INDIAN_MOBILE_PATTERN = /^[6-9]\d{9}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const DEFAULT_RESEND_SECONDS = 30;
+
+/** d***@gmail.com: enough to recognise the address on screen without showing all of it. */
+function maskEmail(value: string): string {
+  const at = value.indexOf('@');
+  if (at <= 0) return value;
+  return `${value[0]}***${value.slice(at)}`;
+}
 
 function digitsOnly(value: string): string {
   return value.replace(/\D/g, '');
@@ -103,8 +118,11 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
   const { alert } = useAppAlert();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { logoWidth, logoHeight } = useLoginLogoSize(screenWidth, screenHeight);
-  const [step, setStep] = useState<Step>('phone');
-  const [phone, setPhone] = useState('');
+  const [step, setStep] = useState<Step>('email');
+  const [email, setEmail] = useState('');
+  const [resendIn, setResendIn] = useState(0);
+  const [guardPhone, setGuardPhone] = useState('');
+  const [guardPassword, setGuardPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [accounts, setAccounts] = useState<LoginAccountOption[]>([]);
   const [selectionToken, setSelectionToken] = useState('');
@@ -115,6 +133,12 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [sandboxMode, setSandboxMode] = useState(false);
   const [sandboxOtp, setSandboxOtp] = useState('111111');
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = setTimeout(() => setResendIn((left) => Math.max(0, left - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [resendIn]);
 
   function dismissKeyboard() {
     Keyboard.dismiss();
@@ -133,17 +157,18 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
 
   async function handleRequestOtp() {
     dismissKeyboard();
-    const normalized = normalizePhoneInput(phone);
-    if (!INDIAN_MOBILE_PATTERN.test(normalized)) {
-      setInlineError('Enter a valid 10-digit mobile number.');
+    const normalized = normalizeLoginEmail(email);
+    if (!EMAIL_PATTERN.test(normalized)) {
+      setInlineError('Enter a valid email address.');
       return;
     }
     setInlineError(null);
     setSuccessMessage(null);
     setLoading(true);
     try {
-      const response = await requestSmsLoginOtp(normalized);
-      setPhone(normalized);
+      const response = await requestEmailLoginOtp(normalized);
+      setEmail(normalized);
+      setResendIn(response.resendAfterSeconds ?? DEFAULT_RESEND_SECONDS);
       setStep('otp');
       setOtp('');
       setAccounts([]);
@@ -164,13 +189,14 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
   }
 
   async function handleResendOtp() {
-    if (!INDIAN_MOBILE_PATTERN.test(phone) || loading) {
+    if (!EMAIL_PATTERN.test(email) || loading || resendIn > 0) {
       return;
     }
     setInlineError(null);
     setLoading(true);
     try {
-      const response = await requestSmsLoginOtp(phone);
+      const response = await requestEmailLoginOtp(email);
+      setResendIn(response.resendAfterSeconds ?? DEFAULT_RESEND_SECONDS);
       setOtp('');
       setAccounts([]);
       setSelectionToken('');
@@ -181,7 +207,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
         'Code ready',
         response.sandbox
           ? `Sandbox mode: use OTP ${response.sandboxOtp ?? '111111'}.`
-          : 'A new login code has been sent to your mobile.',
+          : `A new login code has been sent to ${maskEmail(email)}.`,
         { variant: 'success' }
       );
     } catch (e: unknown) {
@@ -199,14 +225,14 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
     }
     dismissKeyboard();
     if (!otp.trim() || !/^\d{6}$/.test(otp.trim())) {
-      setInlineError('Enter the 6-digit code from your SMS.');
+      setInlineError('Enter the 6-digit code from your email.');
       return;
     }
     setInlineError(null);
     verifyingRef.current = true;
     setLoading(true);
     try {
-      const result = await verifySmsLoginOtp(phone, otp);
+      const result = await verifyEmailLoginOtp(email, otp);
       if (result.onboardingRequired) {
         setSelectionToken(result.selectionToken);
         setAccounts([]);
@@ -243,7 +269,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
     setInlineError(null);
     setLoading(true);
     try {
-      const data = await completeSmsLoginOtp(phone, selectionToken, account);
+      const data = await completeEmailLoginOtp(email, selectionToken, account);
       await withBlockingLoader('Loading...', () => finishLogin(data));
     } catch (e: unknown) {
       if (__DEV__) {
@@ -257,11 +283,44 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
     }
   }
 
-  function backToPhone() {
+  async function handleGuardLogin() {
+    dismissKeyboard();
+    const phone = normalizePhoneInput(guardPhone);
+    if (!INDIAN_MOBILE_PATTERN.test(phone)) {
+      setInlineError('Enter your 10-digit mobile number.');
+      return;
+    }
+    if (!guardPassword) {
+      setInlineError('Enter your password.');
+      return;
+    }
+    setInlineError(null);
+    setLoading(true);
+    try {
+      const data = await loginAsGuard(phone, guardPassword);
+      setGuardPassword('');
+      await withBlockingLoader('Loading...', () => finishLogin(data));
+    } catch (e: unknown) {
+      const message = apiErrorMessage(e, 'Login failed');
+      setInlineError(message);
+      alert('Login failed', message, { variant: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function showGuardLogin(show: boolean) {
+    dismissKeyboard();
+    setStep(show ? 'guard' : 'email');
+    setGuardPassword('');
+    setInlineError(null);
+    setSuccessMessage(null);
+  }
+
+  function backToEmail() {
     dismissKeyboard();
     setLoading(false);
-    setStep('phone');
-    setPhone('');
+    setStep('email');
     setOtp('');
     setAccounts([]);
     setSelectionToken('');
@@ -281,21 +340,23 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
   }
 
   const subtitle =
-    step === 'phone'
-      ? 'Enter your mobile number. We will send a one-time code by SMS.'
+    step === 'email'
+      ? 'Enter your email address. We will send you a one-time login code.'
       : step === 'otp'
-        ? 'Enter the 6-digit code sent to your mobile.'
-        : step === 'onboard'
-          ? 'This number is new. Create a society or join an existing one.'
-          : 'Your number is linked to more than one society. Choose where you want to continue.';
+        ? 'Enter the 6-digit code we emailed you.'
+        : step === 'guard'
+          ? 'Security staff: sign in with the mobile number and password your chairman gave you.'
+          : step === 'onboard'
+            ? 'This email is new. Create a society or join an existing one.'
+            : 'Your email is linked to more than one society. Choose where you want to continue.';
 
   const cardTitle =
-    step === 'select' ? 'Choose society' : step === 'onboard' ? 'Get started' : 'Login';
+    step === 'select' ? 'Choose society' : step === 'onboard' ? 'Get started' : step === 'guard' ? 'Security staff login' : 'Login';
 
   if (step === 'create') {
     return (
       <CreateSocietyWizard
-        phone={phone}
+        verifiedEmail={email}
         selectionToken={selectionToken}
         onCreated={(data) => void withBlockingLoader('Loading...', () => finishLogin(data))}
         onBack={() => {
@@ -309,7 +370,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
   if (step === 'join') {
     return (
       <JoinSocietyWizard
-        phone={phone}
+        email={email}
         selectionToken={selectionToken}
         onJoined={(data) => void withBlockingLoader('Loading...', () => finishLogin(data))}
         onBack={() => {
@@ -347,26 +408,27 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
                   <Text style={styles.cardTitle}>{cardTitle}</Text>
                   <Text style={styles.cardSubtitle}>{subtitle}</Text>
 
-                  {step === 'phone' ? (
+                  {step === 'email' ? (
                     <>
-                      <Text style={styles.label}>Mobile Number</Text>
-                      <View style={styles.phoneRow}>
-                        <View style={styles.countryCode}>
-                          <Text style={styles.countryCodeText}>+91</Text>
-                        </View>
-                        <TextInput
-                          style={styles.phoneInput}
-                          placeholder="9876543210"
-                          placeholderTextColor="#94a3b8"
-                          keyboardType="phone-pad"
-                          maxLength={10}
-                          value={phone}
-                          onChangeText={(v) => {
-                            setPhone(normalizePhoneInput(v));
-                            if (inlineError) setInlineError(null);
-                          }}
-                        />
-                      </View>
+                      <Text style={styles.label}>Email Address</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter your email address"
+                        placeholderTextColor="#94a3b8"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="email"
+                        textContentType="emailAddress"
+                        maxLength={254}
+                        value={email}
+                        onChangeText={(v) => {
+                          setEmail(v);
+                          if (inlineError) setInlineError(null);
+                        }}
+                        returnKeyType="send"
+                        onSubmitEditing={() => void handleRequestOtp()}
+                      />
 
                       {inlineError ? (
                         <Text style={styles.error} numberOfLines={3}>
@@ -380,9 +442,85 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
                         disabled={loading === true}
                       >
                         <View style={styles.button}>
-                          <Text style={styles.buttonText}>Send SMS code</Text>
+                          <Text style={styles.buttonText}>Send OTP</Text>
                         </View>
                       </Pressable>
+
+                      <Pressable
+                        style={({ pressed }) => [styles.textLink, styles.guardLink, pressed && styles.plansLinkPressed]}
+                        onPress={() => showGuardLogin(true)}
+                        hitSlop={8}
+                      >
+                        <Text style={styles.textLinkText}>Security staff? Sign in with mobile & password</Text>
+                      </Pressable>
+                    </>
+                  ) : null}
+
+                  {step === 'guard' ? (
+                    <>
+                      <Text style={styles.label}>Mobile Number</Text>
+                      <View style={styles.phoneRow}>
+                        <View style={styles.countryCode}>
+                          <Text style={styles.countryCodeText}>+91</Text>
+                        </View>
+                        <TextInput
+                          style={styles.phoneInput}
+                          placeholder="9876543210"
+                          placeholderTextColor="#94a3b8"
+                          keyboardType="phone-pad"
+                          maxLength={10}
+                          value={guardPhone}
+                          onChangeText={(v) => {
+                            setGuardPhone(normalizePhoneInput(v));
+                            if (inlineError) setInlineError(null);
+                          }}
+                        />
+                      </View>
+
+                      <Text style={[styles.label, styles.labelSpaced]}>Password</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Password"
+                        placeholderTextColor="#94a3b8"
+                        secureTextEntry
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        value={guardPassword}
+                        onChangeText={(v) => {
+                          setGuardPassword(v);
+                          if (inlineError) setInlineError(null);
+                        }}
+                        returnKeyType="go"
+                        onSubmitEditing={() => void handleGuardLogin()}
+                      />
+
+                      {inlineError ? (
+                        <Text style={styles.error} numberOfLines={3}>
+                          {inlineError}
+                        </Text>
+                      ) : null}
+
+                      <Pressable
+                        style={[styles.buttonPressable, loading ? styles.buttonDisabled : null]}
+                        onPress={() => void handleGuardLogin()}
+                        disabled={loading === true}
+                      >
+                        <View style={styles.button}>
+                          <Text style={styles.buttonText}>Sign in</Text>
+                        </View>
+                      </Pressable>
+
+                      <Text style={styles.footerNote}>Forgot your password? Ask your chairman to reset it.</Text>
+
+                      <View style={styles.otpActions}>
+                        <Pressable
+                          style={({ pressed }) => [styles.textLink, pressed && styles.plansLinkPressed]}
+                          onPress={() => showGuardLogin(false)}
+                          hitSlop={8}
+                        >
+                          <Text style={styles.textLinkText}>Residents: sign in with email</Text>
+                        </Pressable>
+                      </View>
                     </>
                   ) : null}
 
@@ -398,7 +536,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
                         <View style={styles.sandboxBanner}>
                           <Text style={styles.sandboxBannerTitle}>Sandbox mode</Text>
                           <Text style={styles.sandboxBannerText}>
-                            No SMS is sent. Use test OTP <Text style={styles.sandboxOtp}>{sandboxOtp}</Text>.
+                            No email is sent. Use test OTP <Text style={styles.sandboxOtp}>{sandboxOtp}</Text>.
                           </Text>
                           <Pressable
                             style={({ pressed }) => [styles.sandboxFillBtn, pressed && styles.plansLinkPressed]}
@@ -412,7 +550,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
                         </View>
                       ) : (
                         <Text style={styles.emailHint}>
-                          Code sent to <Text style={styles.emailHintStrong}>+91 {phone}</Text>
+                          Code sent to <Text style={styles.emailHintStrong}>{maskEmail(email)}</Text>
                         </Text>
                       )}
 
@@ -444,7 +582,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
                         disabled={loading === true}
                       >
                         <View style={styles.button}>
-                          <Text style={styles.buttonText}>Verify code</Text>
+                          <Text style={styles.buttonText}>Verify OTP</Text>
                         </View>
                       </Pressable>
 
@@ -452,16 +590,19 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
                         <Pressable
                           style={({ pressed }) => [styles.textLink, pressed && styles.plansLinkPressed]}
                           onPress={() => void handleResendOtp()}
+                          disabled={resendIn > 0 || loading}
                           hitSlop={8}
                         >
-                          <Text style={styles.textLinkText}>Resend code</Text>
+                          <Text style={[styles.textLinkText, resendIn > 0 && styles.textLinkDisabled]}>
+                            {resendIn > 0 ? `Resend OTP in ${resendIn}s` : 'Resend OTP'}
+                          </Text>
                         </Pressable>
                         <Pressable
                           style={({ pressed }) => [styles.textLink, pressed && styles.plansLinkPressed]}
-                          onPress={backToPhone}
+                          onPress={backToEmail}
                           hitSlop={8}
                         >
-                          <Text style={styles.textLinkText}>Use a different number</Text>
+                          <Text style={styles.textLinkText}>Use a different email</Text>
                         </Pressable>
                       </View>
                     </>
@@ -469,7 +610,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
 
                   {step === 'onboard' ? (
                     <>
-                      <PhoneVerifiedChip phone={phone} style={styles.loginPhoneChip} />
+                      <VerifiedChip value={email} label="Email" style={styles.loginPhoneChip} />
 
                       <Text style={styles.selectHint}>
                         Choose how you want to continue with Society Assets.
@@ -512,7 +653,7 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
 
                   {step === 'select' ? (
                     <>
-                      <PhoneVerifiedChip phone={phone} style={styles.loginPhoneChip} />
+                      <VerifiedChip value={email} label="Email" style={styles.loginPhoneChip} />
 
                       <Text style={styles.selectHint}>
                         Tap a society to open your member access there.
@@ -560,9 +701,11 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
                     </>
                   ) : null}
 
-                  <Text style={styles.footerNote} numberOfLines={2}>
-                    Use the mobile number registered with your society member profile.
-                  </Text>
+                  {step === 'email' || step === 'otp' ? (
+                    <Text style={styles.footerNote} numberOfLines={2}>
+                      Use the email address registered with your society, or a new one to create or join a society.
+                    </Text>
+                  ) : null}
 
                   <Pressable
                     style={({ pressed }) => [styles.plansLink, pressed && styles.plansLinkPressed]}
@@ -845,6 +988,13 @@ const styles = StyleSheet.create({
   textLink: {
     paddingVertical: 8,
     paddingHorizontal: 4,
+  },
+  guardLink: {
+    alignSelf: 'center',
+    marginTop: 14,
+  },
+  textLinkDisabled: {
+    color: '#94a3b8',
   },
   textLinkText: {
     fontSize: 12,

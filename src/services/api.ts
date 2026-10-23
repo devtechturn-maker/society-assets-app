@@ -14,7 +14,7 @@ import type {
   OnboardingOpenFlat,
   SocietyInventoryFlat,
   OnboardingSocietyOption,
-  SmsLoginVerifyResult,
+  EmailLoginVerifyResult,
   MaintenanceSettings,
   MonthlyMaintenanceReportRow,
   NavModule,
@@ -195,18 +195,31 @@ function assertMobileLoginData(payload: LoginData): LoginData {
   return payload;
 }
 
-export async function requestSmsLoginOtp(
-  phone: string
-): Promise<{ message: string; expiresInMinutes: number; sandbox?: boolean; sandboxOtp?: string }> {
-  const { data } = await client.post<
-    ApiResponse<{ message: string; expiresInMinutes: number; sandbox?: boolean; sandboxOtp?: string }>
-  >('/auth/login/request-sms-otp', { phone: phone.trim(), clientType: MOBILE_CLIENT_TYPE });
+export type EmailLoginRequestResult = {
+  message: string;
+  expiresInMinutes: number;
+  /** Seconds before another code can be requested. */
+  resendAfterSeconds?: number;
+  sandbox?: boolean;
+  sandboxOtp?: string;
+};
+
+/** Trimmed, lower-case email, matching how the server looks accounts up. */
+export function normalizeLoginEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+export async function requestEmailLoginOtp(email: string): Promise<EmailLoginRequestResult> {
+  const { data } = await client.post<ApiResponse<EmailLoginRequestResult>>('/auth/login/request-email-otp', {
+    email: normalizeLoginEmail(email),
+    clientType: MOBILE_CLIENT_TYPE,
+  });
   return data.data;
 }
 
-export async function verifySmsLoginOtp(phone: string, otp: string): Promise<SmsLoginVerifyResult> {
-  const { data } = await client.post<ApiResponse<SmsLoginVerifyResult>>('/auth/login/verify-sms-otp', {
-    phone: phone.trim(),
+export async function verifyEmailLoginOtp(email: string, otp: string): Promise<EmailLoginVerifyResult> {
+  const { data } = await client.post<ApiResponse<EmailLoginVerifyResult>>('/auth/login/verify-email-otp', {
+    email: normalizeLoginEmail(email),
     otp: otp.trim(),
     clientType: MOBILE_CLIENT_TYPE,
   });
@@ -217,17 +230,27 @@ export async function verifySmsLoginOtp(phone: string, otp: string): Promise<Sms
   return assertMobileLoginData(payload as LoginData);
 }
 
-export async function completeSmsLoginOtp(
-  phone: string,
+export async function completeEmailLoginOtp(
+  email: string,
   selectionToken: string,
   account: Pick<LoginAccountOption, 'memberId' | 'userId' | 'societyId'>
 ): Promise<LoginData> {
-  const { data } = await client.post<ApiResponse<LoginData>>('/auth/login/complete-sms-otp', {
-    phone: phone.trim(),
+  const { data } = await client.post<ApiResponse<LoginData>>('/auth/login/complete-email-otp', {
+    email: normalizeLoginEmail(email),
     selectionToken: selectionToken.trim(),
     memberId: account.memberId,
     userId: account.userId,
     societyId: account.societyId,
+    clientType: MOBILE_CLIENT_TYPE,
+  });
+  return assertMobileLoginData(data.data);
+}
+
+/** Security staff: registered phone number and the password the chairman set. */
+export async function loginAsGuard(phone: string, password: string): Promise<LoginData> {
+  const { data } = await client.post<ApiResponse<LoginData>>('/auth/login/guard', {
+    phone: phone.trim(),
+    encryptedPassword: encryptPasswordForLogin(password),
     clientType: MOBILE_CLIENT_TYPE,
   });
   return assertMobileLoginData(data.data);
@@ -270,6 +293,7 @@ export async function listOnboardingOpenFlats(societyId: string): Promise<Onboar
 }
 
 export async function createSocietyMobile(payload: {
+  /** Contact mobile number for the society (sign-in is by email). */
   phone: string;
   selectionToken: string;
   societyName: string;
@@ -291,6 +315,9 @@ export async function createSocietyMobile(payload: {
 }
 
 export async function joinSocietyMobile(payload: {
+  /** Verified login email. */
+  email: string;
+  /** Contact mobile number (sign-in is by email). */
   phone: string;
   selectionToken: string;
   societyId: string;
@@ -1592,8 +1619,17 @@ export async function fetchGateKeeperAssignments(): Promise<GateKeeperAssignment
   return getData<GateKeeperAssignment[]>('/society/gatekeepers');
 }
 
-export async function assignGateKeeper(payload: { name: string; phone: string }): Promise<GateKeeperAssignment> {
-  const { data } = await client.post<ApiResponse<GateKeeperAssignment>>('/society/gatekeeper/assign', payload);
+export async function assignGateKeeper(payload: {
+  name: string;
+  phone: string;
+  /** Sign-in password for the guard (they choose their own on first sign-in). */
+  password: string;
+}): Promise<GateKeeperAssignment> {
+  const { data } = await client.post<ApiResponse<GateKeeperAssignment>>('/society/gatekeeper/assign', {
+    name: payload.name,
+    phone: payload.phone,
+    encryptedPassword: encryptPasswordForLogin(payload.password),
+  });
   return data.data;
 }
 
@@ -1609,8 +1645,10 @@ export async function setGateKeeperActive(assignmentId: string, active: boolean)
   return data.data;
 }
 
-export async function resetGateKeeperPassword(assignmentId: string): Promise<void> {
-  await client.post(`/society/gatekeeper/${assignmentId}/reset-password`);
+export async function resetGateKeeperPassword(assignmentId: string, password: string): Promise<void> {
+  await client.post(`/society/gatekeeper/${assignmentId}/reset-password`, {
+    encryptedPassword: encryptPasswordForLogin(password),
+  });
 }
 
 // ---------------------------------------------------------------- Society events & festivals

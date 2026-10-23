@@ -4,7 +4,7 @@ import {
   BuildingFlatConfigEditor,
   FlatNumberFullList,
   FormatOptionCard,
-  PhoneVerifiedChip,
+  VerifiedChip,
   WizardShell,
   WizardTextField,
 } from '../components/wizard';
@@ -28,7 +28,8 @@ import {
 import { colors } from '../theme/colors';
 
 type Props = {
-  phone?: string;
+  /** New account: login email already verified by the code (becomes the chairman's email). */
+  verifiedEmail?: string;
   selectionToken?: string;
   initialChairmanName?: string;
   additionalSociety?: boolean;
@@ -58,8 +59,10 @@ const STEP_COPY: Record<WizardStep, { title: string; subtitle: string }> = {
   },
 };
 
+const INDIAN_MOBILE_PATTERN = /^[6-9]\d{9}$/;
+
 export function CreateSocietyWizard({
-  phone = '',
+  verifiedEmail = '',
   selectionToken = '',
   initialChairmanName = '',
   additionalSociety = false,
@@ -83,6 +86,7 @@ export function CreateSocietyWizard({
   const [chairmanFlatDigits, setChairmanFlatDigits] = useState<string | null>(null);
   const [chairmanName, setChairmanName] = useState(initialChairmanName);
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
 
@@ -162,7 +166,9 @@ export function CreateSocietyWizard({
     }
     if (step === 'profile') {
       if (!chairmanName.trim()) return 'Enter your name.';
-      if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      if (verifiedEmail) {
+        if (!INDIAN_MOBILE_PATTERN.test(phone)) return 'Enter a valid 10-digit mobile number.';
+      } else if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
         return 'Enter a valid email address.';
       }
     }
@@ -219,7 +225,7 @@ export function CreateSocietyWizard({
         flatNumbers,
         chairmanFlatNumber: isExplicit ? resolveChairmanFlatKey() ?? undefined : undefined,
         chairmanName: chairmanName.trim(),
-        email: email.trim().toLowerCase(),
+        email: (verifiedEmail || email).trim().toLowerCase(),
       };
       const data =
         additionalSociety || !selectionToken
@@ -397,16 +403,31 @@ export function CreateSocietyWizard({
             placeholder="Your name"
             autoFocus
           />
-          <WizardTextField
-            label="Email"
-            spaced
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@example.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          {phone ? <PhoneVerifiedChip phone={phone} label="Mobile" /> : null}
+          {verifiedEmail ? (
+            <>
+              <WizardTextField
+                label="Mobile number"
+                spaced
+                value={phone}
+                onChangeText={(v) => setPhone(v.replace(/\D/g, '').slice(0, 10))}
+                placeholder="10-digit mobile number"
+                keyboardType="phone-pad"
+                maxLength={10}
+                hint="Society contact number. You sign in with your email."
+              />
+              <VerifiedChip value={verifiedEmail} label="Email" />
+            </>
+          ) : (
+            <WizardTextField
+              label="Email"
+              spaced
+              value={email}
+              onChangeText={setEmail}
+              placeholder="you@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          )}
         </>
       ) : null}
     </WizardShell>

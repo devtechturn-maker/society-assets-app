@@ -44,6 +44,27 @@ function GateKeeperCard({
 }) {
   const { theme } = useTheme();
   const { toast, confirm } = useAppAlert();
+  const [resetOpen, setResetOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [resetting, setResetting] = useState(false);
+
+  async function handleResetPassword() {
+    if (newPassword.length < 8) {
+      toast('Password must be at least 8 characters', 'error');
+      return;
+    }
+    setResetting(true);
+    try {
+      await resetGateKeeperPassword(assignment.id, newPassword);
+      toast(`Password updated. Share it with ${assignment.displayName}.`, 'success');
+      setResetOpen(false);
+      setNewPassword('');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Reset failed', 'error');
+    } finally {
+      setResetting(false);
+    }
+  }
 
   function handleRemove() {
     confirm({
@@ -99,9 +120,7 @@ function GateKeeperCard({
           </Text>
         </Pressable>
         <Pressable
-          onPress={() =>
-            resetGateKeeperPassword(assignment.id).then(() => toast('Password reset sent', 'success'))
-          }
+          onPress={() => setResetOpen((open) => !open)}
           style={[styles.gkActionBtn, { borderColor: theme.cardBorder, backgroundColor: theme.chipBg }]}
         >
           <Ionicons name="key-outline" size={16} color={theme.accent} />
@@ -115,6 +134,29 @@ function GateKeeperCard({
           <Text style={[styles.gkActionText, { color: '#dc2626' }]}>Remove</Text>
         </Pressable>
       </View>
+
+      {resetOpen ? (
+        <View style={styles.gkReset}>
+          <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>New password (at least 8 characters)</Text>
+          <TextInput
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder="New password for the guard"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholderTextColor={theme.placeholder}
+            style={[styles.input, { color: theme.inputText, borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}
+          />
+          <Pressable
+            onPress={() => void handleResetPassword()}
+            disabled={resetting}
+            style={[styles.primaryBtn, { backgroundColor: theme.accent, opacity: resetting ? 0.7 : 1 }]}
+          >
+            {resetting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Save password</Text>}
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -127,6 +169,7 @@ export function SocietyVisitorAdminModule() {
   const [assignments, setAssignments] = useState<GateKeeperAssignment[]>([]);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -162,12 +205,17 @@ export function SocietyVisitorAdminModule() {
       toast('Enter security name and a valid 10-digit mobile number', 'error');
       return;
     }
+    if (password.length < 8) {
+      toast('Set a sign-in password of at least 8 characters', 'error');
+      return;
+    }
     setAssigning(true);
     try {
-      await assignGateKeeper({ name: trimmedName, phone: trimmedPhone });
-      toast('Gate keeper assigned', 'success');
+      await assignGateKeeper({ name: trimmedName, phone: trimmedPhone, password });
+      toast('Gate keeper assigned. Share the mobile number and password with them.', 'success');
       setName('');
       setPhone('');
+      setPassword('');
       await load(true);
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Assign failed', 'error');
@@ -270,7 +318,7 @@ export function SocietyVisitorAdminModule() {
     >
       <SectionCard
         title="Assign gate keeper"
-        subtitle="Security staff log in with their mobile number to register visitors at the gate"
+        subtitle="Security staff sign in with this mobile number and password, then choose their own password"
       >
         <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>Name</Text>
         <TextInput
@@ -286,6 +334,17 @@ export function SocietyVisitorAdminModule() {
           onChangeText={setPhone}
           placeholder="10-digit mobile"
           keyboardType="phone-pad"
+          placeholderTextColor={theme.placeholder}
+          style={[styles.input, { color: theme.inputText, borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}
+        />
+        <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>Sign-in password</Text>
+        <TextInput
+          value={password}
+          onChangeText={setPassword}
+          placeholder="At least 8 characters"
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
           placeholderTextColor={theme.placeholder}
           style={[styles.input, { color: theme.inputText, borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}
         />
@@ -459,6 +518,9 @@ const styles = StyleSheet.create({
   gkName: { fontSize: 16, fontWeight: '800' },
   gkPhone: { fontSize: 13, marginTop: 2 },
   gkStatus: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  gkReset: {
+    marginTop: 12,
+  },
   gkActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   gkActionBtn: {
     flexDirection: 'row',

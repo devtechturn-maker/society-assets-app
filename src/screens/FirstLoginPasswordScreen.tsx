@@ -72,7 +72,7 @@ export function FirstLoginPasswordScreen({ user, onPasswordChanged }: Props) {
             <Text style={styles.kicker}>SECURITY</Text>
             <Text style={styles.title}>Set your new password</Text>
             <Text style={styles.subtitle}>
-              Your society sent a temporary password by email. Choose a new password to continue.
+              You signed in with a temporary password. Choose your own password to continue.
             </Text>
           </LinearGradient>
 

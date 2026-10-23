@@ -156,7 +156,7 @@ export interface LoginAccountOption {
 
 export type FlatNumberFormat = 'FLOOR' | 'SEQUENTIAL' | 'CUSTOM' | 'EXPLICIT';
 
-export type SmsLoginVerifyResult =
+export type EmailLoginVerifyResult =
   | ({ selectionRequired: false; onboardingRequired?: false } & LoginData)
   | {
       selectionRequired: true;

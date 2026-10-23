@@ -21,7 +21,8 @@ import { JOIN_CODE_LENGTH, normalizeJoinCodeInput } from '../utils/societyJoinSh
 import { colors } from '../theme/colors';
 
 type Props = {
-  phone: string;
+  /** Login email already verified by the code. */
+  email: string;
   selectionToken: string;
   onJoined: (data: LoginData) => void;
   onBack: () => void;
@@ -43,12 +44,14 @@ const STEP_COPY: Record<Step, { title: string; subtitle: string }> = {
     subtitle: 'Only open flats are listed.',
   },
   name: {
-    title: 'Your name',
+    title: 'Your details',
     subtitle: '',
   },
 };
 
-export function JoinSocietyWizard({ phone, selectionToken, onJoined, onBack }: Props) {
+const INDIAN_MOBILE_PATTERN = /^[6-9]\d{9}$/;
+
+export function JoinSocietyWizard({ email, selectionToken, onJoined, onBack }: Props) {
   const { alert } = useAppAlert();
   const [step, setStep] = useState<Step>('code');
   const [joinCode, setJoinCode] = useState('');
@@ -58,6 +61,7 @@ export function JoinSocietyWizard({ phone, selectionToken, onJoined, onBack }: P
   const [flats, setFlats] = useState<OnboardingOpenFlat[]>([]);
   const [selectedFlat, setSelectedFlat] = useState<OnboardingOpenFlat | null>(null);
   const [memberName, setMemberName] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
@@ -159,10 +163,15 @@ export function JoinSocietyWizard({ phone, selectionToken, onJoined, onBack }: P
       setInlineError('Enter your name.');
       return;
     }
+    if (!INDIAN_MOBILE_PATTERN.test(phone)) {
+      setInlineError('Enter a valid 10-digit mobile number.');
+      return;
+    }
     setSubmitting(true);
     setInlineError(null);
     try {
       const data = await joinSocietyMobile({
+        email,
         phone,
         selectionToken,
         societyId: selectedSociety.societyId,
@@ -182,7 +191,7 @@ export function JoinSocietyWizard({ phone, selectionToken, onJoined, onBack }: P
   const copy = STEP_COPY[step];
   const subtitle =
     step === 'name'
-      ? `Flat ${selectedFlat?.flatNumber ?? ''} · +91 ${phone}`
+      ? `Flat ${selectedFlat?.flatNumber ?? ''} · ${email}`
       : copy.subtitle;
 
   return (
@@ -297,12 +306,25 @@ export function JoinSocietyWizard({ phone, selectionToken, onJoined, onBack }: P
       ) : null}
 
       {step === 'name' ? (
-        <WizardTextField
-          value={memberName}
-          onChangeText={setMemberName}
-          placeholder="Full name"
-          autoFocus
-        />
+        <>
+          <WizardTextField
+            label="Full name"
+            value={memberName}
+            onChangeText={setMemberName}
+            placeholder="Full name"
+            autoFocus
+          />
+          <WizardTextField
+            label="Mobile number"
+            spaced
+            value={phone}
+            onChangeText={(v) => setPhone(v.replace(/\D/g, '').slice(-10))}
+            placeholder="10-digit mobile number"
+            keyboardType="phone-pad"
+            maxLength={10}
+            hint="Shared with your society office. You sign in with your email."
+          />
+        </>
       ) : null}
     </WizardShell>
   );

@@ -208,7 +208,8 @@ function AppRoot() {
             setSubscriptionStatus(next.canAccessApp ? null : next);
           }}
         />
-      ) : user && user.firstLogin && !isGateKeeperRole(user.role) ? (
+      ) : user && user.firstLogin && isGateKeeperRole(user.role) ? (
+        // Only security staff use passwords (set by the chairman); everyone else signs in with an email code.
         <FirstLoginPasswordScreen
           user={user}
           onPasswordChanged={(updated) => {

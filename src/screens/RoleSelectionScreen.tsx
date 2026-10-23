@@ -128,7 +128,7 @@ export function RoleSelectionScreen({ user, onSelected, onUserUpdated, onLogout 
           <View style={[styles.groupCard, { borderColor: colors.border, backgroundColor: theme.surface }]}>
             <Text style={[styles.groupTitle, { color: colors.navy900 }]}>Society</Text>
             <Text style={[styles.groupSubtitle, { color: theme.textMuted }]}>
-              Link your flat or register another society with this mobile number.
+              Link your flat or register another society.
             </Text>
 
             <View style={[styles.groupInner, { borderColor: colors.border }]}>
