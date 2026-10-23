@@ -37,7 +37,6 @@ import { JoinSocietyWizard } from './JoinSocietyWizard';
 
 type Props = {
   onLoggedIn: (user: LoginData) => void;
-  onViewPlans: () => void;
 };
 
 type Step = 'email' | 'otp' | 'select' | 'onboard' | 'create' | 'join' | 'guard';
@@ -114,7 +113,7 @@ function useLoginLogoSize(screenWidth: number, screenHeight: number) {
   }, [screenWidth, screenHeight]);
 }
 
-export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
+export function LoginScreen({ onLoggedIn }: Props) {
   const { alert } = useAppAlert();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { logoWidth, logoHeight } = useLoginLogoSize(screenWidth, screenHeight);
@@ -707,12 +706,6 @@ export function LoginScreen({ onLoggedIn, onViewPlans }: Props) {
                     </Text>
                   ) : null}
 
-                  <Pressable
-                    style={({ pressed }) => [styles.plansLink, pressed && styles.plansLinkPressed]}
-                    onPress={onViewPlans}
-                  >
-                    <Text style={styles.plansLinkText}>View plans & register →</Text>
-                  </Pressable>
                 </View>
               </View>
             </View>

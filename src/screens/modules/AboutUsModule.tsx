@@ -29,7 +29,7 @@ const ABOUT_BLOCKS: AboutBlock[] = [
     title: 'Built on trust',
     paragraphs: [
       'Your society data is scoped to your account — members only see information for their own society.',
-      'Online payments use secure checkout with receipts emailed to members after successful payment.',
+      "Members pay maintenance to the society's bank account and upload the payment screenshot; the office verifies it and receipts are emailed.",
       'Role-based access keeps chairman, treasurer, and member actions clearly separated.',
     ],
   },

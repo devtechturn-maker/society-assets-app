@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAppAlert } from '../../context/AppAlertContext';
-import { PlanPicker } from '../../components/subscription/PlanPicker';
 import { cancelSubscriptionAutoRenew, fetchSubscriptionStatus } from '../../services/api';
 import { apiErrorMessage } from '../../utils/apiError';
 import { getUser } from '../../services/storage';
@@ -126,7 +125,7 @@ export function SubscriptionModule() {
             </Text>
             <Text style={[styles.autoRenewText, status.autoRenewStatus === 'PENDING' ? styles.warnText : null]}>
               {status.autoRenewStatus === 'PENDING'
-                ? 'The last automatic payment failed. Razorpay will retry, or renew now to avoid interruption.'
+                ? 'The last automatic payment failed. Razorpay will retry it automatically.'
                 : `Next charge${status.nextChargeAmount ? ` of ${inr(status.nextChargeAmount)}` : ''} on ${day(status.nextChargeAt)}. You get a reminder before every charge.`}
             </Text>
             {canPurchase ? (
@@ -139,7 +138,7 @@ export function SubscriptionModule() {
           </View>
         ) : status.autoRenewStatus === 'HALTED' || status.autoRenewStatus === 'CANCELLED' ? (
           <Text style={[styles.meta, { color: theme.textMuted }]}>
-            Auto-renew is off. Renewing a plan turns it on again.
+            Auto-renew is off.
           </Text>
         ) : null}
       </View>
@@ -167,17 +166,6 @@ export function SubscriptionModule() {
         </>
       ) : null}
 
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>{onTrial ? 'Choose a plan' : 'Renew or change plan'}</Text>
-      <Text style={[styles.meta, { color: theme.textMuted, marginBottom: 10 }]}>
-        A new plan starts when your current period ends, so you never lose paid days.
-      </Text>
-      <PlanPicker
-        plans={status.durationPlans ?? []}
-        flatCount={status.flatCount ?? 0}
-        canPurchase={canPurchase}
-        buyLabel={onTrial ? 'Buy plan' : 'Renew'}
-        onActivated={() => void load()}
-      />
     </ScrollView>
   );
 }

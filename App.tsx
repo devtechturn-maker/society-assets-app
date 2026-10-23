@@ -7,11 +7,10 @@ import { GlobalLoadingOverlay } from './src/components/GlobalLoadingOverlay';
 import { FirstLoginPasswordScreen } from './src/screens/FirstLoginPasswordScreen';
 import { ForgotPasswordScreen } from './src/screens/ForgotPasswordScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
-import { PlansScreen } from './src/screens/PlansScreen';
 import { ProfileCompletionScreen } from './src/screens/ProfileCompletionScreen';
 import { SocietyShell } from './src/screens/SocietyShell';
 import { SplashScreen } from './src/screens/SplashScreen';
-import { PlanPurchaseScreen } from './src/screens/PlanPurchaseScreen';
+import { SubscriptionEndedScreen } from './src/screens/SubscriptionEndedScreen';
 import { RoleSelectionScreen } from './src/screens/RoleSelectionScreen';
 import { loadStoredSession, setSessionInvalidHandler } from './src/services/session';
 import { fetchSubscriptionStatus, isGateKeeperRole } from './src/services/api';
@@ -40,7 +39,7 @@ if (__DEV__) {
 let appLaunchGeneration = 0;
 appLaunchGeneration += 1;
 
-type GuestScreen = 'login' | 'plans' | 'forgot-password';
+type GuestScreen = 'login' | 'forgot-password';
 
 function AppRoot() {
   const { theme } = useTheme();
@@ -198,10 +197,10 @@ function AppRoot() {
       {!sessionReady ? (
         <AppBootLoader label="Loading..." />
       ) : user && subscriptionStatus && !subscriptionStatus.canAccessApp ? (
-        <PlanPurchaseScreen
+        <SubscriptionEndedScreen
           status={subscriptionStatus}
           societyId={user.societyId}
-          canPurchase={['CHAIRMAN', 'TREASURER'].includes(String(user.role ?? '').toUpperCase())}
+          isOffice={['CHAIRMAN', 'TREASURER'].includes(String(user.role ?? '').toUpperCase())}
           onLogout={handleLogout}
           onRefreshStatus={fetchSubscriptionStatus}
           onActivated={(next) => {
@@ -243,18 +242,13 @@ function AppRoot() {
           onUserUpdated={setUser}
           onSwitchRole={canSwitchLoginRole(user) ? handleSwitchRole : undefined}
         />
-      ) : guestScreen === 'plans' ? (
-        <PlansScreen onBack={() => setGuestScreen('login')} />
       ) : guestScreen === 'forgot-password' ? (
         <ForgotPasswordScreen
           onBackToLogin={() => setGuestScreen('login')}
           onPasswordReset={() => setGuestScreen('login')}
         />
       ) : (
-        <LoginScreen
-          onLoggedIn={handleLoggedIn}
-          onViewPlans={() => setGuestScreen('plans')}
-        />
+        <LoginScreen onLoggedIn={handleLoggedIn} />
       )}
     </View>
   );

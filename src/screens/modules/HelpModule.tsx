@@ -36,7 +36,7 @@ const CHAIRMAN_HELP: HelpSection[] = [
     title: 'Reports & subscription',
     items: [
       'Download financial reports and email them to members from the Reports module.',
-      'Manage your Society Assets plan, upgrade, or buy extra member slots under Subscription.',
+      "See your society's plan, end date and auto-renew status under Subscription.",
       'Keep your subscription active to avoid interruption to society features.',
     ],
   },
