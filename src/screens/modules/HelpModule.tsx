@@ -20,7 +20,8 @@ const CHAIRMAN_HELP: HelpSection[] = [
     title: 'Maintenance & collections',
     items: [
       'Record maintenance manually or import entries from Excel under the Maintenance module.',
-      'Members can pay online when payment settings are configured in Services.',
+      "Add the society's bank details under Services → Bank details for maintenance; members transfer to that account and upload a screenshot.",
+      'Approve or reject those payments under Member payments — approved payments are recorded as maintenance.',
       'Send pending reminders from the Maintenance audit view for members with outstanding dues.',
     ],
   },
@@ -55,7 +56,7 @@ const MEMBER_HELP: HelpSection[] = [
     title: 'Your member portal',
     items: [
       'View your maintenance history and pending dues under My Maintenance.',
-      'Pay maintenance online when your chairman has enabled member payments.',
+      "Pay by transferring to your society's bank account, then tap \"I have paid — upload screenshot\"; the office verifies it.",
       'Keep your profile email verified to receive notifications and receipts.',
     ],
   },
