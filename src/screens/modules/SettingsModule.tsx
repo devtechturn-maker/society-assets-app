@@ -20,7 +20,10 @@ import {
   updateMaintenanceSettings,
   updateSocietyBankDetails,
 } from '../../services/api';
-import { BankDetailsCard } from '../../components/payment/MaintenancePayment';
+import { BankDetailsCard, SocietyQrCard } from '../../components/payment/MaintenancePayment';
+import { AuthenticatedImage } from '../../components/chat/AuthenticatedImage';
+import { removeSocietyPaymentQr, societyPaymentQrPath, uploadSocietyPaymentQr } from '../../services/api';
+import { pickPhotoFromCamera, pickPhotoFromLibrary, showPhotoSourcePicker, type PickedPhoto } from '../../utils/pickPhoto';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
@@ -56,6 +59,46 @@ export function SettingsModule() {
   const { alert, confirm } = useAppAlert();
   const settingsLoad = useAsyncLoad(fetchMaintenanceSettings, []);
   const bankLoad = useAsyncLoad(fetchSocietyBankDetails, []);
+  const [qrBusy, setQrBusy] = useState(false);
+
+  /** Chairman: choose the society's UPI / bank QR (full quality so it stays scannable) and upload it. */
+  function chooseQr() {
+    const upload = async (photo: PickedPhoto | null) => {
+      if (!photo) return;
+      setQrBusy(true);
+      try {
+        await uploadSocietyPaymentQr(photo);
+        alert('QR code saved', 'Members can now scan it to pay maintenance. All members were notified about the change.', { variant: 'success' });
+        bankLoad.refresh();
+      } catch (e: unknown) {
+        const msg = axios.isAxiosError(e) ? (e.response?.data as { message?: string } | undefined)?.message : undefined;
+        alert('Could not save QR code', msg || 'Please try again.', { variant: 'error' });
+      } finally {
+        setQrBusy(false);
+      }
+    };
+    showPhotoSourcePicker(() => void pickPhotoFromCamera(1).then(upload), () => void pickPhotoFromLibrary(1).then(upload));
+  }
+
+  function removeQr() {
+    confirm({
+      title: 'Remove payment QR?',
+      message: 'Members will no longer see the QR code on the payment screen.',
+      confirmText: 'Remove',
+      destructive: true,
+      onConfirm: async () => {
+        setQrBusy(true);
+        try {
+          await removeSocietyPaymentQr();
+          bankLoad.refresh();
+        } catch {
+          alert('Could not remove QR code', 'Please try again.', { variant: 'error' });
+        } finally {
+          setQrBusy(false);
+        }
+      },
+    });
+  }
   const typesLoad = useAsyncLoad(fetchContractTypes, []);
   const pageLoading =
     (settingsLoad.loading && !settingsLoad.data) ||
@@ -351,6 +394,7 @@ export function SettingsModule() {
         {bankLoad.data && !bankLoad.data.canEdit ? (
           bankLoad.data.configured ? (
             <View style={styles.form}>
+              {bankLoad.data.hasQrCode ? <SocietyQrCard details={bankLoad.data} portal="society" /> : null}
               <BankDetailsCard details={bankLoad.data} />
               <Text style={[styles.paymentHint, { color: theme.textMuted }]}>Only the chairman can change these details.</Text>
             </View>
@@ -366,6 +410,36 @@ export function SettingsModule() {
               Members pay maintenance into this account from their own banking app, then upload a screenshot. You verify
               each payment under Member payments before it is recorded.
             </Text>
+            <View style={[styles.qrBox, { borderColor: theme.cardBorder }]}>
+              <Text style={[styles.qrTitle, { color: theme.text }]}>Society payment QR code</Text>
+              <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
+                Upload the society's UPI / bank QR (from PhonePe, Google Pay, Paytm or your bank). Members scan it to pay.
+                Every member is notified whenever it changes.
+              </Text>
+              {bankLoad.data.hasQrCode ? (
+                <View style={styles.qrPreview}>
+                  <AuthenticatedImage
+                    path={societyPaymentQrPath('society', bankLoad.data.qrUpdatedAt)}
+                    style={{ width: 180, height: 180 }}
+                    resizeMode="contain"
+                  />
+                </View>
+              ) : null}
+              <Pressable
+                disabled={qrBusy}
+                onPress={chooseQr}
+                style={({ pressed }) => [styles.primaryBtn, { backgroundColor: theme.accent, opacity: pressed || qrBusy ? 0.8 : 1 }]}
+              >
+                <Text style={styles.primaryBtnText}>
+                  {qrBusy ? 'Saving…' : bankLoad.data.hasQrCode ? 'Replace QR code' : 'Upload QR code'}
+                </Text>
+              </Pressable>
+              {bankLoad.data.hasQrCode ? (
+                <Pressable disabled={qrBusy} onPress={removeQr} style={{ alignSelf: 'center', padding: 10 }}>
+                  <Text style={{ color: '#b91c1c', fontWeight: '700' }}>Remove QR code</Text>
+                </Pressable>
+              ) : null}
+            </View>
             <FormField label="Account holder name" theme={theme}>
               <TextInput style={inputStyle(theme)} value={bankHolder} onChangeText={setBankHolder} placeholder="As per bank records" placeholderTextColor={theme.placeholder} maxLength={128} />
             </FormField>
@@ -520,6 +594,9 @@ function CheckboxField({
 }
 
 const styles = StyleSheet.create({
+  qrBox: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 8, marginBottom: 14 },
+  qrTitle: { fontSize: 15, fontWeight: '800' },
+  qrPreview: { alignSelf: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 6 },
   scroll: { padding: 12, paddingBottom: 32, gap: 12 },
   accordion: { borderWidth: 1, borderRadius: 12, overflow: 'hidden' },
   accordionHead: {

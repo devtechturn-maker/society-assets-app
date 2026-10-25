@@ -192,7 +192,7 @@ export function MemberDashboardModule({ onOpenProfile, onOpenNotice, onOpenVisit
       {overview.data && overview.data.maintenanceVisible !== false ? (
         <SectionCard
           title="Pay maintenance"
-          subtitle="Pay the society's bank account, then upload the payment screenshot"
+          subtitle="Scan the society QR or pay its bank account, then upload the screenshot"
         >
           <MaintenancePaymentPanel
             compact

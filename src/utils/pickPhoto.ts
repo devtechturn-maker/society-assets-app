@@ -24,7 +24,7 @@ function normalizeAsset(asset: ImagePicker.ImagePickerAsset): PickedPhoto {
   return { uri, fileName, mimeType };
 }
 
-export async function pickPhotoFromCamera(): Promise<PickedPhoto | null> {
+export async function pickPhotoFromCamera(quality = 0.55): Promise<PickedPhoto | null> {
   const granted = await ensureMediaPermissions('camera');
   if (!granted) {
     Alert.alert('Camera permission', 'Allow camera access to take a photo.');
@@ -32,14 +32,14 @@ export async function pickPhotoFromCamera(): Promise<PickedPhoto | null> {
   }
   const result = await ImagePicker.launchCameraAsync({
     mediaTypes: ['images'],
-    quality: 0.55,
+    quality,
     exif: false,
   });
   if (result.canceled || !result.assets?.length) return null;
   return normalizeAsset(result.assets[0]);
 }
 
-export async function pickPhotoFromLibrary(): Promise<PickedPhoto | null> {
+export async function pickPhotoFromLibrary(quality = 0.55): Promise<PickedPhoto | null> {
   const granted = await ensureMediaPermissions('library');
   if (!granted) {
     Alert.alert('Photos permission', 'Allow photo library access to choose an image.');
@@ -47,7 +47,7 @@ export async function pickPhotoFromLibrary(): Promise<PickedPhoto | null> {
   }
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
-    quality: 0.55,
+    quality,
     exif: false,
   });
   if (result.canceled || !result.assets?.length) return null;

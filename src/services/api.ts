@@ -854,6 +854,28 @@ export async function updateSocietyBankDetails(payload: {
   return data.data;
 }
 
+/** Chairman: upload or replace the society payment QR. Members are notified of every change. */
+export async function uploadSocietyPaymentQr(photo: { uri: string; fileName: string; mimeType: string }): Promise<SocietyBankDetails> {
+  const formData = new FormData();
+  formData.append('file', { uri: photo.uri, name: photo.fileName, type: photo.mimeType } as unknown as Blob);
+  const { data } = await client.post<ApiResponse<SocietyBankDetails>>('/society/settings/bank-details/qr', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000,
+  });
+  return data.data;
+}
+
+export async function removeSocietyPaymentQr(): Promise<SocietyBankDetails> {
+  const { data } = await client.delete<ApiResponse<SocietyBankDetails>>('/society/settings/bank-details/qr');
+  return data.data;
+}
+
+/** QR image path for the signed-in user (member screen or society office); the version busts the image cache. */
+export function societyPaymentQrPath(portal: 'member' | 'society', updatedAt?: string | null): string {
+  const base = portal === 'member' ? '/member/maintenance/payment-qr' : '/society/settings/bank-details/qr';
+  return `${base}?v=${encodeURIComponent(updatedAt ?? '0')}`;
+}
+
 export const fetchContractTypes = () =>
   getData<SocietyContractTypeOption[]>('/society/settings/contract-types');
 

@@ -326,6 +326,9 @@ export interface SocietyBankDetails {
   ifsc: string;
   upiId: string;
   paymentInstructions: string;
+  /** The chairman uploaded the society's payment QR (UPI / bank). */
+  hasQrCode?: boolean;
+  qrUpdatedAt?: string | null;
   updatedAt?: string | null;
   /** Office view only: true for the chairman. */
   canEdit?: boolean;

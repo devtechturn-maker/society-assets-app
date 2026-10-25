@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -14,9 +15,13 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { API_BASE_URL } from '../../config/env';
+import { getToken } from '../../services/storage';
 import { AuthenticatedImage } from '../chat/AuthenticatedImage';
 import { useAppAlert } from '../../context/AppAlertContext';
-import { memberPaymentScreenshotPath, submitMaintenancePayment } from '../../services/api';
+import { memberPaymentScreenshotPath, societyPaymentQrPath, submitMaintenancePayment } from '../../services/api';
 import type {
   MaintenancePaymentMethod,
   MaintenancePaymentSubmission,
@@ -71,6 +76,97 @@ export function StatusBadge({ status }: { status: string }) {
   return <Text style={[styles.badge, { color: s.color, backgroundColor: s.bg, borderColor: s.color }]}>{s.label}</Text>;
 }
 
+/**
+ * The society's payment QR (uploaded by the chairman): members scan it from another phone, share it to their UPI
+ * app, or open their UPI app directly when the society has a UPI ID. Money goes straight to the society.
+ */
+export function SocietyQrCard({
+  details,
+  portal,
+  amount,
+  note,
+}: {
+  details: SocietyBankDetails;
+  portal: 'member' | 'society';
+  amount?: number;
+  note?: string;
+}) {
+  const { theme } = useTheme();
+  const { toast } = useAppAlert();
+  const [sharing, setSharing] = useState(false);
+  const path = societyPaymentQrPath(portal, details.qrUpdatedAt);
+
+  async function shareQr() {
+    setSharing(true);
+    try {
+      const token = await getToken();
+      const target = `${FileSystem.cacheDirectory}society-payment-qr.jpg`;
+      const result = await FileSystem.downloadAsync(`${API_BASE_URL}${path}`, target, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (result.status !== 200) throw new Error('Could not load the QR code');
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(result.uri, { mimeType: 'image/jpeg', dialogTitle: 'Society payment QR' });
+      }
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not share the QR code', 'error');
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  async function openUpiApp() {
+    const params = [
+      `pa=${encodeURIComponent(details.upiId)}`,
+      details.accountHolderName ? `pn=${encodeURIComponent(details.accountHolderName)}` : '',
+      amount && amount > 0 ? `am=${amount.toFixed(2)}` : '',
+      'cu=INR',
+      note ? `tn=${encodeURIComponent(note)}` : '',
+    ].filter(Boolean);
+    try {
+      await Linking.openURL(`upi://pay?${params.join('&')}`);
+    } catch {
+      toast('No UPI app found. Scan the QR code from another phone or pay to the bank account.', 'error');
+    }
+  }
+
+  return (
+    <View style={[styles.bankCard, { borderColor: theme.cardBorder, backgroundColor: theme.pageBg, alignItems: 'center' }]}>
+      <View style={[styles.bankHead, { alignSelf: 'stretch' }]}>
+        <Ionicons name="qr-code-outline" size={16} color={theme.textMuted} />
+        <Text style={[styles.bankTitle, { color: theme.text }]}>Scan to pay the society</Text>
+      </View>
+      {amount && amount > 0 ? (
+        <Text style={[styles.qrAmount, { color: theme.text }]}>Amount to pay: {inr(amount)}</Text>
+      ) : null}
+      <View style={styles.qrFrame}>
+        <AuthenticatedImage path={path} style={styles.qrImage} resizeMode="contain" />
+      </View>
+      {details.accountHolderName ? (
+        <Text style={[styles.qrPayee, { color: theme.text }]}>Payee: {details.accountHolderName}</Text>
+      ) : null}
+      <Text style={[styles.copyHint, { color: theme.textMuted, textAlign: 'center' }]}>
+        Scan with PhonePe, Google Pay, Paytm or any UPI app. Check the payee name before you pay.
+      </Text>
+      <View style={styles.qrActions}>
+        {details.upiId ? (
+          <Pressable onPress={() => void openUpiApp()} style={[styles.qrBtn, { backgroundColor: theme.accent }]}>
+            <Ionicons name="phone-portrait-outline" size={16} color="#fff" />
+            <Text style={styles.qrBtnTextLight}>Pay with UPI app</Text>
+          </Pressable>
+        ) : null}
+        <Pressable disabled={sharing} onPress={() => void shareQr()} style={[styles.qrBtn, { borderColor: theme.accent, borderWidth: 1 }]}>
+          {sharing ? <ActivityIndicator color={theme.accent} /> : <Ionicons name="share-outline" size={16} color={theme.accent} />}
+          <Text style={{ color: theme.accent, fontWeight: '800' }}>Save / share QR</Text>
+        </Pressable>
+      </View>
+      <Text style={[styles.copyHint, { color: theme.textMuted, textAlign: 'center' }]}>
+        After paying, come back here and submit the screenshot with the UTR number.
+      </Text>
+    </View>
+  );
+}
+
 /** The society's bank account, with each value selectable so members can copy it into their banking app. */
 export function BankDetailsCard({ details }: { details: SocietyBankDetails }) {
   const { theme } = useTheme();
@@ -79,8 +175,9 @@ export function BankDetailsCard({ details }: { details: SocietyBankDetails }) {
     ['Bank', details.bankBranch ? `${details.bankName}, ${details.bankBranch}` : details.bankName],
     ['Account number', details.accountNumber],
     ['IFSC', details.ifsc],
-  ];
+  ].filter(([, v]) => !!v) as [string, string][];
   if (details.upiId) rows.push(['UPI ID', details.upiId]);
+  if (rows.length === 0 && !details.paymentInstructions) return null;
   return (
     <View style={[styles.bankCard, { borderColor: theme.cardBorder, backgroundColor: theme.pageBg }]}>
       <View style={styles.bankHead}>
@@ -259,6 +356,14 @@ function SubmitPaymentSheet({
             <Text style={[styles.dueAmount, { color: theme.text }]}>{inr(due.payableAmount)}</Text>
             <Text style={[styles.meta, { color: theme.textMuted }]}>Transfer exactly this amount, then fill in the details below.</Text>
           </View>
+          {due.bankDetails.hasQrCode ? (
+            <SocietyQrCard
+              details={due.bankDetails}
+              portal="member"
+              amount={due.payableAmount}
+              note={`Maintenance ${monthsLabel(due.maintenanceFromMonth, due.maintenanceToMonth)}`}
+            />
+          ) : null}
           <BankDetailsCard details={due.bankDetails} />
 
           <Text style={[styles.label, { color: theme.text }]}>How did you pay?</Text>
@@ -408,6 +513,9 @@ export function MaintenancePaymentPanel({
               <Text style={[styles.meta, { color: '#b45309' }]}>incl. late fee {inr(due.penaltyAmount)}</Text>
             ) : null}
           </View>
+          {!compact && due.bankDetails.hasQrCode && due.canSubmit ? (
+            <SocietyQrCard details={due.bankDetails} portal="member" amount={due.payableAmount} note={`Maintenance ${monthsLabel(due.maintenanceFromMonth, due.maintenanceToMonth)}`} />
+          ) : null}
           {!compact && due.bankDetails.configured ? <BankDetailsCard details={due.bankDetails} /> : null}
           {due.canSubmit ? (
             <Pressable
@@ -454,6 +562,13 @@ export function MySubmissions({ items }: { items: MaintenancePaymentSubmission[]
 }
 
 const styles = StyleSheet.create({
+  qrAmount: { fontSize: 16, fontWeight: '800', marginTop: 4 },
+  qrFrame: { backgroundColor: '#fff', borderRadius: 12, padding: 8, marginVertical: 10 },
+  qrImage: { width: 240, height: 240 },
+  qrPayee: { fontSize: 14, fontWeight: '700' },
+  qrActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginVertical: 10 },
+  qrBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10 },
+  qrBtnTextLight: { color: '#fff', fontWeight: '800' },
   badge: { alignSelf: 'flex-start', fontSize: 11, fontWeight: '800', borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, overflow: 'hidden' },
   bankCard: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 8 },
   bankHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
