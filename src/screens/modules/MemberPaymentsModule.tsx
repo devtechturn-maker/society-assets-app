@@ -24,6 +24,7 @@ import {
 import type { MaintenancePaymentSubmission } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { apiErrorMessage } from '../../utils/apiError';
+import { unitName } from '../../utils/unitName';
 
 type Tab = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
 
@@ -176,7 +177,7 @@ export function MemberPaymentsModule() {
           <View style={[styles.dialog, { backgroundColor: theme.cardBg }]}>
             <Text style={[styles.dialogTitle, { color: theme.text }]}>Reject payment</Text>
             <Text style={[styles.hint, { color: theme.textMuted }]}>
-              {rejecting ? `Flat ${rejecting.flatNumber}, ${inr(rejecting.amount)}, ref ${rejecting.referenceNo}. ` : ''}
+              {rejecting ? `${unitName(rejecting.flatNumber)}, ${inr(rejecting.amount)}, ref ${rejecting.referenceNo}. ` : ''}
               The member sees this reason and can submit again.
             </Text>
             <TextInput

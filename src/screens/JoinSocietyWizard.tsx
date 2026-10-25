@@ -19,6 +19,7 @@ import type { LoginData, OnboardingOpenFlat, OnboardingSocietyOption } from '../
 import { apiErrorMessage } from '../utils/apiError';
 import { JOIN_CODE_LENGTH, normalizeJoinCodeInput } from '../utils/societyJoinShare';
 import { colors } from '../theme/colors';
+import { unitName } from '../utils/unitName';
 
 type Props = {
   /** Login email already verified by the code. */
@@ -191,7 +192,7 @@ export function JoinSocietyWizard({ email, selectionToken, onJoined, onBack }: P
   const copy = STEP_COPY[step];
   const subtitle =
     step === 'name'
-      ? `Flat ${selectedFlat?.flatNumber ?? ''} · ${email}`
+      ? `${unitName(selectedFlat?.flatNumber ?? '')} · ${email}`
       : copy.subtitle;
 
   return (

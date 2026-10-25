@@ -34,6 +34,7 @@ import {
   showPhotoSourcePicker,
   type PickedPhoto,
 } from '../../utils/pickPhoto';
+import { unitName } from '../../utils/unitName';
 
 type Screen = 'list' | 'create' | 'detail';
 
@@ -455,7 +456,7 @@ export function ComplaintModule({
           </Text>
           {activeComplaint.memberName ? (
             <Text style={[styles.meta, { color: theme.textMuted }]}>
-              {activeComplaint.memberName} · Flat {activeComplaint.flatNumber}
+              {activeComplaint.memberName} · {unitName(activeComplaint.flatNumber)}
             </Text>
           ) : null}
           <View style={[styles.detailBox, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>

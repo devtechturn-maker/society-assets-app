@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import type { LoginData } from '../types/api';
 import { isMemberRole, isGateKeeperRole } from './api';
+import { unitName } from '../utils/unitName';
 
 export type AppViewContext = 'CHAIRMAN' | 'MEMBER';
 
@@ -73,7 +74,7 @@ export function getAvailableLoginRoles(user: LoginData): LoginRoleOption[] {
 
   if (isMemberRole(user.role) || canSwitchAppView(user)) {
     const flatLabel = user.memberProfile?.flatNumber
-      ? `Flat ${user.memberProfile.flatNumber}`
+      ? `${unitName(user.memberProfile.flatNumber)}`
       : 'Your flat';
     roles.push({
       context: 'MEMBER',

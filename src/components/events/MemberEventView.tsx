@@ -24,6 +24,7 @@ import { ListError, ListLoading } from '../dashboard/ListStates';
 import { SectionCard } from '../dashboard/SectionCard';
 import { AmountBar } from './EventSheet';
 import { MemberPaySheet } from './MemberPaySheet';
+import { unitName } from '../../utils/unitName';
 
 /** Member transparency view: where money came from, where it went, what remains — plus "my contribution". */
 export function MemberEventView({
@@ -157,7 +158,7 @@ export function MemberEventView({
         {mine ? (
           <SectionCard
             title="My contribution"
-            subtitle={`Flat ${mine.flatNumber}`}
+            subtitle={`${unitName(mine.flatNumber)}`}
             headerRight={
               <Badge
                 label={mine.pendingVerification > 0 && mine.status !== 'PAID' ? 'Verifying' : contributionLabel(mine.status, voluntary)}

@@ -34,6 +34,7 @@ import type { LoginAccountOption, LoginData } from '../types/api';
 import { apiErrorMessage } from '../utils/apiError';
 import { CreateSocietyWizard } from './CreateSocietyWizard';
 import { JoinSocietyWizard } from './JoinSocietyWizard';
+import { unitName } from '../utils/unitName';
 
 type Props = {
   onLoggedIn: (user: LoginData) => void;
@@ -68,7 +69,8 @@ function normalizePhoneInput(value: string): string {
 }
 
 function accountOptionKey(account: LoginAccountOption): string {
-  return account.societyId || account.memberId || `user:${account.userId}`;
+  // One person can own several units (e.g. Flat A-101 and Shop A-101) in the same society.
+  return `${account.societyId ?? ''}:${account.memberId ?? ''}:${account.userId ?? ''}`;
 }
 
 function societyInitials(name: string): string {
@@ -82,7 +84,7 @@ function accountSubtitle(account: LoginAccountOption): string {
   const role = formatRoleLabel(account.role);
   const bits = [role];
   if (account.flatNumber) {
-    bits.push(`Flat ${account.flatNumber}`);
+    bits.push(`${unitName(account.flatNumber)}`);
   }
   if (account.displayName) {
     bits.push(account.displayName);
@@ -347,7 +349,7 @@ export function LoginScreen({ onLoggedIn }: Props) {
           ? 'Security staff: sign in with the mobile number and password your chairman gave you.'
           : step === 'onboard'
             ? 'This email is new. Create a society or join an existing one.'
-            : 'Your email is linked to more than one society. Choose where you want to continue.';
+            : 'Your email is linked to more than one society or unit (flat / shop). Choose where you want to continue.';
 
   const cardTitle =
     step === 'select' ? 'Choose society' : step === 'onboard' ? 'Get started' : step === 'guard' ? 'Security staff login' : 'Login';

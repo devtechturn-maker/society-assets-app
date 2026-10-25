@@ -28,6 +28,7 @@ import {
   showPhotoSourcePicker,
   type PickedPhoto,
 } from '../../utils/pickPhoto';
+import { unitName } from '../../utils/unitName';
 
 const PURPOSE_OPTIONS = [
   'Guest Visit',
@@ -328,7 +329,7 @@ export function VisitorEntryModule() {
             <View style={[styles.selectedBanner, { backgroundColor: theme.accentSoft, borderColor: theme.accent }]}>
               <Text style={[styles.selectedTitle, { color: theme.accent }]}>Selected host</Text>
               <Text style={[styles.selectedText, { color: theme.text }]}>
-                Flat {selected.flatNumber} · {selected.name}
+                {unitName(selected.flatNumber)} · {selected.name}
               </Text>
               <Pressable onPress={() => setSelected(null)}>
                 <Text style={[styles.changeLink, { color: theme.accent }]}>Change</Text>
@@ -357,7 +358,7 @@ export function VisitorEntryModule() {
                   ]}
                 >
                   <View>
-                    <Text style={[styles.residentFlat, { color: theme.text }]}>Flat {r.flatNumber}</Text>
+                    <Text style={[styles.residentFlat, { color: theme.text }]}>{unitName(r.flatNumber)}</Text>
                     <Text style={[styles.residentName, { color: theme.textMuted }]}>{r.name}</Text>
                   </View>
                   <Text style={[styles.selectHint, { color: theme.accent }]}>Select</Text>

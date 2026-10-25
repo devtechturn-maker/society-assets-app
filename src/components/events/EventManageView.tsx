@@ -47,6 +47,7 @@ import { ListEmpty, ListError, ListLoading } from '../dashboard/ListStates';
 import { SectionCard } from '../dashboard/SectionCard';
 import { AmountBar, ChipRow, EventSheet, SheetButtons, SheetField, SheetInput } from './EventSheet';
 import { EventEntrySheet } from './EventEntrySheet';
+import { unitName } from '../../utils/unitName';
 
 const IN_COLOR = '#16a34a';
 const OUT_COLOR = '#ea580c';
@@ -811,7 +812,7 @@ export function EventManageView({
 }
 
 function txnTitle(txn: EventTransaction): string {
-  if (txn.flatNumber) return `Flat ${txn.flatNumber}`;
+  if (txn.flatNumber) return `${unitName(txn.flatNumber)}`;
   return txn.partyName || txn.categoryLabel;
 }
 

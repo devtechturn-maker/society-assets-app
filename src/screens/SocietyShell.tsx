@@ -71,6 +71,7 @@ import { MoreBottomMenu } from '../components/MoreBottomMenu';
 import { SocietyJoinCodeHeader } from '../components/society/SocietyJoinCodeHeader';
 import { runHardwareBackHandlers } from '../services/hardwareBackNavigation';
 import { ModuleRouter } from './modules/ModuleRouter';
+import { unitName } from '../utils/unitName';
 
 type Props = {
   user: LoginData;
@@ -770,7 +771,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
           {gatekeeperPortal
             ? `Gate Security · ${societyName}`
             : memberPortal
-              ? `Member Mode · ${societyName} · Flat ${sessionUser.memberProfile?.flatNumber ?? '—'}`
+              ? `Member Mode · ${societyName} · ${unitName(sessionUser.memberProfile?.flatNumber ?? '—')}`
               : canSwitchView
                 ? `${staffModeTitle(sessionUser.role ?? user.role)} · ${societyName}`
                 : societyName}

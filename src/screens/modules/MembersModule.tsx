@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import * as DocumentPicker from 'expo-document-picker';
 
@@ -16,7 +16,7 @@ import { ListEmpty, ListError, ListLoading } from '../../components/dashboard/Li
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { FlatTenantsSection } from '../../components/members/FlatTenantsSection';
 
-import { fetchMembers, uploadMembersExcel, validateMembersExcel } from '../../services/api';
+import { addSocietyShops, fetchMembers, uploadMembersExcel, validateMembersExcel } from '../../services/api';
 
 import { useAppAlert } from '../../context/AppAlertContext';
 
@@ -27,6 +27,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { formatDateTime, formatInr } from '../../utils/format';
 
 import type { MemberExcelValidation, SocietyMember } from '../../types/api';
+import { unitName } from '../../utils/unitName';
 
 
 
@@ -37,6 +38,27 @@ export function MembersModule() {
   const { theme } = useTheme();
 
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [shopNumbers, setShopNumbers] = useState('');
+  const [addingShops, setAddingShops] = useState(false);
+
+  async function addShops() {
+    const numbers = shopNumbers.split(',').map((n) => n.trim()).filter(Boolean);
+    if (numbers.length === 0) {
+      alert('Shop numbers', 'Enter one or more shop numbers, separated by commas (e.g. A-101, A-102).', { variant: 'error' });
+      return;
+    }
+    setAddingShops(true);
+    try {
+      await addSocietyShops(numbers);
+      setShopNumbers('');
+      alert('Shops added', `${numbers.length} shop(s) added. Add a member to each shop with + Add Member.`, { variant: 'success' });
+    } catch (e: unknown) {
+      const msg = axios.isAxiosError(e) ? (e.response?.data as { message?: string } | undefined)?.message : undefined;
+      alert('Could not add shops', msg || 'Please try again.', { variant: 'error' });
+    } finally {
+      setAddingShops(false);
+    }
+  }
 
   const [editingMember, setEditingMember] = useState<SocietyMember | null>(null);
 
@@ -216,6 +238,24 @@ export function MembersModule() {
 
 
 
+        <SectionCard title="Add shops" subtitle="Shops can use the same number as a flat (e.g. Shop A-101 and Flat A-101)">
+          <TextInput
+            value={shopNumbers}
+            onChangeText={setShopNumbers}
+            placeholder="Shop numbers, e.g. A-101, A-102"
+            placeholderTextColor={theme.placeholder}
+            autoCapitalize="characters"
+            style={[styles.shopInput, { color: theme.inputText, borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}
+          />
+          <Pressable
+            style={[styles.primaryBtn, { backgroundColor: theme.accent, opacity: addingShops ? 0.7 : 1 }]}
+            onPress={() => void addShops()}
+            disabled={addingShops}
+          >
+            <Text style={styles.primaryBtnText}>{addingShops ? 'Adding…' : '+ Add shops'}</Text>
+          </Pressable>
+        </SectionCard>
+
         <SectionCard
 
           title="Add Members with Excel"
@@ -286,7 +326,7 @@ export function MembersModule() {
 
               <Text style={[styles.meta, { color: theme.textSoft }]}>
 
-                Flat {m.flatNumber} · {m.phone || '—'}
+                {unitName(m.flatNumber)} · {m.phone || '—'}
 
               </Text>
 
@@ -347,6 +387,7 @@ export function MembersModule() {
 
 
 const styles = StyleSheet.create({
+  shopInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, marginBottom: 10 },
 
   scroll: { padding: 12, paddingBottom: 32 },
 

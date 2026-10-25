@@ -63,6 +63,7 @@ export function SettingsModule() {
     (typesLoad.loading && !typesLoad.data);
 
   const [defaultMaintenance, setDefaultMaintenance] = useState('');
+  const [shopMaintenance, setShopMaintenance] = useState('');
   const [penaltyGraceDay, setPenaltyGraceDay] = useState('');
   const [penaltyAmount, setPenaltyAmount] = useState('');
   const [allowCustomMaintenance, setAllowCustomMaintenance] = useState(false);
@@ -95,6 +96,7 @@ export function SettingsModule() {
     if (!settingsLoad.data) return;
     const s = settingsLoad.data;
     setDefaultMaintenance(String(s.defaultMaintenanceAmount));
+    setShopMaintenance(s.shopMaintenanceAmount ? String(s.shopMaintenanceAmount) : '');
     setPenaltyGraceDay(String(s.maintenancePenaltyGraceDay));
     setPenaltyAmount(String(s.maintenancePenaltyAmount));
     setAllowCustomMaintenance(s.allowCustomMemberMaintenance);
@@ -135,6 +137,11 @@ export function SettingsModule() {
       alert('Invalid value', 'Default monthly maintenance must be at least 1.', { variant: 'error' });
       return;
     }
+    const shopMaintenanceAmount = shopMaintenance.trim() ? Number(shopMaintenance) : null;
+    if (shopMaintenanceAmount !== null && (!Number.isFinite(shopMaintenanceAmount) || shopMaintenanceAmount < 0)) {
+      alert('Invalid value', 'Shop maintenance must be a positive number, or leave it empty.', { variant: 'error' });
+      return;
+    }
     if (
       !Number.isFinite(maintenancePenaltyGraceDay) ||
       maintenancePenaltyGraceDay < 1 ||
@@ -150,6 +157,7 @@ export function SettingsModule() {
 
     const payload: MaintenanceSettings = {
       defaultMaintenanceAmount,
+      shopMaintenanceAmount,
       maintenancePenaltyGraceDay: Math.round(maintenancePenaltyGraceDay),
       maintenancePenaltyAmount,
       allowCustomMemberMaintenance: allowCustomMaintenance,
@@ -282,6 +290,16 @@ export function SettingsModule() {
                 onChangeText={setDefaultMaintenance}
                 keyboardType="decimal-pad"
                 placeholder="1000"
+                placeholderTextColor={theme.placeholder}
+              />
+            </FormField>
+            <FormField label="Shop monthly maintenance (INR, optional)" theme={theme}>
+              <TextInput
+                style={inputStyle(theme)}
+                value={shopMaintenance}
+                onChangeText={setShopMaintenance}
+                keyboardType="decimal-pad"
+                placeholder="Same as flats"
                 placeholderTextColor={theme.placeholder}
               />
             </FormField>

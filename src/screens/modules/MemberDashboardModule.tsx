@@ -16,6 +16,7 @@ import {
 } from '../../services/api';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
+import { unitName } from '../../utils/unitName';
 
 const VISITOR_ALERT_BORDER = '#cbd5e1';
 
@@ -91,7 +92,7 @@ export function MemberDashboardModule({ onOpenProfile, onOpenNotice, onOpenVisit
                 <Pressable style={styles.visitorCopy} onPress={() => onOpenVisitors?.(visitor.id)}>
                   <Text style={[styles.visitorName, { color: theme.text }]}>{visitor.visitorName}</Text>
                   <Text style={[styles.visitorMeta, { color: theme.textMuted }]}>
-                    Flat {visitor.flatNumber} · {visitor.purpose}
+                    {unitName(visitor.flatNumber)} · {visitor.purpose}
                   </Text>
                   {visitor.vehicleNumber ? (
                     <Text style={[styles.visitorMeta, { color: theme.textMuted }]}>

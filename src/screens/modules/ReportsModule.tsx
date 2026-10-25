@@ -14,6 +14,7 @@ import {
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import { formatDate, formatInr } from '../../utils/format';
+import { unitName } from '../../utils/unitName';
 
 export function ReportsModule() {
   const { theme } = useTheme();
@@ -109,7 +110,7 @@ export function ReportsModule() {
             <View key={r.memberId} style={[styles.row, { borderTopColor: theme.divider }]}>
               <Text style={[styles.rowTitle, { color: theme.text }]}>{r.memberName}</Text>
               <Text style={[styles.meta, { color: theme.textSoft }]}>
-                Flat {r.flatNumber} · Pending {formatInr(r.remainingDueAmount)}
+                {unitName(r.flatNumber)} · Pending {formatInr(r.remainingDueAmount)}
               </Text>
               <Badge label={r.lastPaymentType || '—'} tone={paymentBadgeTone(r.lastPaymentType)} />
               <Text style={[styles.meta, { color: theme.textSoft }]}>{formatDate(r.lastPaymentDate)}</Text>

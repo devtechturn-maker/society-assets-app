@@ -4,6 +4,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { VisitorAvatar } from './VisitorAvatar';
 import { visitorStatusLabel, visitorStatusTone } from '../../utils/visitorStatus';
 import type { VisitorPhotoPortal } from '../../utils/visitorPhoto';
+import { unitName } from '../../utils/unitName';
 
 type Props = {
   visitor: VisitorSummary;
@@ -28,7 +29,7 @@ export function RecentVisitorRow({ visitor, photoPortal = false }: Props) {
           {visitor.visitorName}
         </Text>
         <Text style={[styles.meta, { color: theme.textMuted }]}>
-          Flat {visitor.flatNumber} · {visitor.mobileNumber}
+          {unitName(visitor.flatNumber)} · {visitor.mobileNumber}
         </Text>
       </View>
       <View style={[styles.statusPill, { backgroundColor: tone.bg, borderColor: tone.border }]}>

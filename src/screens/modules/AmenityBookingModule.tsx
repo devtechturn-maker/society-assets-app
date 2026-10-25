@@ -24,6 +24,7 @@ import { Badge } from '../../components/dashboard/Badge';
 import { UiIcon } from '../../components/UiIcon';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useHardwareBack } from '../../hooks/useHardwareBack';
+import { unitName } from '../../utils/unitName';
 
 type Screen = 'list' | 'create' | 'detail';
 
@@ -271,7 +272,7 @@ export function AmenityBookingModule({
         <Text style={[styles.meta, { color: theme.textMuted }]}>{formatSlot(activeBooking)}</Text>
         {activeBooking.memberName ? (
           <Text style={[styles.meta, { color: theme.textMuted }]}>
-            {activeBooking.memberName} · Flat {activeBooking.flatNumber}
+            {activeBooking.memberName} · {unitName(activeBooking.flatNumber)}
           </Text>
         ) : null}
         <Text style={[styles.meta, { color: theme.textMuted }]}>

@@ -13,6 +13,7 @@ import {
 } from '../services/api';
 import type { SocietyInventoryFlat } from '../types/api';
 import { useTheme } from '../theme/ThemeContext';
+import { unitName } from '../utils/unitName';
 
 /** 'gate' lists resident flats via the gatekeeper API (gatekeepers cannot read the member list). */
 type Mode = 'available' | 'all' | 'registered' | 'gate';
@@ -130,7 +131,7 @@ export function FlatNumberSelect({
     return 'No flats found.';
   }, [loading, error, mode]);
 
-  const selectedLabel = value.trim() ? value.trim().toUpperCase() : placeholder;
+  const selectedLabel = value.trim() ? unitName(value.trim().toUpperCase()) : placeholder;
 
   return (
     <View>
@@ -196,7 +197,7 @@ export function FlatNumberSelect({
                   }}
                 >
                   <Text style={{ color: theme.text, fontWeight: active ? '700' : '600' }}>
-                    {item.flatNumber}
+                    {unitName(item.flatNumber)}
                   </Text>
                 </Pressable>
               );

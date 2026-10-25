@@ -14,6 +14,11 @@ import {
   View,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { API_BASE_URL } from '../../config/env';
+import { getToken } from '../../services/storage';
+import { unitName } from '../../utils/unitName';
 import { Ionicons } from '@expo/vector-icons';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
@@ -405,6 +410,27 @@ function OfficeDetail({ id, onBack, onEdit, onAmend, onDeleted }: { id: string; 
   const [filter, setFilter] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  /** Signature report: resolution, summary and a building-wise table with every signature; opens the share sheet. */
+  async function downloadReport() {
+    setDownloading(true);
+    try {
+      const token = await getToken();
+      const target = `${FileSystem.cacheDirectory}tharav-${tharav?.tharavNumber ?? id}-signatures.pdf`;
+      const result = await FileSystem.downloadAsync(`${API_BASE_URL}/society/tharavs/${id}/report.pdf`, target, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (result.status !== 200) throw new Error('Could not create the report. Please try again.');
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(result.uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: `Tharav No. ${tharav?.tharavNumber} signatures` });
+      }
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not download the report', 'error');
+    } finally {
+      setDownloading(false);
+    }
+  }
   const [history, setHistory] = useState<HistoryEntry[] | null>(null);
   const [signatureOf, setSignatureOf] = useState<{ memberId: string; name: string } | null>(null);
 
@@ -536,6 +562,14 @@ function OfficeDetail({ id, onBack, onEdit, onAmend, onDeleted }: { id: string; 
               </View>
             ))}
           </View>
+          <Pressable
+            disabled={downloading}
+            onPress={() => void downloadReport()}
+            style={({ pressed }) => [styles.secondary, { borderColor: theme.accent, marginBottom: 12, flexDirection: 'row', justifyContent: 'center', gap: 8, opacity: pressed ? 0.85 : 1 }]}
+          >
+            {downloading ? <ActivityIndicator color={theme.accent} /> : <Ionicons name="download-outline" size={18} color={theme.accent} />}
+            <Text style={{ color: theme.accent, fontWeight: '800' }}>{downloading ? 'Preparing PDF…' : 'Download signature report (PDF)'}</Text>
+          </Pressable>
           <View style={styles.chips}>
             {[['', 'All'], ['SIGNED', 'Signed'], ['PENDING', 'Pending'], ['NOT_OPENED', 'Not opened']].map(([key, label]) => (
               <Pressable key={key || 'all'} onPress={() => setFilter(key)} style={[styles.chip, { borderColor: filter === key ? theme.accent : theme.cardBorder, backgroundColor: filter === key ? theme.accent : theme.cardBg }]}>
@@ -550,11 +584,11 @@ function OfficeDetail({ id, onBack, onEdit, onAmend, onDeleted }: { id: string; 
               <Pressable
                 key={m.memberId}
                 disabled={!m.hasSignature}
-                onPress={() => setSignatureOf({ memberId: m.memberId, name: `${m.memberName} (${m.flatNumber})` })}
+                onPress={() => setSignatureOf({ memberId: m.memberId, name: `${m.memberName} (${unitName(m.flatNumber)})` })}
                 style={[styles.memberRow, { borderColor: theme.cardBorder }]}
               >
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={[styles.rowTitle, { color: theme.text, fontSize: 14 }]}>{m.flatNumber} · {m.memberName}</Text>
+                  <Text style={[styles.rowTitle, { color: theme.text, fontSize: 14 }]}>{unitName(m.flatNumber)} · {m.memberName}</Text>
                   <Text style={[styles.meta, { color: theme.textMuted }]}>
                     {m.signedAt ? `Signed ${when(m.signedAt)}` : m.openedAt ? `Read ${when(m.openedAt)}` : 'Not opened yet'}
                   </Text>

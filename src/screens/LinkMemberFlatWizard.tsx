@@ -18,6 +18,7 @@ import type { LoginData, OnboardingOpenFlat } from '../types/api';
 import { apiErrorMessage } from '../utils/apiError';
 import { JOIN_CODE_LENGTH, normalizeJoinCodeInput } from '../utils/societyJoinShare';
 import { colors } from '../theme/colors';
+import { unitName } from '../utils/unitName';
 
 type Props = {
   user: LoginData;
@@ -74,7 +75,7 @@ export function LinkMemberFlatWizard({ user, onLinked, onBack }: Props) {
       const refreshed = await refreshLoginSession();
       await saveSession(refreshed);
       onLinked(refreshed);
-      alert('Flat linked', `You can now use Member view for Flat ${flat.flatNumber}.`, { variant: 'success' });
+      alert('Flat linked', `You can now use Member view for ${unitName(flat.flatNumber)}.`, { variant: 'success' });
     } catch (e: unknown) {
       const message = apiErrorMessage(e);
       setInlineError(message);

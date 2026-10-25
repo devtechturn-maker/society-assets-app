@@ -20,6 +20,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { VisitorHistoryModule } from './VisitorHistoryModule';
 import { visitorStatusLabel, visitorStatusTone } from '../../utils/visitorStatus';
+import { unitName } from '../../utils/unitName';
 
 type Screen = 'list' | 'detail' | 'add';
 
@@ -90,7 +91,7 @@ export function MemberVisitorModule({
   if (overview?.occupancy === 'OWNER_RENTED_OUT') {
     return (
       <ScrollView style={[styles.detail, { backgroundColor: theme.pageBg }]}>
-        <SectionCard title="Your flat is rented out" subtitle={`Flat ${overview.flatNumber}`}>
+        <SectionCard title="Your flat is rented out" subtitle={`${unitName(overview.flatNumber)}`}>
           <Text style={[styles.meta, { color: theme.text }]}>
             Visitors and guests for this flat are handled by your current tenant. You remain the owner, and
             maintenance and your other society features are unchanged.

@@ -7,6 +7,7 @@ import { VisitorAvatar } from './VisitorAvatar';
 import { VisitorGateActions } from './VisitorGateActions';
 import { visitorStatusLabel, visitorStatusTone } from '../../utils/visitorStatus';
 import { formatDateTime } from '../../utils/format';
+import { unitName } from '../../utils/unitName';
 
 type Props = {
   item: VisitorSummary;
@@ -49,7 +50,7 @@ export function VisitorHistoryRow({
         </View>
         {!compact ? (
           <Text style={[styles.meta, { color: theme.textMuted }]}>
-            Flat {item.flatNumber} · {item.mobileNumber}
+            {unitName(item.flatNumber)} · {item.mobileNumber}
           </Text>
         ) : (
           <Text style={[styles.meta, { color: theme.textMuted }]}>{item.mobileNumber}</Text>

@@ -302,6 +302,8 @@ export async function createSocietyMobile(payload: {
   flatNumberFormat: FlatNumberFormat;
   flatsPerFloor?: number;
   flatNumbers?: string[];
+  /** Optional shops (e.g. "A-101"); a shop may share its number with a flat. */
+  shopNumbers?: string[];
   chairmanFlatNumber?: string;
   chairmanName: string;
   email: string;
@@ -336,6 +338,12 @@ export async function fetchClaimableFlats(): Promise<OnboardingOpenFlat[]> {
   return data.data ?? [];
 }
 
+/** Chairman / treasurer: add vacant shop units, e.g. ["A-101", "A-102"] (stored as "SHOP A-101"). */
+export async function addSocietyShops(shopNumbers: string[]): Promise<SocietyInventoryFlat[]> {
+  const { data } = await client.post<ApiResponse<SocietyInventoryFlat[]>>('/society/members/shops', { shopNumbers });
+  return data.data ?? [];
+}
+
 export async function fetchSocietyInventoryFlats(): Promise<SocietyInventoryFlat[]> {
   const { data } = await client.get<ApiResponse<SocietyInventoryFlat[]>>('/society/members/flats');
   return data.data ?? [];
@@ -360,6 +368,8 @@ export async function createAdditionalSocietyMobile(payload: {
   flatNumberFormat: FlatNumberFormat;
   flatsPerFloor?: number;
   flatNumbers?: string[];
+  /** Optional shops (e.g. "A-101"); a shop may share its number with a flat. */
+  shopNumbers?: string[];
   chairmanFlatNumber?: string;
   chairmanName: string;
   email: string;

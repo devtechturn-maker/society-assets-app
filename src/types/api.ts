@@ -451,6 +451,8 @@ export interface PendingMaintenanceMember {
 
 export interface MaintenanceSettings {
   defaultMaintenanceAmount: number;
+  /** Monthly maintenance for shops; null / empty = shops pay the default amount. */
+  shopMaintenanceAmount?: number | null;
   maintenancePenaltyGraceDay: number;
   maintenancePenaltyAmount: number;
   allowCustomMemberMaintenance: boolean;

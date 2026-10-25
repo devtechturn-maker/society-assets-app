@@ -30,6 +30,7 @@ import type { LoginData } from '../types/api';
 import { userDisplayName } from '../utils/userDisplayName';
 import { CreateSocietyWizard } from './CreateSocietyWizard';
 import { LinkMemberFlatWizard } from './LinkMemberFlatWizard';
+import { unitName } from '../utils/unitName';
 
 type Props = {
   user: LoginData;
@@ -101,7 +102,7 @@ export function RoleSelectionScreen({ user, onSelected, onUserUpdated, onLogout 
         <Text style={styles.heroSubtitle}>
           {userDisplayName(user) || 'Your account'}
           {hasMemberLink && user.memberProfile?.flatNumber
-            ? ` · Flat ${user.memberProfile.flatNumber}`
+            ? ` · ${unitName(user.memberProfile.flatNumber)}`
             : ''}
           {'\n'}
           {`Switch between ${staffModeTitle(user.role)} and Member Mode anytime — no need to log out.`}

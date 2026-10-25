@@ -22,6 +22,7 @@ import { ListError } from '../../components/dashboard/ListStates';
 import { KpiGrid } from '../../components/dashboard/KpiGrid';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { RecentVisitorRow } from '../../components/visitor/RecentVisitorRow';
+import { unitName } from '../../utils/unitName';
 
 export function GateKeeperDashboardModule() {
   const { theme } = useTheme();
@@ -106,7 +107,7 @@ export function GateKeeperDashboardModule() {
                   {g.visitorCount > 1 ? ` +${g.visitorCount - 1}` : ''}
                 </Text>
                 <Text style={[styles.rowMeta, { color: theme.textMuted }]}>
-                  Flat {g.flatNumber} · {g.residentName}
+                  {unitName(g.flatNumber)} · {g.residentName}
                   {g.currentTenantName ? ' (tenant)' : ''} · {g.mobileNumber}
                 </Text>
                 <Text style={[styles.rowMeta, { color: theme.textMuted }]}>

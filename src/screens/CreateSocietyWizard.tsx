@@ -55,7 +55,7 @@ const STEP_COPY: Record<WizardStep, { title: string; subtitle: string }> = {
   },
   profile: {
     title: 'Your details',
-    subtitle: 'Free trial starts after setup. Buy a plan in the app when trial ends.',
+    subtitle: 'Free trial starts after setup. Buy a plan on our website when the trial ends.',
   },
 };
 
@@ -87,6 +87,7 @@ export function CreateSocietyWizard({
   const [chairmanName, setChairmanName] = useState(initialChairmanName);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [shops, setShops] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
 
@@ -225,6 +226,7 @@ export function CreateSocietyWizard({
         flatNumbers,
         chairmanFlatNumber: isExplicit ? resolveChairmanFlatKey() ?? undefined : undefined,
         chairmanName: chairmanName.trim(),
+        shopNumbers: shops.split(',').map((n) => n.trim()).filter(Boolean),
         email: (verifiedEmail || email).trim().toLowerCase(),
       };
       const data =
@@ -428,6 +430,15 @@ export function CreateSocietyWizard({
               autoCapitalize="none"
             />
           )}
+          <WizardTextField
+            spaced
+            label="Shop numbers (optional)"
+            value={shops}
+            onChangeText={setShops}
+            placeholder="e.g. A-101, A-102"
+            autoCapitalize="characters"
+            hint="Shops in your society. A shop can have the same number as a flat. You can add shops later too."
+          />
         </>
       ) : null}
     </WizardShell>

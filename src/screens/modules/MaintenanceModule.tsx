@@ -14,6 +14,7 @@ import { useAppAlert } from '../../context/AppAlertContext';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import { formatDate, formatInr } from '../../utils/format';
+import { unitName } from '../../utils/unitName';
 
 export function MaintenanceModule() {
   const { alert } = useAppAlert();
@@ -64,7 +65,7 @@ export function MaintenanceModule() {
                 <View key={row.memberId} style={[styles.pendingCard, { borderTopColor: theme.divider }]}>
                   <Text style={[styles.name, { color: theme.text }]}>{row.memberName}</Text>
                   <Text style={[styles.email, { color: theme.textMuted }]}>{row.memberEmail}</Text>
-                  <Text style={[styles.meta, { color: theme.textSoft }]}>Flat {row.flatNumber}</Text>
+                  <Text style={[styles.meta, { color: theme.textSoft }]}>{unitName(row.flatNumber)}</Text>
                   <Text style={[styles.meta, { color: theme.textSoft }]}>
                     Pending {formatInr(row.remainingDueAmount)}
                   </Text>
