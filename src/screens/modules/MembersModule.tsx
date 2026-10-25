@@ -28,6 +28,7 @@ import { formatDateTime, formatInr } from '../../utils/format';
 
 import type { MemberExcelValidation, SocietyMember } from '../../types/api';
 import { unitName } from '../../utils/unitName';
+import { lockedBy, usePlanAccess } from '../../services/planAccess';
 
 
 
@@ -38,6 +39,7 @@ export function MembersModule() {
   const { theme } = useTheme();
 
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const planAccess = usePlanAccess();
   const [shopNumbers, setShopNumbers] = useState('');
   const [addingShops, setAddingShops] = useState(false);
 
@@ -238,6 +240,7 @@ export function MembersModule() {
 
 
 
+        {lockedBy(planAccess, 'shops') === null ? (
         <SectionCard title="Add shops" subtitle="Shops can use the same number as a flat (e.g. Shop A-101 and Flat A-101)">
           <TextInput
             value={shopNumbers}
@@ -255,6 +258,7 @@ export function MembersModule() {
             <Text style={styles.primaryBtnText}>{addingShops ? 'Adding…' : '+ Add shops'}</Text>
           </Pressable>
         </SectionCard>
+        ) : null}
 
         <SectionCard
 

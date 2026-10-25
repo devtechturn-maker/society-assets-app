@@ -29,6 +29,7 @@ import { requestAccountDeletion,
   isTreasurerRole,
   isGateKeeperRole,
 } from '../services/api';
+import { loadPlanAccess, lockedBy, usePlanAccess } from '../services/planAccess';
 import type { AppNotification, LoginData, NavModule } from '../types/api';
 import { APPEARANCE_MODULE } from '../constants/appearanceModule';
 import {
@@ -267,6 +268,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
   }, [memberPortal, toast]);
 
   const loadMeta = useCallback(async () => {
+    void loadPlanAccess();
     try {
       if (gatekeeperPortal) {
         const [mods, dashboard] = await Promise.all([fetchGatekeeperModules(), fetchGateKeeperDashboard()]);
@@ -631,6 +633,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
     setMoreMenuOpen(false);
   }, [gatekeeperPortal, memberPortal, treasurerPortal, onSwitchRole]);
 
+  const planAccess = usePlanAccess();
   const moreMenuItems = useMemo(() => {
     const switchRoleLabel =
       canSwitchView && onSwitchRole
@@ -638,8 +641,11 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
           ? 'Switch to Chairman View'
           : 'Switch to Member View'
         : undefined;
-    return buildMoreMenuItems(modules, navPortal, { switchRoleLabel });
-  }, [modules, navPortal, canSwitchView, onSwitchRole, memberPortal]);
+    // Screens outside the society's plan are left out (the server blocks them as well).
+    return buildMoreMenuItems(modules, navPortal, { switchRoleLabel }).filter(
+      (item) => !item.routePath || lockedBy(planAccess, item.routePath) === null
+    );
+  }, [modules, navPortal, canSwitchView, onSwitchRole, memberPortal, planAccess]);
 
   const selectTab = useCallback((routePath: string) => {
     setMoreMenuOpen(false);

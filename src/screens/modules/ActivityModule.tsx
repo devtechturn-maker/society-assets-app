@@ -6,6 +6,7 @@ import {
   type NavPortalKind,
 } from '../../constants/activityHub';
 import { useTheme } from '../../theme/ThemeContext';
+import { lockedBy, usePlanAccess } from '../../services/planAccess';
 
 type Props = {
   portal: NavPortalKind;
@@ -14,7 +15,9 @@ type Props = {
 
 export function ActivityModule({ portal, onNavigate }: Props) {
   const { theme } = useTheme();
-  const tiles = activityTilesForPortal(portal);
+  const access = usePlanAccess();
+  // Only screens in the society's plan (or bought as add-ons) are shown.
+  const tiles = activityTilesForPortal(portal).filter((t) => lockedBy(access, t.routePath) === null);
 
   return (
     <ScrollView

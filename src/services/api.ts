@@ -414,6 +414,8 @@ export const fetchSocietyModules = () => getData<NavModule[]>('/modules/society'
 export const fetchTreasurerModules = () => getData<NavModule[]>('/modules/treasurer');
 export const fetchMemberModules = () => getData<NavModule[]>('/modules/member');
 export const fetchGatekeeperModules = () => getData<NavModule[]>('/modules/gatekeeper');
+/** Features in the society's plan and the screens it locks. */
+export const fetchPlanAccess = () => getData<import('./planAccess').PlanAccess>('/modules/plan-access');
 export const fetchOverview = () =>
   cachedGet('overview:society', () => getData<SocietyOverview>('/society/dashboard/overview'));
 export const fetchMemberOverview = () =>
