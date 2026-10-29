@@ -136,7 +136,7 @@ export function AppLogoLoader({
 export function AppBootLoader({ label = 'Loading...' }: { backgroundColor?: string; label?: string }) {
   return (
     <View style={bootStyles.root}>
-      <AppLoader size="lg" label={label} />
+      <AppLoader size="lg" label={label} onDark />
     </View>
   );
 }
@@ -146,7 +146,7 @@ const bootStyles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#0f172a',
   },
 });
 

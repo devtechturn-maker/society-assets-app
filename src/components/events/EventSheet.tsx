@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import {
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -11,6 +10,7 @@ import {
   type TextInputProps,
   View,
 } from 'react-native';
+import { ModalKeyboardAvoidingView } from '../KeyboardSafeView';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
 
@@ -33,7 +33,7 @@ export function EventSheet({
   const { theme } = useTheme();
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ModalKeyboardAvoidingView style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
         <View style={[styles.sheet, { backgroundColor: theme.cardBg }]}>
           <View style={[styles.grabber, { backgroundColor: theme.cardBorder }]} />
@@ -56,7 +56,7 @@ export function EventSheet({
           </ScrollView>
           {footer ? <View style={[styles.footer, { borderTopColor: theme.divider }]}>{footer}</View> : null}
         </View>
-      </KeyboardAvoidingView>
+      </ModalKeyboardAvoidingView>
     </Modal>
   );
 }

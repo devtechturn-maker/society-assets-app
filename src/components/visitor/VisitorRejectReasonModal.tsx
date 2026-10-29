@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -9,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { ModalKeyboardAvoidingView } from '../KeyboardSafeView';
 import { useTheme } from '../../theme/ThemeContext';
 
 type Props = {
@@ -48,9 +48,8 @@ export function VisitorRejectReasonModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <KeyboardAvoidingView
+      <ModalKeyboardAvoidingView
         style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <Pressable style={styles.backdrop} onPress={onCancel} />
         <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
@@ -101,7 +100,7 @@ export function VisitorRejectReasonModal({
             </Pressable>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </ModalKeyboardAvoidingView>
     </Modal>
   );
 }

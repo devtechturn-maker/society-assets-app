@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -10,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { ModalKeyboardAvoidingView } from '../KeyboardSafeView';
 import axios from 'axios';
 import { ListEmpty, ListLoading } from '../dashboard/ListStates';
 import { addChatGroupMembers, fetchChatGroupMembers, fetchMembers } from '../../services/api';
@@ -124,9 +124,8 @@ export function EditGroupMembersModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
-      <KeyboardAvoidingView
+      <ModalKeyboardAvoidingView
         style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <Pressable style={styles.backdrop} onPress={handleClose} />
         <View style={[styles.sheet, { backgroundColor: theme.cardBg }]}>
@@ -213,7 +212,7 @@ export function EditGroupMembersModal({
             />
           )}
         </View>
-      </KeyboardAvoidingView>
+      </ModalKeyboardAvoidingView>
     </Modal>
   );
 }

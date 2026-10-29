@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -12,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { ModalKeyboardAvoidingView } from '../../components/KeyboardSafeView';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
 import { SubmissionRow, inr } from '../../components/payment/MaintenancePayment';
 import { useAppAlert } from '../../context/AppAlertContext';
@@ -173,7 +173,7 @@ export function MemberPaymentsModule() {
       </ScrollView>
 
       <Modal visible={!!rejecting} transparent animationType="fade" onRequestClose={() => setRejecting(null)}>
-        <KeyboardAvoidingView style={styles.backdrop} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ModalKeyboardAvoidingView style={styles.backdrop}>
           <View style={[styles.dialog, { backgroundColor: theme.cardBg }]}>
             <Text style={[styles.dialogTitle, { color: theme.text }]}>Reject payment</Text>
             <Text style={[styles.hint, { color: theme.textMuted }]}>
@@ -199,7 +199,7 @@ export function MemberPaymentsModule() {
               </Pressable>
             </View>
           </View>
-        </KeyboardAvoidingView>
+        </ModalKeyboardAvoidingView>
       </Modal>
     </View>
   );

@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LogBox, StyleSheet, View } from 'react-native';
 import * as ExpoSplashScreen from 'expo-splash-screen';
 import { AppErrorBoundary } from './src/components/AppErrorBoundary';
 import { AppBootLoader } from './src/components/AppLogoLoader';
+import { KeyboardSafeView } from './src/components/KeyboardSafeView';
 import { GlobalLoadingOverlay } from './src/components/GlobalLoadingOverlay';
 import { FirstLoginPasswordScreen } from './src/screens/FirstLoginPasswordScreen';
 import { ForgotPasswordScreen } from './src/screens/ForgotPasswordScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { ProfileCompletionScreen } from './src/screens/ProfileCompletionScreen';
 import { SocietyShell } from './src/screens/SocietyShell';
-import { SplashScreen } from './src/screens/SplashScreen';
 import { SubscriptionEndedScreen } from './src/screens/SubscriptionEndedScreen';
 import { RoleSelectionScreen } from './src/screens/RoleSelectionScreen';
 import { loadStoredSession, setSessionInvalidHandler } from './src/services/session';
@@ -43,7 +43,6 @@ type GuestScreen = 'login' | 'forgot-password';
 
 function AppRoot() {
   const { theme } = useTheme();
-  const [showSplash, setShowSplash] = useState(true);
   const [guestScreen, setGuestScreen] = useState<GuestScreen>('login');
   const [user, setUser] = useState<LoginData | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SocietySubscriptionStatus | null>(null);
@@ -51,12 +50,14 @@ function AppRoot() {
   const [assetsReady, setAssetsReady] = useState(false);
   const [pendingRoleSelection, setPendingRoleSelection] = useState(false);
 
-  /** Splash must not wait on network — only local assets. Session restore runs after. */
-  const splashReady = assetsReady;
+  // The native splash stays up until assets and the saved session are ready, then the first screen shows directly.
+  const splashReady = assetsReady && sessionReady;
 
-  const finishSplash = useCallback(() => {
-    setShowSplash(false);
-  }, []);
+  useEffect(() => {
+    if (splashReady) {
+      ExpoSplashScreen.hideAsync().catch(() => undefined);
+    }
+  }, [splashReady]);
 
   useEffect(() => {
     let cancelled = false;
@@ -181,15 +182,15 @@ function AppRoot() {
     setSubscriptionStatus(null);
     setPendingRoleSelection(false);
     setGuestScreen('login');
-    setShowSplash(true);
   }
 
   function handleSwitchRole() {
     setPendingRoleSelection(true);
   }
 
-  if (showSplash || !assetsReady) {
-    return <SplashScreen onFinish={finishSplash} appReady={splashReady} />;
+  if (!splashReady) {
+    // Hidden under the native splash; same navy so nothing flashes if it shows.
+    return <View style={styles.splashHold} />;
   }
 
   return (
@@ -259,7 +260,9 @@ export default function App() {
     <AppErrorBoundary>
       <ThemeProvider>
         <AppAlertProvider>
-          <AppRoot key={appLaunchGeneration} />
+          <KeyboardSafeView>
+            <AppRoot key={appLaunchGeneration} />
+          </KeyboardSafeView>
           <GlobalLoadingOverlay />
         </AppAlertProvider>
       </ThemeProvider>
@@ -268,5 +271,9 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  splashHold: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+  },
   root: { flex: 1 },
 });

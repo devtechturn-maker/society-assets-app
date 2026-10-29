@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -14,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { ModalKeyboardAvoidingView } from '../KeyboardSafeView';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -343,7 +343,7 @@ function SubmitPaymentSheet({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.pageBg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ModalKeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.pageBg }}>
         <View style={[styles.sheetHead, { borderColor: theme.cardBorder, backgroundColor: theme.cardBg }]}>
           <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Close">
             <Ionicons name="close" size={24} color={theme.text} />
@@ -448,7 +448,7 @@ function SubmitPaymentSheet({
             Your payment is counted only after the society office verifies it.
           </Text>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </ModalKeyboardAvoidingView>
     </Modal>
   );
 }

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -13,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { ModalKeyboardAvoidingView } from '../../components/KeyboardSafeView';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { DirectoryAddButton, DirectoryListItem } from '../../components/directory/DirectoryListItem';
@@ -104,9 +104,8 @@ function FamilyMemberFormModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <KeyboardAvoidingView
+      <ModalKeyboardAvoidingView
         style={styles.modalOverlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <Pressable style={styles.modalBackdrop} onPress={onClose} />
         <View style={[styles.modalCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
@@ -193,7 +192,7 @@ function FamilyMemberFormModal({
             </Pressable>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </ModalKeyboardAvoidingView>
     </Modal>
   );
 }

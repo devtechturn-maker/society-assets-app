@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from 'react';
 import {
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -10,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { ModalKeyboardAvoidingView } from '../KeyboardSafeView';
 import axios from 'axios';
 import { addExpense, type PaymentType } from '../../services/api';
 import { useAppAlert } from '../../context/AppAlertContext';
@@ -89,9 +89,8 @@ export function AddExpenseModal({ visible, onClose, onSaved }: Props) {
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
-      <KeyboardAvoidingView
+      <ModalKeyboardAvoidingView
         style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <Pressable style={styles.backdrop} onPress={handleClose} />
         <View style={[styles.sheet, { backgroundColor: theme.cardBg }]}>
@@ -176,7 +175,7 @@ export function AddExpenseModal({ visible, onClose, onSaved }: Props) {
             </Pressable>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </ModalKeyboardAvoidingView>
     </Modal>
   );
 }

@@ -4,8 +4,6 @@ import {
 
   ActivityIndicator,
 
-  KeyboardAvoidingView,
-
   Modal,
 
   Platform,
@@ -23,6 +21,7 @@ import {
   View,
 
 } from 'react-native';
+import { ModalKeyboardAvoidingView } from '../KeyboardSafeView';
 
 import { useTheme } from '../../theme/ThemeContext';
 
@@ -112,11 +111,9 @@ export function CreatePollModal({ visible, saving, onClose, onSubmit }: Props) {
 
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
 
-      <KeyboardAvoidingView
+      <ModalKeyboardAvoidingView
 
         style={styles.overlay}
-
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
 
       >
 
@@ -300,7 +297,7 @@ export function CreatePollModal({ visible, saving, onClose, onSubmit }: Props) {
 
         </View>
 
-      </KeyboardAvoidingView>
+      </ModalKeyboardAvoidingView>
 
     </Modal>
 

@@ -7,13 +7,6 @@ import { getUser } from '../../services/storage';
 import type { SocietySubscriptionStatus } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 
-function inr(value: number | undefined): string {
-  const amount = value ?? 0;
-  // Whole rupees without decimals; otherwise always two (₹31.50, not ₹31.5).
-  const digits = Number.isInteger(amount) ? 0 : 2;
-  return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: digits, maximumFractionDigits: 2 })}`;
-}
-
 function day(iso?: string | null): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -103,7 +96,6 @@ export function SubscriptionModule() {
           </Text>
           <Text style={[styles.badge, { color: toneColor, borderColor: toneColor }]}>{lifecycle.label}</Text>
         </View>
-        {status.message ? <Text style={[styles.meta, { color: theme.textMuted }]}>{status.message}</Text> : null}
         <View style={styles.row}>
           <Text style={[styles.label, { color: theme.textMuted }]}>{onTrial ? 'Trial ends' : 'Plan ends'}</Text>
           <Text style={[styles.value, { color: theme.text }]}>{day(status.validUntil)}</Text>
@@ -125,8 +117,8 @@ export function SubscriptionModule() {
             </Text>
             <Text style={[styles.autoRenewText, status.autoRenewStatus === 'PENDING' ? styles.warnText : null]}>
               {status.autoRenewStatus === 'PENDING'
-                ? 'The last automatic payment failed. Razorpay will retry it automatically.'
-                : `Next charge${status.nextChargeAmount ? ` of ${inr(status.nextChargeAmount)}` : ''} on ${day(status.nextChargeAt)}. You get a reminder before every charge.`}
+                ? 'The last automatic renewal did not go through. It will be retried automatically.'
+                : `Renews automatically on ${day(status.nextChargeAt)}. You get a reminder before every renewal.`}
             </Text>
             {canPurchase ? (
               <Pressable onPress={turnOffAutoRenew} disabled={cancellingAutoRenew} hitSlop={8}>
@@ -145,17 +137,12 @@ export function SubscriptionModule() {
 
       {purchase ? (
         <>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Last payment</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Current period</Text>
           <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
             {[
               ['Plan', `${purchase.months} months`],
               ['Period', `${day(purchase.periodStart)} – ${day(purchase.periodEnd)}`],
-              ['Flats billed', `${purchase.flatCount} (${purchase.includedFlats} included, ${purchase.extraFlats} extra)`],
-              ['Base amount', inr(purchase.baseAmount)],
-              ['Extra flats', inr(purchase.extraFlatAmount)],
-              ['Subtotal', inr(purchase.subtotal)],
-              [`GST (${purchase.gstPercent}%)`, inr(purchase.gstAmount)],
-              ['Total paid', inr(purchase.total)],
+              ['Flats', String(purchase.flatCount)],
             ].map(([label, value]) => (
               <View style={styles.row} key={label}>
                 <Text style={[styles.label, { color: theme.textMuted }]}>{label}</Text>
