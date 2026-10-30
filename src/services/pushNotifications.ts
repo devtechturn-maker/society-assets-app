@@ -425,14 +425,15 @@ function parseAppPushNotification(
       type: data.type,
     };
   }
-  if (typeof data?.type === 'string' && data.type.startsWith('MAINTENANCE_PAYMENT_')) {
+  // Payment updates and the scheduled due / late-fee / pending reminders.
+  if (typeof data?.type === 'string' && data.type.startsWith('MAINTENANCE_')) {
     return {
       kind: 'record',
       notificationId: readNotificationId(data),
       // The office reviews submissions; members see the result on their maintenance screen.
       module: data.type === 'MAINTENANCE_PAYMENT_SUBMITTED' ? 'member-payments' : 'maintenance',
       recordId: String(data.memberPaymentId ?? ''),
-      subject: (content.title && String(content.title).trim()) || 'Maintenance payment',
+      subject: (content.title && String(content.title).trim()) || 'Maintenance',
       preview: (content.body && String(content.body).trim()) || '',
       type: data.type,
     };

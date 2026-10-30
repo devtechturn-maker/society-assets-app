@@ -453,7 +453,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
           openRuleFromNotification(opened.ruleId);
           return;
         }
-        if (opened.type.startsWith('MAINTENANCE_PAYMENT_')) {
+        if (opened.type.startsWith('MAINTENANCE_')) {
           openRecordFromNotification(opened.type === 'MAINTENANCE_PAYMENT_SUBMITTED' ? 'member-payments' : 'maintenance');
           return;
         }
