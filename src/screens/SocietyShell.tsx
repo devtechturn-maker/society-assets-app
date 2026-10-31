@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { clearSession, updateStoredUser } from '../services/storage';
 import {
   canSwitchAppView,
@@ -181,6 +182,9 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
   const [bottomBarHeight, setBottomBarHeight] = useState(72);
   // Hide the tab bar while typing so it does not ride up on top of the keyboard.
   const keyboardOpen = useKeyboardHeight() > 0;
+  // Space for the phone's own navigation (back/home buttons or gesture bar); 0 on phones without one.
+  const safeInsets = useSafeAreaInsets();
+  const systemNavInset = Platform.OS === 'android' ? safeInsets.bottom : 0;
   const activePathRef = useRef(activePath);
   const lastTabPathRef = useRef('dashboard');
 
@@ -840,6 +844,7 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
         style={[
           styles.bottomBar,
           { backgroundColor: theme.bottomBarBg, borderTopColor: theme.bottomBarBorder },
+          systemNavInset > 0 ? { paddingBottom: 10 + systemNavInset } : null,
           keyboardOpen ? styles.bottomBarHidden : null,
         ]}
         onLayout={(event) => {

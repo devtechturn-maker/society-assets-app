@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { LogBox, StyleSheet, View } from 'react-native';
 import * as ExpoSplashScreen from 'expo-splash-screen';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppErrorBoundary } from './src/components/AppErrorBoundary';
 import { AppBootLoader } from './src/components/AppLogoLoader';
 import { KeyboardSafeView } from './src/components/KeyboardSafeView';
@@ -257,16 +258,18 @@ function AppRoot() {
 
 export default function App() {
   return (
-    <AppErrorBoundary>
-      <ThemeProvider>
-        <AppAlertProvider>
-          <KeyboardSafeView>
-            <AppRoot key={appLaunchGeneration} />
-          </KeyboardSafeView>
-          <GlobalLoadingOverlay />
-        </AppAlertProvider>
-      </ThemeProvider>
-    </AppErrorBoundary>
+    <SafeAreaProvider>
+      <AppErrorBoundary>
+        <ThemeProvider>
+          <AppAlertProvider>
+            <KeyboardSafeView>
+              <AppRoot key={appLaunchGeneration} />
+            </KeyboardSafeView>
+            <GlobalLoadingOverlay />
+          </AppAlertProvider>
+        </ThemeProvider>
+      </AppErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 
