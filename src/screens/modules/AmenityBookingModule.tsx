@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   View,
+  RefreshControl,
 } from 'react-native';
 import {
   cancelAmenityBooking,
@@ -327,7 +328,7 @@ export function AmenityBookingModule({
         </SectionCard>
       </View>
 
-      {loading ? (
+      {loading && bookings.length === 0 ? (
         <ActivityIndicator style={{ marginTop: 24 }} color={theme.accent} />
       ) : error ? (
         <ListError message={error} onRetry={() => void loadBookings()} />
@@ -335,6 +336,7 @@ export function AmenityBookingModule({
         <FlatList
           data={bookings}
           keyExtractor={(item) => item.bookingId}
+          refreshControl={<RefreshControl refreshing={loading && bookings.length > 0} onRefresh={() => void loadBookings()} />}
           contentContainerStyle={bookings.length === 0 ? styles.emptyList : styles.listPad}
           ListEmptyComponent={
             <ListEmpty

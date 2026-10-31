@@ -13,6 +13,7 @@ import {
   TextInput,
   View,
   type KeyboardEvent,
+  RefreshControl,
 } from 'react-native';
 import {
   createComplaint,
@@ -578,6 +579,7 @@ export function ComplaintModule({
       <FlatList
         data={complaints}
         keyExtractor={(item) => item.complaintId}
+        refreshControl={<RefreshControl refreshing={loading && complaints.length > 0} onRefresh={() => void loadComplaints()} />}
         contentContainerStyle={styles.listPad}
         ListEmptyComponent={
           <ListEmpty

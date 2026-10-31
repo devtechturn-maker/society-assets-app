@@ -28,8 +28,17 @@ export function formatDateTime(value: string | null | undefined): string {
   });
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "2026-10" -> "Oct 2026"; anything else is returned unchanged. */
+export function formatMonth(value: string): string {
+  const m = /^(\d{4})-(\d{2})$/.exec(value.trim());
+  const index = m ? Number(m[2]) - 1 : -1;
+  return m && index >= 0 && index < 12 ? `${MONTHS[index]} ${m[1]}` : value;
+}
+
 export function formatMonthRange(from?: string | null, to?: string | null): string {
   if (!from) return '—';
-  if (!to || to === from) return from;
-  return `${from} to ${to}`;
+  if (!to || to === from) return formatMonth(from);
+  return `${formatMonth(from)} to ${formatMonth(to)}`;
 }

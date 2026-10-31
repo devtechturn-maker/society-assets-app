@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
@@ -105,6 +105,7 @@ function StaffTab() {
   const [editing, setEditing] = useState<Staff | 'new' | null>(null);
   const [profile, setProfile] = useState<string | null>(null);
 
+  const [refreshing, setRefreshing] = useState(false);
   const load = useCallback(async () => {
     try {
       setList(await fetchStaff());
@@ -112,6 +113,11 @@ function StaffTab() {
       setError(apiErrorMessage(e, 'Could not load staff'));
     }
   }, []);
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -123,7 +129,10 @@ function StaffTab() {
     return <StaffProfile id={profile} onBack={() => { setProfile(null); void load(); }} onEdit={(s) => setEditing(s)} />;
   }
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <ScrollView
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}
+    >
       <Pressable onPress={() => setEditing('new')} style={({ pressed }) => [styles.primary, { backgroundColor: theme.accent, opacity: pressed ? 0.9 : 1, marginTop: 0 }]}>
         <Text style={styles.primaryText}>Add staff member</Text>
       </Pressable>

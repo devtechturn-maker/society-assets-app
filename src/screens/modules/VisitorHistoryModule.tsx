@@ -7,6 +7,7 @@ import {
   Text,
   TextInput,
   View,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchChairmanVisitorHistory, fetchGateKeeperVisitorHistory, fetchMemberVisitorHistory } from '../../services/api';
@@ -236,6 +237,7 @@ export function VisitorHistoryModule({
           contentContainerStyle={styles.listContent}
           data={grouped}
           keyExtractor={(item) => item.flatNumber}
+          refreshControl={<RefreshControl refreshing={loading && items.length > 0} onRefresh={() => void load()} />}
           ListHeaderComponent={listHeader}
           ListEmptyComponent={<ListEmpty message="No visitors found for this date" />}
           renderItem={({ item }) => (
@@ -273,6 +275,7 @@ export function VisitorHistoryModule({
         contentContainerStyle={styles.listContent}
         data={items}
         keyExtractor={(item) => item.id}
+        refreshControl={<RefreshControl refreshing={loading && items.length > 0} onRefresh={() => void load()} />}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={<ListEmpty message="No visitors found for this date" />}
         renderItem={({ item }) => (
