@@ -3,6 +3,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'r
 import { AddMaintenanceModal } from '../../components/maintenance/AddMaintenanceModal';
 import { Badge, paymentBadgeTone } from '../../components/dashboard/Badge';
 import { ExpenseRowCard } from '../../components/dashboard/ExpenseRowCard';
+import { ReverseEntryButton } from '../../components/dashboard/ReverseEntryButton';
 import { ListEmpty, ListError, ListLoading } from '../../components/dashboard/ListStates';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import {
@@ -105,7 +106,16 @@ export function MaintenanceModule() {
               {history.error ? <ListError message={history.error} /> : null}
               {history.data?.length === 0 ? <ListEmpty message="No maintenance entries yet." /> : null}
               {history.data?.map((row) => (
-                <ExpenseRowCard key={row.expenseId} row={row} showMember={true} />
+                <ExpenseRowCard key={row.expenseId} row={row} showMember={true}>
+                  <ReverseEntryButton
+                    row={row}
+                    maintenance
+                    onReversed={() => {
+                      history.refresh();
+                      pending.refresh();
+                    }}
+                  />
+                </ExpenseRowCard>
               ))}
             </SectionCard>
           </>

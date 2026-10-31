@@ -570,6 +570,11 @@ export const fetchRecentExpenses = () => getData<RecentExpense[]>('/society/dash
 export const fetchExpenseHistory = () => getData<RecentExpense[]>('/expenses');
 export const fetchMaintenanceHistory = () => getData<RecentExpense[]>('/expenses/maintenance');
 export const fetchLedgerHistory = () => getData<RecentExpense[]>('/expenses/ledger');
+
+/** Cancels a wrongly recorded expense, income or maintenance entry (office managers only). */
+export async function reverseEntry(expenseId: string, reason: string): Promise<void> {
+  await client.post<ApiResponse<unknown>>(`/expenses/${expenseId}/reverse`, { reason });
+}
 export const fetchMaintenancePending = () =>
   getData<PendingMaintenanceMember[]>('/expenses/maintenance/pending');
 export const fetchMembers = () => getData<SocietyMember[]>('/society/members');

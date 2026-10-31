@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text } from 'react-native';
 import { AddLedgerEntryModal } from '../../components/ledger/AddLedgerEntryModal';
 import { ExpenseRowCard } from '../../components/dashboard/ExpenseRowCard';
+import { ReverseEntryButton } from '../../components/dashboard/ReverseEntryButton';
 import { ListEmpty, ListError, ListLoading } from '../../components/dashboard/ListStates';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { fetchLedgerHistory } from '../../services/api';
@@ -35,7 +36,9 @@ export function IncomeExpensesModule() {
           {ledger.error ? <ListError message={ledger.error} /> : null}
           {ledger.data?.length === 0 ? <ListEmpty message="No income or expense entries yet." /> : null}
           {ledger.data?.map((row) => (
-            <ExpenseRowCard key={row.expenseId} row={row} showEntryType />
+            <ExpenseRowCard key={row.expenseId} row={row} showEntryType>
+              <ReverseEntryButton row={row} onReversed={ledger.refresh} />
+            </ExpenseRowCard>
           ))}
         </SectionCard>
       </ScrollView>
