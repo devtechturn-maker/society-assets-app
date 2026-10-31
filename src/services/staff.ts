@@ -9,6 +9,7 @@ export interface Staff {
   designation: string;
   phone?: string | null;
   joiningDate?: string | null;
+  leavingDate?: string | null;
   payType: 'MONTHLY' | 'DAILY';
   payRate: number;
   status: 'ACTIVE' | 'INACTIVE';
@@ -127,7 +128,9 @@ export const fetchStaff = () => get<Staff[]>('/society/staff');
 export const fetchStaffMember = (id: string) => get<Staff>(`/society/staff/${id}`);
 export const createStaff = (input: StaffInput) => send<Staff>('post', '/society/staff', input);
 export const updateStaff = (id: string, input: StaffInput) => send<Staff>('put', `/society/staff/${id}`, input);
-export const setStaffActive = (id: string, active: boolean) => send<Staff>('put', `/society/staff/${id}/status`, { active });
+/** `leavingDate` (YYYY-MM-DD) is the last working day when marking inactive; pay stops after it. */
+export const setStaffActive = (id: string, active: boolean, leavingDate?: string) =>
+  send<Staff>('put', `/society/staff/${id}/status`, leavingDate ? { active, leavingDate } : { active });
 export const fetchDaySheet = (date?: string) => get<DaySheet>('/society/staff/attendance', date ? { date } : undefined);
 export const saveDaySheet = (date: string, entries: { staffId: string; status: AttendanceStatus }[]) =>
   send<{ saved: number; corrected: number }>('put', '/society/staff/attendance', { date, entries });

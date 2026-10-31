@@ -233,6 +233,8 @@ function StaffProfile({ id, onBack, onEdit }: { id: string; onBack: () => void; 
   const { theme } = useTheme();
   const { toast } = useAppAlert();
   const [s, setS] = useState<Staff | null>(null);
+  const [leaving, setLeaving] = useState<string | null>(null);
+  const [savingStatus, setSavingStatus] = useState(false);
   const load = useCallback(async () => {
     try {
       setS(await fetchStaffMember(id));
@@ -254,6 +256,9 @@ function StaffProfile({ id, onBack, onEdit }: { id: string; onBack: () => void; 
         <Text style={[styles.body, { color: theme.text }]}>{inr(s.payRate)} {s.payType === 'MONTHLY' ? 'per month' : 'per day'}</Text>
         {s.phone ? <Text style={[styles.meta, { color: theme.textMuted }]}>Mobile {s.phone}</Text> : null}
         {s.joiningDate ? <Text style={[styles.meta, { color: theme.textMuted }]}>Joined {s.joiningDate}</Text> : null}
+        {s.status !== 'ACTIVE' && s.leavingDate ? (
+          <Text style={[styles.meta, { color: theme.textMuted }]}>Last working day {s.leavingDate}</Text>
+        ) : null}
         {s.upiId ? <Text style={[styles.meta, { color: theme.textMuted }]}>UPI {s.upiId}</Text> : null}
         {s.bankAccountMasked ? <Text style={[styles.meta, { color: theme.textMuted }]}>Bank {s.bankAccountMasked} · {s.bankIfsc}</Text> : null}
         <View style={[styles.two, { marginTop: 12 }]}>
@@ -262,8 +267,13 @@ function StaffProfile({ id, onBack, onEdit }: { id: string; onBack: () => void; 
           </Pressable>
           <Pressable
             onPress={async () => {
+              if (s.status === 'ACTIVE') {
+                // Ask for the last working day first; salary stops after it.
+                setLeaving(isoDay(new Date()));
+                return;
+              }
               try {
-                setS(await setStaffActive(s.id, s.status !== 'ACTIVE'));
+                setS(await setStaffActive(s.id, true));
               } catch (e) {
                 toast(apiErrorMessage(e), 'error');
               }
@@ -273,6 +283,42 @@ function StaffProfile({ id, onBack, onEdit }: { id: string; onBack: () => void; 
             <Text style={{ color: theme.text, fontWeight: '700' }}>{s.status === 'ACTIVE' ? 'Mark inactive' : 'Re-activate'}</Text>
           </Pressable>
         </View>
+        {leaving !== null ? (
+          <View style={{ marginTop: 12, gap: 6 }}>
+            <Text style={[styles.meta, { color: theme.text, fontWeight: '700' }]}>Last working day (YYYY-MM-DD)</Text>
+            <TextInput
+              value={leaving}
+              onChangeText={setLeaving}
+              autoCapitalize="none"
+              placeholder="2026-10-31"
+              placeholderTextColor={theme.placeholder}
+              style={[styles.input, { borderColor: theme.inputBorder, color: theme.inputText, backgroundColor: theme.inputBg }]}
+            />
+            <Text style={[styles.meta, { color: theme.textMuted }]}>Salary is not paid for days after this date.</Text>
+            <View style={styles.two}>
+              <Pressable onPress={() => setLeaving(null)} style={[styles.secondary, { borderColor: theme.cardBorder, flex: 1 }]}>
+                <Text style={{ color: theme.text, fontWeight: '700' }}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                disabled={savingStatus}
+                onPress={async () => {
+                  setSavingStatus(true);
+                  try {
+                    setS(await setStaffActive(s.id, false, leaving.trim()));
+                    setLeaving(null);
+                  } catch (e) {
+                    toast(apiErrorMessage(e), 'error');
+                  } finally {
+                    setSavingStatus(false);
+                  }
+                }}
+                style={[styles.secondary, { borderColor: '#dc2626', flex: 1, opacity: savingStatus ? 0.6 : 1 }]}
+              >
+                <Text style={{ color: '#dc2626', fontWeight: '800' }}>{savingStatus ? 'Saving…' : 'Mark inactive'}</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
       </SectionCard>
       <SectionCard title="Salary history">
         {!s.salaries?.length ? <Text style={[styles.meta, { color: theme.textMuted }]}>No salary recorded yet.</Text> : null}
