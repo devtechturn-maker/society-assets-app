@@ -68,6 +68,7 @@ import { mergeLoginUserPatch, userDisplayName } from '../utils/userDisplayName';
 import { AppLogo } from '../components/AppLogo';
 import { AppLoader } from '../components/AppLoader';
 import { useGlobalLoadingVisible } from '../hooks/useGlobalLoadingVisible';
+import { useKeyboardHeight } from '../hooks/useKeyboardAwareScroll';
 import { MoreBottomMenu } from '../components/MoreBottomMenu';
 import { SocietyJoinCodeHeader } from '../components/society/SocietyJoinCodeHeader';
 import { runHardwareBackHandlers } from '../services/hardwareBackNavigation';
@@ -178,6 +179,8 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
   const [activePath, setActivePath] = useState('dashboard');
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [bottomBarHeight, setBottomBarHeight] = useState(72);
+  // Hide the tab bar while typing so it does not ride up on top of the keyboard.
+  const keyboardOpen = useKeyboardHeight() > 0;
   const activePathRef = useRef(activePath);
   const lastTabPathRef = useRef('dashboard');
 
@@ -834,7 +837,11 @@ export function SocietyShell({ user, onLogout, onUserUpdated, onSwitchRole }: Pr
       </View>
 
       <View
-        style={[styles.bottomBar, { backgroundColor: theme.bottomBarBg, borderTopColor: theme.bottomBarBorder }]}
+        style={[
+          styles.bottomBar,
+          { backgroundColor: theme.bottomBarBg, borderTopColor: theme.bottomBarBorder },
+          keyboardOpen ? styles.bottomBarHidden : null,
+        ]}
         onLayout={(event) => {
           const next = Math.ceil(event.nativeEvent.layout.height);
           if (next > 0 && next !== bottomBarHeight) {
@@ -973,6 +980,7 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  bottomBarHidden: { display: 'none' },
   bottomBarRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
