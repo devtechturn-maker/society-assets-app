@@ -8,7 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://187.127.180.221:8080"
+        "EXPO_PUBLIC_API_URL": "https://societyassets.in/api"
       },
       "android": {
         "buildType": "apk"
@@ -21,7 +21,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://societyassets.in/api"
       },
       "ios": {
         "simulator": true
@@ -30,7 +30,7 @@
     "preview-apk": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://societyassets.in/api"
       },
       "android": {
         "buildType": "apk"
@@ -39,7 +39,7 @@
     "preview": {
       "distribution": "store",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://society-assets-backend.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://societyassets.in/api"
       },
       "android": {
         "buildType": "app-bundle"
