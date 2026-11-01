@@ -12,6 +12,8 @@ import { LoginScreen } from './src/screens/LoginScreen';
 import { ProfileCompletionScreen } from './src/screens/ProfileCompletionScreen';
 import { SocietyShell } from './src/screens/SocietyShell';
 import { SubscriptionEndedScreen } from './src/screens/SubscriptionEndedScreen';
+import { UpdateRequiredScreen } from './src/screens/UpdateRequiredScreen';
+import { checkUpdateRequired } from './src/services/appUpdate';
 import { RoleSelectionScreen } from './src/screens/RoleSelectionScreen';
 import { loadStoredSession, setSessionInvalidHandler } from './src/services/session';
 import { fetchSubscriptionStatus, isGateKeeperRole } from './src/services/api';
@@ -50,6 +52,7 @@ function AppRoot() {
   const [sessionReady, setSessionReady] = useState(false);
   const [assetsReady, setAssetsReady] = useState(false);
   const [pendingRoleSelection, setPendingRoleSelection] = useState(false);
+  const [updateUrl, setUpdateUrl] = useState<string | null>(null);
 
   // The native splash stays up until assets and the saved session are ready, then the first screen shows directly.
   const splashReady = assetsReady && sessionReady;
@@ -77,6 +80,17 @@ function AppRoot() {
     return () => {
       cancelled = true;
       clearTimeout(safety);
+    };
+  }, []);
+
+  // Runs alongside startup; only blocks the app when the server says this build is too old.
+  useEffect(() => {
+    let cancelled = false;
+    void checkUpdateRequired().then((url) => {
+      if (!cancelled) setUpdateUrl(url);
+    });
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -196,7 +210,9 @@ function AppRoot() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.pageBg }]}>
-      {!sessionReady ? (
+      {updateUrl ? (
+        <UpdateRequiredScreen storeUrl={updateUrl} />
+      ) : !sessionReady ? (
         <AppBootLoader label="Loading..." />
       ) : user && subscriptionStatus && !subscriptionStatus.canAccessApp ? (
         <SubscriptionEndedScreen

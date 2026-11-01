@@ -1883,3 +1883,14 @@ export { API_BASE_URL };
 
 /** Shared HTTP client (auth + client-type headers) for feature service modules. */
 export { client as apiClient };
+
+export type AppVersionInfo = { minVersionCode: number; storeUrl: string };
+
+/** Public: the oldest Android build the backend still supports. */
+export async function fetchAppVersionInfo(): Promise<AppVersionInfo> {
+  const { data } = await publicClient.get<AppVersionInfo>('/health/app-version', {
+    timeout: 8000,
+    headers: { 'X-Skip-Global-Loader': '1' },
+  });
+  return data;
+}
