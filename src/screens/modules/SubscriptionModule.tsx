@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { cancelSubscriptionAutoRenew, fetchSubscriptionStatus } from '../../services/api';
 import { apiErrorMessage } from '../../utils/apiError';
@@ -26,6 +26,7 @@ export function SubscriptionModule() {
   const [status, setStatus] = useState<SocietySubscriptionStatus | null>(null);
   const [canPurchase, setCanPurchase] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [cancellingAutoRenew, setCancellingAutoRenew] = useState(false);
   const { alert, confirm } = useAppAlert();
 
@@ -50,8 +51,10 @@ export function SubscriptionModule() {
     });
   }
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  // A pull keeps the current plan on screen; only the first load shows the full-screen spinner.
+  const load = useCallback(async (pulled = false) => {
+    if (pulled) setRefreshing(true);
+    else setLoading(true);
     try {
       const [s, user] = await Promise.all([fetchSubscriptionStatus(), getUser()]);
       setStatus(s);
@@ -60,8 +63,11 @@ export function SubscriptionModule() {
       setStatus(null);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
+
+  const refreshControl = <RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} />;
 
   useEffect(() => {
     void load();
@@ -75,7 +81,11 @@ export function SubscriptionModule() {
     );
   }
   if (!status) {
-    return <Text style={[styles.empty, { color: theme.textMuted }]}>Could not load your subscription. Pull to try again later.</Text>;
+    return (
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} refreshControl={refreshControl}>
+        <Text style={[styles.empty, { color: theme.textMuted }]}>Could not load your subscription. Pull down to try again.</Text>
+      </ScrollView>
+    );
   }
 
   const lifecycle = LIFECYCLE[String(status.lifecycleStatus ?? status.status ?? '').toUpperCase()] ?? {
@@ -87,7 +97,7 @@ export function SubscriptionModule() {
   const onTrial = String(status.lifecycleStatus ?? status.status).toUpperCase() === 'TRIAL';
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.content} refreshControl={refreshControl}>
       <Text style={[styles.sectionTitle, { color: theme.text }]}>Current plan</Text>
       <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
         <View style={styles.headRow}>

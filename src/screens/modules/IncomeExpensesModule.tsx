@@ -4,15 +4,16 @@ import { AddLedgerEntryModal } from '../../components/ledger/AddLedgerEntryModal
 import { ExpenseRowCard } from '../../components/dashboard/ExpenseRowCard';
 import { ReverseEntryButton } from '../../components/dashboard/ReverseEntryButton';
 import { ListEmpty, ListError, ListLoading } from '../../components/dashboard/ListStates';
+import { LoadMoreButton } from '../../components/dashboard/LoadMoreButton';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { fetchLedgerHistory } from '../../services/api';
-import { useAsyncLoad } from '../../hooks/useAsyncLoad';
+import { usePagedLoad } from '../../hooks/usePagedLoad';
 import { useTheme } from '../../theme/ThemeContext';
 
 export function IncomeExpensesModule() {
   const { theme } = useTheme();
   const [modalOpen, setModalOpen] = useState(false);
-  const ledger = useAsyncLoad(fetchLedgerHistory, []);
+  const ledger = usePagedLoad(fetchLedgerHistory, (row) => String(row.expenseId));
 
   return (
     <>
@@ -40,6 +41,7 @@ export function IncomeExpensesModule() {
               <ReverseEntryButton row={row} onReversed={ledger.refresh} />
             </ExpenseRowCard>
           ))}
+          <LoadMoreButton visible={ledger.hasMore} loading={ledger.loadingMore} onPress={() => void ledger.loadMore()} />
         </SectionCard>
       </ScrollView>
 

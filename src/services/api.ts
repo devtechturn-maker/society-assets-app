@@ -568,8 +568,12 @@ export async function verifyChangePasswordOtp(
 
 export const fetchRecentExpenses = () => getData<RecentExpense[]>('/society/dashboard/recent-expenses');
 export const fetchExpenseHistory = () => getData<RecentExpense[]>('/expenses');
-export const fetchMaintenanceHistory = () => getData<RecentExpense[]>('/expenses/maintenance');
-export const fetchLedgerHistory = () => getData<RecentExpense[]>('/expenses/ledger');
+/** One page (from 0) of maintenance history, newest first. */
+export const fetchMaintenanceHistory = (page: number, size: number) =>
+  getData<RecentExpense[]>(`/expenses/maintenance?page=${page}&size=${size}`);
+/** One page (from 0) of income and expense entries, newest first. */
+export const fetchLedgerHistory = (page: number, size: number) =>
+  getData<RecentExpense[]>(`/expenses/ledger?page=${page}&size=${size}`);
 
 /** Cancels a wrongly recorded expense, income or maintenance entry (office managers only). */
 export async function reverseEntry(expenseId: string, reason: string): Promise<void> {

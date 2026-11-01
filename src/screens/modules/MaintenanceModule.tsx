@@ -5,6 +5,7 @@ import { Badge, paymentBadgeTone } from '../../components/dashboard/Badge';
 import { ExpenseRowCard } from '../../components/dashboard/ExpenseRowCard';
 import { ReverseEntryButton } from '../../components/dashboard/ReverseEntryButton';
 import { ListEmpty, ListError, ListLoading } from '../../components/dashboard/ListStates';
+import { LoadMoreButton } from '../../components/dashboard/LoadMoreButton';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import {
   fetchMaintenanceHistory,
@@ -13,6 +14,7 @@ import {
 } from '../../services/api';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
+import { usePagedLoad } from '../../hooks/usePagedLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import { formatDate, formatInr } from '../../utils/format';
 import { unitName } from '../../utils/unitName';
@@ -22,7 +24,7 @@ export function MaintenanceModule() {
   const { theme } = useTheme();
   const [modalOpen, setModalOpen] = useState(false);
   const pending = useAsyncLoad(fetchMaintenancePending, []);
-  const history = useAsyncLoad(fetchMaintenanceHistory, []);
+  const history = usePagedLoad(fetchMaintenanceHistory, (row) => String(row.expenseId));
   const [sendingId, setSendingId] = useState<string | null>(null);
 
   async function onReminder(memberId: string) {
@@ -93,7 +95,7 @@ export function MaintenanceModule() {
 
             <SectionCard
               title="Maintenance History"
-              subtitle="Latest maintenance entries for this society"
+              subtitle="Maintenance entries for this society, newest first"
               headerRight={
                 <Pressable
                   style={[styles.addBtn, { backgroundColor: theme.accent }]}
@@ -117,6 +119,7 @@ export function MaintenanceModule() {
                   />
                 </ExpenseRowCard>
               ))}
+              <LoadMoreButton visible={history.hasMore} loading={history.loadingMore} onPress={() => void history.loadMore()} />
             </SectionCard>
           </>
         ) : null}
