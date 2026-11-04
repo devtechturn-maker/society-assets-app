@@ -178,6 +178,7 @@ export function JoinSocietyWizard({ email, selectionToken, onJoined, onBack }: P
         societyId: selectedSociety.societyId,
         flatId: selectedFlat.flatId,
         memberName: memberName.trim(),
+        joinCode: normalizeJoinCodeInput(joinCode),
       });
       onJoined(data);
     } catch (e: unknown) {
@@ -222,15 +223,7 @@ export function JoinSocietyWizard({ email, selectionToken, onJoined, onBack }: P
               <Text style={wizardStyles.primaryBtnText}>Continue</Text>
             )}
           </Pressable>
-          <Pressable
-            style={styles.linkBtn}
-            onPress={() => {
-              setInlineError(null);
-              setStep('search');
-            }}
-          >
-            <Text style={styles.linkText}>Search by society name instead</Text>
-          </Pressable>
+          <Text style={styles.linkText}>Ask your chairman for the 8-character join code.</Text>
         </>
       ) : null}
 

@@ -325,6 +325,8 @@ export async function joinSocietyMobile(payload: {
   societyId: string;
   flatId: string;
   memberName: string;
+  /** The society's join code (required by the server). */
+  joinCode: string;
 }): Promise<LoginData> {
   const { data } = await client.post<ApiResponse<LoginData>>('/auth/onboarding/join-society', {
     ...payload,
