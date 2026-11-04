@@ -7,6 +7,8 @@ export async function performAppLogout(): Promise<void> {
   await withBlockingLoader('Signing out…', async () => {
     const { unregisterPushNotificationsFromBackend } = await import('./pushNotifications');
     await unregisterPushNotificationsFromBackend();
+    const { revokeServerSession } = await import('./api');
+    await revokeServerSession();
     await clearSession();
     notifySessionInvalid();
   });

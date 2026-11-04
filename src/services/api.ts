@@ -1896,3 +1896,12 @@ export async function fetchAppVersionInfo(): Promise<AppVersionInfo> {
   });
   return data;
 }
+
+/** Cancels this account's sign-in tokens on the server (all devices). Never throws: logout must always work. */
+export async function revokeServerSession(): Promise<void> {
+  try {
+    await client.post('/auth/mobile/logout', {}, { timeout: 8000, headers: { 'X-Skip-Global-Loader': '1' } });
+  } catch {
+    // Offline or token already invalid: the local session is cleared anyway.
+  }
+}
