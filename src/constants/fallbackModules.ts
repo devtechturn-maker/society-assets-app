@@ -150,7 +150,45 @@ export function buildMoreMenuItems(
     });
   }
 
+  if (portal === 'society') {
+    return orderChairmanMoreMenu(items);
+  }
+  if (portal === 'member') {
+    return orderMoreMenu(items, MEMBER_MORE_MENU_ORDER);
+  }
   return items;
+}
+
+/** Member More menu order. Items not listed keep their place after these. */
+const MEMBER_MORE_MENU_ORDER = ['__switch_role__', 'visitors', 'about-society', 'about-us', 'help'];
+
+/** Chairman More menu order. Items not listed keep their place after these. */
+const CHAIRMAN_MORE_MENU_ORDER = [
+  '__switch_role__',
+  'ledger',
+  'settings',
+  'reports',
+  'contracts',
+  'visitor-admin',
+  'about-society',
+  'subscription',
+  'about-us',
+  'help',
+];
+
+export function orderChairmanMoreMenu(items: MoreMenuNavItem[]): MoreMenuNavItem[] {
+  return orderMoreMenu(items, CHAIRMAN_MORE_MENU_ORDER);
+}
+
+function orderMoreMenu(items: MoreMenuNavItem[], order: string[]): MoreMenuNavItem[] {
+  const rank = (routePath: string) => {
+    const index = order.indexOf(routePath);
+    return index === -1 ? order.length : index;
+  };
+  return items
+    .map((item, position) => ({ item, position }))
+    .sort((a, b) => rank(a.item.routePath) - rank(b.item.routePath) || a.position - b.position)
+    .map(({ item }) => item);
 }
 
 /** Bottom tabs: primary modules only + fixed More tab as the last item. */
