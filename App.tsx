@@ -27,9 +27,11 @@ import {
   isRemotePushAvailable,
 } from './src/services/pushNotifications';
 import { preloadBrandAssets } from './src/utils/preloadBrandAssets';
+import { applyOrientationPolicy } from './src/services/screenOrientation';
 import { needsMemberProfileCompletion } from './src/utils/profileCompletion';
 
 ExpoSplashScreen.preventAutoHideAsync().catch(() => undefined);
+void applyOrientationPolicy();
 
 if (__DEV__) {
   LogBox.ignoreLogs([

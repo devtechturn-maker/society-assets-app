@@ -23,7 +23,7 @@ export function PremiumLoadingScreen({
 }: Props) {
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" backgroundColor={SPLASH_COLORS.background} />
+      <StatusBar style="dark" />
       <SplashBackgroundArt />
 
       <SafeAreaView style={styles.safe}>
