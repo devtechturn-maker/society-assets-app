@@ -27,8 +27,10 @@ module.exports = ({ config }) => {
               ...(options.android ?? {}),
               // Production talks only to https://societyassets.in; test builds may still use http://IP:8080.
               usesCleartextTraffic: profile !== 'production',
-              enableMinifyInReleaseBuilds: false,
-              enableShrinkResourcesInReleaseBuilds: false,
+              // R8 shrinks and optimises the release code (Play Console "DEX code optimization" warning).
+              // Only for the store (production) build; preview/test builds stay unminified for easy debugging.
+              enableMinifyInReleaseBuilds: profile === 'production',
+              enableShrinkResourcesInReleaseBuilds: profile === 'production',
             },
           },
         ];
