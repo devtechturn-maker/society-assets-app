@@ -28,10 +28,13 @@ import {
 } from './src/services/pushNotifications';
 import { preloadBrandAssets } from './src/utils/preloadBrandAssets';
 import { applyOrientationPolicy } from './src/services/screenOrientation';
+import { wipeSecureCache } from './src/services/secureFileCache';
 import { needsMemberProfileCompletion } from './src/utils/profileCompletion';
 
 ExpoSplashScreen.preventAutoHideAsync().catch(() => undefined);
 void applyOrientationPolicy();
+// Nothing downloaded in an earlier run (or by an earlier build) survives a restart.
+void wipeSecureCache();
 
 if (__DEV__) {
   LogBox.ignoreLogs([
@@ -157,6 +160,7 @@ function AppRoot() {
 
   useEffect(() => {
     setSessionInvalidHandler(() => {
+      void wipeSecureCache();
       setUser(null);
       setSubscriptionStatus(null);
       setPendingRoleSelection(false);

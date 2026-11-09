@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
+import { secureCachePath } from '../../services/secureFileCache';
+import { useDocumentScreenProtection } from '../../services/screenProtection';
 import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../../config/env';
@@ -28,12 +30,13 @@ export function RecordFiles({
   const { theme } = useTheme();
   const { toast } = useAppAlert();
   const [opening, setOpening] = useState<string | null>(null);
+  useDocumentScreenProtection(files.length > 0);
 
   async function openPdf(file: RecordFile) {
     setOpening(file.id);
     try {
       const token = await getToken();
-      const target = `${FileSystem.cacheDirectory}record-${file.id}.pdf`;
+      const target = await secureCachePath(`record-${file.id}.pdf`);
       const result = await FileSystem.downloadAsync(`${API_BASE_URL}${pathFor(file.id)}`, target, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

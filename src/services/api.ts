@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as FileSystem from 'expo-file-system/legacy';
+import { secureCachePath } from './secureFileCache';
 import { API_BASE_URL } from '../config/env';
 import { clearSession, getToken } from './storage';
 import { notifySessionInvalid } from './session';
@@ -479,11 +480,7 @@ export async function downloadMemberMaintenanceReceipt(expenseId: string): Promi
   const token = await getToken();
   const url = `${API_BASE_URL}/member/maintenance/${expenseId}/receipt`;
   const filename = `maintenance-receipt-${expenseId}.pdf`;
-  const cacheDir = FileSystem.cacheDirectory;
-  if (!cacheDir) {
-    throw new Error('Unable to save receipt on this device.');
-  }
-  const fileUri = `${cacheDir}${filename}`;
+  const fileUri = await secureCachePath(filename);
 
   const result = await FileSystem.downloadAsync(url, fileUri, {
     headers: {
@@ -844,7 +841,7 @@ export async function uploadOpeningDuesExcel(fileUri: string, fileName: string, 
 /** Downloads the sample sheet (flatNumber, openingDue, note) to the cache and returns its local path. */
 export async function downloadOpeningDuesSample(): Promise<string> {
   const token = await getToken();
-  const target = `${FileSystem.cacheDirectory}opening-dues-sample.xlsx`;
+  const target = await secureCachePath('opening-dues-sample.xlsx');
   const result = await FileSystem.downloadAsync(`${API_BASE_URL}/society/opening-balances/dues/sample-excel`, target, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
@@ -1024,11 +1021,7 @@ export async function downloadReportsToDevice(
       : filename.endsWith('.pdf')
         ? 'application/pdf'
         : 'application/zip';
-  const cacheDir = FileSystem.cacheDirectory;
-  if (!cacheDir) {
-    throw new Error('Unable to save reports on this device.');
-  }
-  const fileUri = `${cacheDir}${filename}`;
+  const fileUri = await secureCachePath(filename);
   const base64 = uint8ArrayToBase64(new Uint8Array(response.data));
   await FileSystem.writeAsStringAsync(fileUri, base64, {
     encoding: FileSystem.EncodingType.Base64,
@@ -1847,11 +1840,7 @@ async function downloadToCache(path: string, fallbackName: string): Promise<{ ur
     parseContentDispositionFilename(typeof disposition === 'string' ? disposition : null) ?? fallbackName;
   const contentType = response.headers['content-type'];
   const mimeType = typeof contentType === 'string' ? contentType.split(';')[0] : 'application/pdf';
-  const cacheDir = FileSystem.cacheDirectory;
-  if (!cacheDir) {
-    throw new Error('Unable to save the file on this device.');
-  }
-  const fileUri = `${cacheDir}${filename.replace(/[^\w.-]+/g, '_')}`;
+  const fileUri = await secureCachePath(filename);
   await FileSystem.writeAsStringAsync(fileUri, uint8ArrayToBase64(new Uint8Array(response.data)), {
     encoding: FileSystem.EncodingType.Base64,
   });

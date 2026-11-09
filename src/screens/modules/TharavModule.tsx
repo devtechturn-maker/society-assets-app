@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { secureCachePath } from '../../services/secureFileCache';
 import * as Sharing from 'expo-sharing';
 import { API_BASE_URL } from '../../config/env';
 import { getToken } from '../../services/storage';
@@ -417,7 +418,7 @@ function OfficeDetail({ id, onBack, onEdit, onAmend, onDeleted }: { id: string; 
     setDownloading(true);
     try {
       const token = await getToken();
-      const target = `${FileSystem.cacheDirectory}tharav-${tharav?.tharavNumber ?? id}-signatures.pdf`;
+      const target = await secureCachePath(`tharav-${tharav?.tharavNumber ?? id}-signatures.pdf`);
       const result = await FileSystem.downloadAsync(`${API_BASE_URL}/society/tharavs/${id}/report.pdf`, target, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

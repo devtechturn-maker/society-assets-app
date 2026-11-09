@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
+import { secureCachePath } from '../../services/secureFileCache';
+import { useDocumentScreenProtection } from '../../services/screenProtection';
 import { API_BASE_URL } from '../../config/env';
 import { getToken } from '../../services/storage';
 
@@ -11,14 +13,15 @@ type Props = {
   resizeMode?: 'cover' | 'contain' | 'stretch' | 'repeat' | 'center';
 };
 
-function cachePathFor(path: string): string {
-  const safe = path.replace(/[^\w.-]+/g, '_');
-  return `${FileSystem.cacheDirectory}chat-${safe}.img`;
+function cachePathFor(path: string): Promise<string> {
+  return secureCachePath(`img-${path}.img`);
 }
 
 export function AuthenticatedImage({ path, localUri, style, resizeMode = 'cover' }: Props) {
   const [uri, setUri] = useState<string | null>(localUri ?? null);
   const [failed, setFailed] = useState(false);
+  // Society photos (chat, complaints, visitors, payment proofs) cannot be screenshotted while shown.
+  useDocumentScreenProtection(!localUri);
 
   useEffect(() => {
     if (localUri) {
@@ -34,7 +37,7 @@ export function AuthenticatedImage({ path, localUri, style, resizeMode = 'cover'
     let cancelled = false;
     (async () => {
       try {
-        const cached = cachePathFor(path);
+        const cached = await cachePathFor(path);
         const existing = await FileSystem.getInfoAsync(cached);
         if (existing.exists && existing.uri) {
           if (!cancelled) setUri(existing.uri);

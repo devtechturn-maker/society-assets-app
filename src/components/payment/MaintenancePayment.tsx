@@ -16,6 +16,7 @@ import {
 import { ModalKeyboardAvoidingView } from '../KeyboardSafeView';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
+import { secureCachePath } from '../../services/secureFileCache';
 import * as Sharing from 'expo-sharing';
 import { API_BASE_URL } from '../../config/env';
 import { getToken } from '../../services/storage';
@@ -100,7 +101,7 @@ export function SocietyQrCard({
     setSharing(true);
     try {
       const token = await getToken();
-      const target = `${FileSystem.cacheDirectory}society-payment-qr.jpg`;
+      const target = await secureCachePath('society-payment-qr.jpg');
       const result = await FileSystem.downloadAsync(`${API_BASE_URL}${path}`, target, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
