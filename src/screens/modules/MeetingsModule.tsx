@@ -15,7 +15,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
-import { RecordFiles } from '../../components/records/RecordFiles';
+import { RecordFiles, askFileVisibility } from '../../components/records/RecordFiles';
 import {
   cancelMeeting,
   completeMeeting,
@@ -25,6 +25,7 @@ import {
   meetingFilePath,
   updateMeeting,
   uploadMeetingFile,
+  setMeetingFileVisibility,
   type MeetingDetail,
   type MeetingInput,
   type MeetingSummary,
@@ -186,9 +187,10 @@ function MeetingDetailScreen({ portal, id, onBack, onEdit }: { portal: Portal; i
     const picked = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*'], copyToCacheDirectory: true });
     if (picked.canceled || !picked.assets?.[0]) return;
     const asset = picked.assets[0];
+    const visibility = await askFileVisibility(confirm);
     setBusy(true);
     try {
-      await uploadMeetingFile(id, { uri: asset.uri, name: asset.name, mimeType: asset.mimeType });
+      await uploadMeetingFile(id, { uri: asset.uri, name: asset.name, mimeType: asset.mimeType }, visibility);
       await load();
     } catch (e) {
       toast(apiErrorMessage(e, 'Could not attach the file'), 'error');
@@ -239,7 +241,16 @@ function MeetingDetailScreen({ portal, id, onBack, onEdit }: { portal: Portal; i
       </SectionCard>
       {meeting.files.length || manage ? (
         <SectionCard title="Documents">
-          <RecordFiles files={meeting.files} pathFor={(fileId) => meetingFilePath(portal, meeting.id, fileId)} />
+          <RecordFiles
+            files={meeting.files}
+            pathFor={(fileId) => meetingFilePath(portal, meeting.id, fileId)}
+            onToggleVisibility={
+              portal === 'society' && meeting.canManage
+                ? (fileId, next) =>
+                    void act(() => setMeetingFileVisibility(meeting.id, fileId, next), next === 'OFFICE' ? 'Now office only' : 'Now visible to all members')
+                : undefined
+            }
+          />
           {manage ? (
             <Pressable disabled={busy} onPress={() => void attach()} style={[styles.secondary, { borderColor: theme.accent, marginTop: 10 }]}>
               <Text style={{ color: theme.accent, fontWeight: '800' }}>{busy ? 'Uploading…' : 'Attach PDF or photo'}</Text>

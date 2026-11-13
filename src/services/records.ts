@@ -10,7 +10,11 @@ export interface RecordFile {
   contentType: string;
   page: number;
   uploadedAt?: string;
+  /** OFFICE: only the chairman, treasurer, committee and auditor can open it. */
+  visibility?: FileVisibility;
 }
+
+export type FileVisibility = 'ALL' | 'OFFICE';
 
 export interface MeetingSummary {
   id: string;
@@ -133,9 +137,10 @@ async function send<T>(method: 'post' | 'put' | 'delete', url: string, body?: un
   const { data } = await client.request({ method, url, data: body });
   return data.data as T;
 }
-async function upload<T>(url: string, file: { uri: string; name: string; mimeType?: string | null }): Promise<T> {
+async function upload<T>(url: string, file: { uri: string; name: string; mimeType?: string | null }, visibility?: FileVisibility): Promise<T> {
   const form = new FormData();
   form.append('file', { uri: file.uri, name: file.name, type: file.mimeType ?? 'application/octet-stream' } as unknown as Blob);
+  if (visibility) form.append('visibility', visibility);
   const { data } = await client.post(url, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 });
   return data.data as T;
 }
@@ -147,8 +152,10 @@ export const createMeeting = (input: MeetingInput) => send<MeetingSummary>('post
 export const updateMeeting = (id: string, input: MeetingInput) => send<MeetingSummary>('put', `/society/meetings/${id}`, input);
 export const cancelMeeting = (id: string, reason?: string) => send<MeetingSummary>('put', `/society/meetings/${id}/cancel`, { reason });
 export const completeMeeting = (id: string) => send<MeetingSummary>('put', `/society/meetings/${id}/complete`);
-export const uploadMeetingFile = (id: string, file: { uri: string; name: string; mimeType?: string | null }) =>
-  upload<{ files: RecordFile[] }>(`/society/meetings/${id}/files`, file);
+export const uploadMeetingFile = (id: string, file: { uri: string; name: string; mimeType?: string | null }, visibility?: FileVisibility) =>
+  upload<{ files: RecordFile[] }>(`/society/meetings/${id}/files`, file, visibility);
+export const setMeetingFileVisibility = (id: string, fileId: string, visibility: FileVisibility) =>
+  send<{ files: RecordFile[] }>('put', `/society/meetings/${id}/files/${fileId}/visibility`, { visibility });
 export const meetingFilePath = (portal: Portal, id: string, fileId: string) => `/${portal}/meetings/${id}/files/${fileId}`;
 
 // Tharav
@@ -160,8 +167,10 @@ export const createTharav = (input: TharavInput) => send<TharavDetail>('post', '
 export const updateTharav = (id: string, input: TharavInput) => send<TharavDetail>('put', `/society/tharavs/${id}`, input);
 export const deleteTharavDraft = (id: string) => send<{ id: string }>('delete', `/society/tharavs/${id}`);
 export const publishTharav = (id: string) => send<TharavDetail>('put', `/society/tharavs/${id}/publish`);
-export const uploadTharavFile = (id: string, file: { uri: string; name: string; mimeType?: string | null }) =>
-  upload<{ files: RecordFile[] }>(`/society/tharavs/${id}/files`, file);
+export const uploadTharavFile = (id: string, file: { uri: string; name: string; mimeType?: string | null }, visibility?: FileVisibility) =>
+  upload<{ files: RecordFile[] }>(`/society/tharavs/${id}/files`, file, visibility);
+export const setTharavFileVisibility = (id: string, fileId: string, visibility: FileVisibility) =>
+  send<{ files: RecordFile[] }>('put', `/society/tharavs/${id}/files/${fileId}/visibility`, { visibility });
 export const removeTharavFile = (id: string, fileId: string) => send<{ files: RecordFile[] }>('delete', `/society/tharavs/${id}/files/${fileId}`);
 export const fetchTharavHistory = (id: string) => get<{ items?: HistoryEntry[]; content?: HistoryEntry[] }>(`/society/tharavs/${id}/history`);
 export const signTharav = (id: string, signaturePng: string) =>

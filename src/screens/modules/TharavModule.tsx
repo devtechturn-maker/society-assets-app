@@ -23,7 +23,7 @@ import { unitName } from '../../utils/unitName';
 import { Ionicons } from '@expo/vector-icons';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
-import { RecordFiles } from '../../components/records/RecordFiles';
+import { RecordFiles, askFileVisibility } from '../../components/records/RecordFiles';
 import { SignaturePad } from '../../components/records/SignaturePad';
 import { AuthenticatedImage } from '../../components/chat/AuthenticatedImage';
 import {
@@ -40,6 +40,8 @@ import {
   tharavSignaturePath,
   updateTharav,
   uploadTharavFile,
+  setTharavFileVisibility,
+  type FileVisibility,
   type HistoryEntry,
   type MeetingSummary,
   type Portal,
@@ -229,7 +231,7 @@ function TharavList({ portal, onOpen, onCreate }: { portal: Portal; onOpen: (id:
 
 // ---------------------------------------------------------------- shared content view
 
-function TharavContent({ tharav, portal, onViewedFile, onRemoveFile }: { tharav: TharavDetail; portal: Portal; onViewedFile?: (id: string) => void; onRemoveFile?: (id: string) => void }) {
+function TharavContent({ tharav, portal, onViewedFile, onRemoveFile, onToggleVisibility }: { tharav: TharavDetail; portal: Portal; onViewedFile?: (id: string) => void; onRemoveFile?: (id: string) => void; onToggleVisibility?: (id: string, next: FileVisibility) => void }) {
   const { theme } = useTheme();
   const s = STATUS[tharav.status];
   return (
@@ -255,7 +257,7 @@ function TharavContent({ tharav, portal, onViewedFile, onRemoveFile }: { tharav:
       ) : null}
       {tharav.files.length ? (
         <SectionCard title={tharav.files.length > 1 ? `Documents (${tharav.files.length} pages)` : 'Document'} subtitle="Original as uploaded">
-          <RecordFiles files={tharav.files} pathFor={(fileId) => tharavFilePath(portal, tharav.id, fileId)} onViewed={onViewedFile} onRemove={onRemoveFile} />
+          <RecordFiles files={tharav.files} pathFor={(fileId) => tharavFilePath(portal, tharav.id, fileId)} onViewed={onViewedFile} onRemove={onRemoveFile} onToggleVisibility={onToggleVisibility} />
         </SectionCard>
       ) : null}
     </>
@@ -464,10 +466,11 @@ function OfficeDetail({ id, onBack, onEdit, onAmend, onDeleted }: { id: string; 
   async function attach() {
     const picked = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*'], copyToCacheDirectory: true, multiple: true });
     if (picked.canceled || !picked.assets?.length) return;
+    const visibility = await askFileVisibility(confirm);
     setBusy(true);
     try {
       for (const asset of picked.assets) {
-        await uploadTharavFile(id, { uri: asset.uri, name: asset.name, mimeType: asset.mimeType });
+        await uploadTharavFile(id, { uri: asset.uri, name: asset.name, mimeType: asset.mimeType }, visibility);
       }
       await load();
     } catch (e) {
@@ -497,7 +500,12 @@ function OfficeDetail({ id, onBack, onEdit, onAmend, onDeleted }: { id: string; 
         <Ionicons name="arrow-back" size={18} color={theme.accentGold} />
         <Text style={{ color: theme.accentGold, fontWeight: '700' }}>All Tharavs</Text>
       </Pressable>
-      <TharavContent tharav={tharav} portal="society" onRemoveFile={draft && tharav.canEdit ? (fid) => void run(() => removeTharavFile(id, fid), 'Removed') : undefined} />
+      <TharavContent
+        tharav={tharav}
+        portal="society"
+        onRemoveFile={draft && tharav.canEdit ? (fid) => void run(() => removeTharavFile(id, fid), 'Removed') : undefined}
+        onToggleVisibility={tharav.canEdit || tharav.canAmend ? (fid, next) => void run(() => setTharavFileVisibility(id, fid, next), next === 'OFFICE' ? 'Now office only' : 'Now visible to all members') : undefined}
+      />
 
       {draft ? (
         <SectionCard title="Draft" subtitle="Members cannot see drafts. Publishing gives it a number and notifies all flat owners.">
