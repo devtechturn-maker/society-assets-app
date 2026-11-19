@@ -9,6 +9,8 @@ export type PickedPhoto = {
 
 async function ensureMediaPermissions(mode: 'camera' | 'library'): Promise<boolean> {
   if (Platform.OS === 'web') return true;
+  // Android's system photo picker needs no permission, and the app does not request photo access.
+  if (mode === 'library' && Platform.OS === 'android') return true;
   const request =
     mode === 'camera'
       ? ImagePicker.requestCameraPermissionsAsync
