@@ -55,7 +55,7 @@ const STEP_COPY: Record<WizardStep, { title: string; subtitle: string }> = {
   },
   profile: {
     title: 'Your details',
-    subtitle: 'Free trial starts after setup. Buy a plan on our website when the trial ends.',
+    subtitle: 'Free trial starts after setup. Your plan is managed by the Society Assets team.',
   },
 };
 
