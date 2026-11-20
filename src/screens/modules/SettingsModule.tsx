@@ -21,6 +21,7 @@ import {
   updateSocietyBankDetails,
 } from '../../services/api';
 import { BankDetailsCard, SocietyQrCard } from '../../components/payment/MaintenancePayment';
+import { OnlinePaymentsCard } from '../../components/payment/OnlinePaymentsCard';
 import { AuthenticatedImage } from '../../components/chat/AuthenticatedImage';
 import { removeSocietyPaymentQr, societyPaymentQrPath, uploadSocietyPaymentQr } from '../../services/api';
 import { pickPhotoFromCamera, pickPhotoFromLibrary, showPhotoSourcePicker, type PickedPhoto } from '../../utils/pickPhoto';
@@ -478,6 +479,7 @@ export function SettingsModule() {
             </Pressable>
           </View>
         ) : null}
+        {bankLoad.data ? <OnlinePaymentsCard reloadKey={bankLoad.data.updatedAt ?? null} /> : null}
       </ServicesAccordionSection>
 
       <ServicesAccordionSection

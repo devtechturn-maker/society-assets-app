@@ -22,7 +22,14 @@ import { API_BASE_URL } from '../../config/env';
 import { getToken } from '../../services/storage';
 import { AuthenticatedImage } from '../chat/AuthenticatedImage';
 import { useAppAlert } from '../../context/AppAlertContext';
-import { memberPaymentScreenshotPath, societyPaymentQrPath, submitMaintenancePayment } from '../../services/api';
+import * as WebBrowser from 'expo-web-browser';
+import {
+  confirmOnlineMaintenanceOrder,
+  createOnlineMaintenanceOrder,
+  memberPaymentScreenshotPath,
+  societyPaymentQrPath,
+  submitMaintenancePayment,
+} from '../../services/api';
 import type {
   MaintenancePaymentMethod,
   MaintenancePaymentSubmission,
@@ -58,8 +65,10 @@ const METHODS: { key: MaintenancePaymentMethod; label: string }[] = [
   { key: 'OTHER', label: 'Other' },
 ];
 
+const METHOD_LABELS: Record<string, string> = { ONLINE: 'Online (Cashfree)' };
+
 export function methodLabel(method?: string | null): string {
-  return METHODS.find((m) => m.key === method)?.label ?? 'Bank transfer';
+  return METHODS.find((m) => m.key === method)?.label ?? (method ? METHOD_LABELS[method] : undefined) ?? 'Bank transfer';
 }
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
@@ -70,6 +79,8 @@ const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   PENDING: { label: 'Not completed', color: '#64748b', bg: '#f1f5f9' },
   FAILED: { label: 'Failed', color: '#64748b', bg: '#f1f5f9' },
   REFUND_REQUIRED: { label: 'Refund due', color: '#b91c1c', bg: '#fef2f2' },
+  GATEWAY_PENDING: { label: 'Processing', color: '#92400e', bg: '#fffbeb' },
+  GATEWAY_FAILED: { label: 'Not completed', color: '#64748b', bg: '#f1f5f9' },
 };
 
 export function StatusBadge({ status }: { status: string }) {
@@ -454,6 +465,76 @@ function SubmitPaymentSheet({
   );
 }
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Pay online through Cashfree: the server opens a checkout for exactly what is due, split 100% to the society's own
+ * bank account. The secure checkout opens in the browser; when the member comes back, the server checks the order
+ * with Cashfree itself (never trusting the app) and records it with a receipt if it was paid.
+ */
+function PayOnlineButton({ amount, onDone }: { amount: number; onDone?: () => void }) {
+  const { theme } = useTheme();
+  const { alert } = useAppAlert();
+  const [busy, setBusy] = useState(false);
+
+  async function pay() {
+    setBusy(true);
+    try {
+      const order = await createOnlineMaintenanceOrder();
+      if (!order.checkoutUrl) throw new Error('Online payment is not available right now. Please try again later.');
+      // Android: the auth-session polyfill resolves when the member returns to the app; iOS: when the sheet closes.
+      if (Platform.OS === 'android') {
+        await WebBrowser.openAuthSessionAsync(order.checkoutUrl, 'societyassets://payment-complete');
+      } else {
+        await WebBrowser.openBrowserAsync(order.checkoutUrl, { dismissButtonStyle: 'close' });
+      }
+      // The bank can take a few seconds to confirm, so check a few times before giving up.
+      let result = await confirmOnlineMaintenanceOrder(order.orderId);
+      for (let i = 0; i < 3 && result.stillPending; i++) {
+        await wait(3000);
+        result = await confirmOnlineMaintenanceOrder(order.orderId);
+      }
+      if (result.paid) {
+        alert('Payment successful', `${inr(result.amount)} is paid and recorded. Your receipt is on its way.`, { variant: 'success' });
+      } else if (result.status === 'REFUND_REQUIRED') {
+        alert('Already paid', 'This maintenance was already recorded, so the society office will refund this payment.', { variant: 'warning' });
+      } else if (result.stillPending) {
+        alert(
+          'Payment not confirmed yet',
+          'If money was deducted, it will show here automatically within a few minutes. Please do not pay again.',
+          { variant: 'info' }
+        );
+      } else {
+        alert('Payment not completed', 'No money was taken. You can try again.', { variant: 'info' });
+      }
+      onDone?.();
+    } catch (e) {
+      alert('Could not pay online', apiErrorMessage(e), { variant: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Pressable
+      onPress={() => void pay()}
+      disabled={busy}
+      style={[styles.primary, { backgroundColor: theme.accent, marginTop: 0, opacity: busy ? 0.7 : 1 }]}
+      accessibilityRole="button"
+      accessibilityLabel={`Pay ${inr(amount)} online`}
+    >
+      {busy ? (
+        <ActivityIndicator color="#fff" />
+      ) : (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Ionicons name="card-outline" size={18} color="#fff" />
+          <Text style={styles.primaryText}>Pay {inr(amount)} online</Text>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
 /**
  * What a flat owner sees for maintenance: amount due, where to pay, and the status of what they submitted.
  * {@code compact} is the short dashboard version.
@@ -474,6 +555,7 @@ export function MaintenancePaymentPanel({
   const latest = due.submissions?.[0];
   const pending = due.submissions?.find((s) => s.status === 'PENDING_REVIEW');
   const rejected = !pending && latest?.status === 'REJECTED' ? latest : null;
+  const payOnline = !!due.onlinePayment?.available && !pending && !due.alreadyPaid && due.payableAmount > 0;
 
   if (due.alreadyPaid && !pending) {
     return compact ? null : (
@@ -514,6 +596,16 @@ export function MaintenancePaymentPanel({
               <Text style={[styles.meta, { color: '#b45309' }]}>incl. late fee {inr(due.penaltyAmount)}</Text>
             ) : null}
           </View>
+          {payOnline ? (
+            <>
+              <PayOnlineButton amount={due.payableAmount} onDone={onSubmitted} />
+              {!compact ? (
+                <Text style={[styles.meta, { color: theme.textMuted, textAlign: 'center' }]}>
+                  UPI, cards or net banking. Paid straight to the society's bank account and recorded instantly.
+                </Text>
+              ) : null}
+            </>
+          ) : null}
           {!compact && due.bankDetails.hasQrCode && due.canSubmit ? (
             <SocietyQrCard details={due.bankDetails} portal="member" amount={due.payableAmount} note={`Maintenance ${monthsLabel(due.maintenanceFromMonth, due.maintenanceToMonth)}`} />
           ) : null}
@@ -521,10 +613,21 @@ export function MaintenancePaymentPanel({
           {due.canSubmit ? (
             <Pressable
               onPress={() => setOpen(true)}
-              style={[styles.primary, { backgroundColor: theme.accent, marginTop: 0 }]}
+              style={[
+                styles.primary,
+                payOnline
+                  ? { backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.accent, marginTop: 0 }
+                  : { backgroundColor: theme.accent, marginTop: 0 },
+              ]}
               accessibilityRole="button"
             >
-              <Text style={styles.primaryText}>{compact ? 'Pay & upload screenshot' : 'I have paid — upload screenshot'}</Text>
+              <Text style={[styles.primaryText, payOnline ? { color: theme.accent } : null]}>
+                {payOnline
+                  ? 'Paid another way? Upload screenshot'
+                  : compact
+                    ? 'Pay & upload screenshot'
+                    : 'I have paid — upload screenshot'}
+              </Text>
             </Pressable>
           ) : due.submitUnavailableMessage ? (
             <Text style={[styles.meta, { color: theme.textMuted }]}>{due.submitUnavailableMessage}</Text>

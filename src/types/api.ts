@@ -338,13 +338,16 @@ export type MaintenancePaymentStatus =
   | 'PENDING_REVIEW'
   | 'APPROVED'
   | 'REJECTED'
+  // online (Cashfree) checkout not finished; the server normally hides these
+  | 'GATEWAY_PENDING'
+  | 'GATEWAY_FAILED'
   // older online payments, kept as history
   | 'PENDING'
   | 'COMPLETED'
   | 'FAILED'
   | 'REFUND_REQUIRED';
 
-export type MaintenancePaymentMethod = 'UPI' | 'BANK_TRANSFER' | 'CHEQUE' | 'OTHER';
+export type MaintenancePaymentMethod = 'UPI' | 'BANK_TRANSFER' | 'CHEQUE' | 'OTHER' | 'ONLINE';
 
 /** A maintenance payment a member submitted with a screenshot (or an older online payment). */
 export interface MaintenancePaymentSubmission {
@@ -365,6 +368,10 @@ export interface MaintenancePaymentSubmission {
   reviewedByName?: string | null;
   reviewedAt?: string | null;
   expenseId?: string | null;
+  /** Paid online through Cashfree (settled to the society's account). */
+  online?: boolean;
+  gatewayOrderId?: string | null;
+  gatewayPaymentId?: string | null;
   createdAt: string;
 }
 
@@ -384,6 +391,37 @@ export interface MemberMaintenanceDue {
   canSubmit: boolean;
   submitUnavailableMessage?: string;
   submissions: MaintenancePaymentSubmission[];
+  /** Online payment through Cashfree, when the society has turned it on. */
+  onlinePayment?: { available: boolean; provider?: string; message?: string };
+}
+
+/** Checkout opened for exactly what is due; the app opens checkoutUrl in the browser. */
+export interface OnlineMaintenanceOrder {
+  orderId: string;
+  amount: number;
+  description: string;
+  checkoutUrl: string | null;
+}
+
+export interface OnlineMaintenanceConfirmation extends MaintenancePaymentSubmission {
+  paid: boolean;
+  stillPending: boolean;
+}
+
+/** Society office: online maintenance payments (Cashfree Easy Split to the society's own account). */
+export interface OnlinePaymentsStatus {
+  gatewayAvailable: boolean;
+  bankDetailsSaved: boolean;
+  societyPan?: string | null;
+  canEdit: boolean;
+  status: 'NOT_SET_UP' | 'PENDING' | 'ACTIVE' | 'FAILED';
+  onlinePaymentsOn: boolean;
+  gatewayStatus?: string | null;
+  accountLast4?: string | null;
+  ifsc?: string | null;
+  bankChangedSinceSetup?: boolean;
+  lastError?: string | null;
+  verifiedAt?: string | null;
 }
 
 export interface MemberPaymentPage {

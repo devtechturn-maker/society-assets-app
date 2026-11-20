@@ -52,6 +52,9 @@ import type {
   FlatTenancy,
   FlatTenancyInput,
   MemberMaintenanceDue,
+  OnlineMaintenanceConfirmation,
+  OnlineMaintenanceOrder,
+  OnlinePaymentsStatus,
   MemberMaintenanceCheckout,
   MemberProfile,
   ChatThread,
@@ -457,6 +460,22 @@ export async function submitMaintenancePayment(input: {
   return data.data;
 }
 
+/** Pay online (Cashfree): opens a checkout for exactly what is due; the money settles to the society's account. */
+export async function createOnlineMaintenanceOrder(): Promise<OnlineMaintenanceOrder> {
+  const { data } = await client.post<ApiResponse<OnlineMaintenanceOrder>>('/member/maintenance/online-order');
+  return data.data;
+}
+
+/** After the checkout closes: the server checks the order with Cashfree and records it if paid. */
+export async function confirmOnlineMaintenanceOrder(orderId: string): Promise<OnlineMaintenanceConfirmation> {
+  const { data } = await client.post<ApiResponse<OnlineMaintenanceConfirmation>>(
+    `/member/maintenance/online-order/${encodeURIComponent(orderId)}/confirm`
+  );
+  invalidateCachedGet('maintenance:');
+  invalidateCachedGet('overview:member');
+  return data.data;
+}
+
 export const memberPaymentScreenshotPath = (id: string) => `/member/maintenance/payments/${id}/screenshot`;
 export const officePaymentScreenshotPath = (id: string) => `/society/member-payments/${id}/screenshot`;
 
@@ -847,6 +866,21 @@ export async function downloadOpeningDuesSample(): Promise<string> {
   });
   if (result.status !== 200) throw new Error('Could not download the sample file');
   return result.uri;
+}
+
+export const fetchOnlinePaymentsStatus = () => getData<OnlinePaymentsStatus>('/society/settings/online-payments');
+
+/** Chairman: register the society's saved bank account with Cashfree so members can pay online. */
+export async function setupOnlinePayments(payload: { pan: string; phone: string; email?: string }): Promise<OnlinePaymentsStatus> {
+  const { data } = await client.post<ApiResponse<OnlinePaymentsStatus>>('/society/settings/online-payments/setup', payload, {
+    timeout: 60000,
+  });
+  return data.data;
+}
+
+export async function refreshOnlinePayments(): Promise<OnlinePaymentsStatus> {
+  const { data } = await client.post<ApiResponse<OnlinePaymentsStatus>>('/society/settings/online-payments/refresh');
+  return data.data;
 }
 
 export const fetchSocietyBankDetails = () => getData<SocietyBankDetails>('/society/settings/bank-details');
