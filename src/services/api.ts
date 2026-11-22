@@ -1002,7 +1002,7 @@ export async function addOtherIncome(payload: AddOtherIncomePayload): Promise<vo
 }
 
 export async function addMaintenance(
-  payload: AddMaintenancePayload,
+  payload: AddMaintenancePayload & { collectBalance?: boolean },
   paymentScreenshot?: { uri: string; fileName: string; mimeType: string } | null
 ): Promise<void> {
   const body = {
@@ -1013,6 +1013,7 @@ export async function addMaintenance(
     paymentType: payload.paymentType,
     maintenanceFromMonth: payload.maintenanceFromMonth,
     maintenanceToMonth: payload.maintenanceToMonth,
+    collectBalance: payload.collectBalance,
   };
   if (!paymentScreenshot) {
     await client.post<ApiResponse<null>>('/expenses/maintenance', body);

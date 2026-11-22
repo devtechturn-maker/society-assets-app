@@ -26,12 +26,13 @@ import { useTheme } from '../../theme/ThemeContext';
 import { apiErrorMessage } from '../../utils/apiError';
 import { unitName } from '../../utils/unitName';
 
-type Tab = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+type Tab = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'REFUND_REQUIRED';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'PENDING_REVIEW', label: 'To verify' },
   { key: 'APPROVED', label: 'Approved' },
   { key: 'REJECTED', label: 'Rejected' },
+  { key: 'REFUND_REQUIRED', label: 'Refund' },
 ];
 
 /**
@@ -135,6 +136,11 @@ export function MemberPaymentsModule() {
           <Text style={[styles.hint, { color: theme.textMuted }]}>
             Members paid these into the society's bank account. Tap the screenshot to enlarge it, check it against your bank
             statement, then approve or reject.
+          </Text>
+        ) : null}
+        {tab === 'REFUND_REQUIRED' ? (
+          <Text style={[styles.hint, { color: theme.textMuted }]}>
+            Online payments that could not be recorded, for example for a month already paid. Refund these to the member.
           </Text>
         ) : null}
         {loading ? <ActivityIndicator style={{ marginTop: 24 }} /> : null}

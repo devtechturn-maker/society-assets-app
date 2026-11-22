@@ -347,6 +347,10 @@ export function SettingsModule() {
                 placeholderTextColor={theme.placeholder}
               />
             </FormField>
+            <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
+              A new amount applies from this month. Earlier months keep the amount they had, except while a new society is
+              still setting up (first 31 days, before any payment is recorded).
+            </Text>
             <FormField label="No penalty till day" theme={theme}>
               <TextInput
                 style={inputStyle(theme)}

@@ -44,6 +44,7 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
   const [showMemberList, setShowMemberList] = useState(false);
 
   const [memberId, setMemberId] = useState('');
+  const [collectBalance, setCollectBalance] = useState(false);
   const [amount, setAmount] = useState('');
   const [expenseDate, setExpenseDate] = useState(todayIsoDate());
   const [fromMonth, setFromMonth] = useState(currentYearMonth());
@@ -65,6 +66,7 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
 
   function resetForm() {
     setMemberId('');
+    setCollectBalance(false);
     setAmount('');
     setExpenseDate(todayIsoDate());
     setFromMonth(currentYearMonth());
@@ -90,15 +92,15 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
       alert('Amount required', 'Enter an amount of at least ₹1.', { variant: 'error' });
       return;
     }
-    if (!isValidYearMonth(fromMonth)) {
+    if (!collectBalance && !isValidYearMonth(fromMonth)) {
       alert('From month', 'Use format YYYY-MM (e.g. 2026-04).', { variant: 'error' });
       return;
     }
-    if (toMonth.trim() && !isValidYearMonth(toMonth)) {
+    if (!collectBalance && toMonth.trim() && !isValidYearMonth(toMonth)) {
       alert('To month', 'Use format YYYY-MM (e.g. 2026-05) or leave empty.', { variant: 'error' });
       return;
     }
-    if (toMonth.trim() && compareYearMonth(toMonth.trim(), fromMonth.trim()) < 0) {
+    if (!collectBalance && toMonth.trim() && compareYearMonth(toMonth.trim(), fromMonth.trim()) < 0) {
       alert('Invalid period', 'To month cannot be before from month.', { variant: 'error' });
       return;
     }
@@ -120,6 +122,7 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
         description: description.trim(),
         expenseDate: expenseDate.trim() ? expenseDate.trim() : null,
         paymentType,
+        collectBalance,
         maintenanceFromMonth: fromMonth.trim(),
         maintenanceToMonth: toMonth.trim() ? toMonth.trim() : null,
       }, paymentType === 'ONLINE' ? screenshot : null);
@@ -229,6 +232,20 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
               />
             </Field>
 
+            <Field label="Recording" theme={theme}>
+              <View style={styles.payRow}>
+                <PayChip label="Monthly maintenance" active={!collectBalance} onPress={() => setCollectBalance(false)} theme={theme} />
+                <PayChip label="Balance due" active={collectBalance} onPress={() => setCollectBalance(true)} theme={theme} />
+              </View>
+              {collectBalance ? (
+                <Text style={{ color: theme.textMuted, fontSize: 12, marginTop: 6 }}>
+                  For the rest of a part-paid month or an opening due. The months are filled in automatically.
+                </Text>
+              ) : null}
+            </Field>
+
+            {collectBalance ? null : (
+            <>
             <Field label="From Month" theme={theme}>
               <TextInput
                 style={inputStyle(theme)}
@@ -250,6 +267,8 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
                 autoCapitalize="none"
               />
             </Field>
+            </>
+            )}
 
             <Field label="Payment Type" theme={theme}>
               <View style={styles.payRow}>
