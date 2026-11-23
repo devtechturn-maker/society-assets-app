@@ -1017,6 +1017,31 @@ export async function reopenFinancialYear(fy: number, reason: string): Promise<i
   return data.data;
 }
 
+export async function uploadBankStatement(file: { uri: string; name: string; mimeType?: string | null }) {
+  const formData = new FormData();
+  formData.append('file', { uri: file.uri, name: file.name, type: file.mimeType || 'application/octet-stream' } as unknown as Blob);
+  const { data } = await client.post<ApiResponse<import('../types/api').BankStatementDetail>>('/society/bank-statements', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000,
+  });
+  return data.data;
+}
+
+export const fetchBankStatements = () =>
+  getData<import('../types/api').BankStatementSummary[]>('/society/bank-statements');
+
+export const fetchBankStatement = (statementId: string) =>
+  getData<import('../types/api').BankStatementDetail>(`/society/bank-statements/${statementId}`);
+
+export async function approveMatchedBankLines(statementId: string) {
+  const { data } = await client.post<ApiResponse<import('../types/api').BankStatementDetail>>(
+    `/society/bank-statements/${statementId}/approve-matched`,
+    undefined,
+    { timeout: 120000 }
+  );
+  return data.data;
+}
+
 export const fetchNoticeReads = (noticeId: string) =>
   getData<import('../types/api').NoticeReadStatus>(`/society/notices/${noticeId}/reads`);
 
@@ -1089,6 +1114,8 @@ export async function sendPendingReminder(memberId: string): Promise<void> {
 export type PaymentType = 'CASH' | 'ONLINE';
 
 export interface AddMaintenancePayload {
+  /** v21: UTR or cheque number; with it an online entry needs no screenshot. */
+  referenceNo?: string;
   memberId: string;
   amount: number;
   description: string;
@@ -1185,6 +1212,7 @@ export async function addMaintenance(
     maintenanceFromMonth: payload.maintenanceFromMonth,
     maintenanceToMonth: payload.maintenanceToMonth,
     collectBalance: payload.collectBalance,
+    referenceNo: payload.referenceNo || undefined,
   };
   if (!paymentScreenshot) {
     await client.post<ApiResponse<null>>('/expenses/maintenance', body);

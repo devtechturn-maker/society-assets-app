@@ -382,6 +382,8 @@ export interface MaintenancePaymentSubmission {
   memberNote?: string | null;
   hasScreenshot: boolean;
   status: MaintenancePaymentStatus;
+  /** v21: FOUND in an uploaded bank statement, NOT_FOUND although a statement covers the date, or NO_STATEMENT. */
+  bankCheck?: 'FOUND' | 'NOT_FOUND' | 'NO_STATEMENT';
   rejectionReason?: string | null;
   reviewedByName?: string | null;
   reviewedAt?: string | null;
@@ -602,6 +604,49 @@ export interface FlatStatement {
   closingBalance: number;
   outstanding: number;
   rows: FlatStatementRow[];
+}
+
+export type BankLineStatus = 'MATCHED' | 'AMOUNT_DIFFERS' | 'ALREADY_RECORDED' | 'UNKNOWN' | 'APPROVED';
+
+export interface BankStatementLine {
+  lineId: string;
+  date: string;
+  amount: number;
+  narration?: string | null;
+  reference?: string | null;
+  utr?: string | null;
+  status: BankLineStatus;
+  paymentId?: string;
+  flatNumber?: string;
+  memberName?: string;
+  submittedAmount?: number;
+}
+
+export interface BankStatementDetail {
+  statementId: string;
+  fileName?: string | null;
+  from: string | null;
+  to: string | null;
+  creditCount: number;
+  newCount: number;
+  alreadyUploaded: number;
+  totalCredits: number;
+  counts: Record<BankLineStatus, number>;
+  lines: BankStatementLine[];
+  notInBank: { paymentId: string; flatNumber: string; memberName: string; amount: number; referenceNo: string; paidOn: string | null }[];
+  approvedNow?: number;
+  failed?: string[];
+}
+
+export interface BankStatementSummary {
+  statementId: string;
+  fileName?: string | null;
+  from: string | null;
+  to: string | null;
+  creditCount: number;
+  newCount: number;
+  uploadedByName?: string | null;
+  uploadedAt: string;
 }
 
 export interface NoticeReadStatus {

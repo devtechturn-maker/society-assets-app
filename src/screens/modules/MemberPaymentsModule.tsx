@@ -25,14 +25,16 @@ import type { MaintenancePaymentSubmission } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { apiErrorMessage } from '../../utils/apiError';
 import { unitName } from '../../utils/unitName';
+import { BankStatementView } from '../../components/payment/BankStatementView';
 
-type Tab = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'REFUND_REQUIRED';
+type Tab = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'REFUND_REQUIRED' | 'BANK';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'PENDING_REVIEW', label: 'To verify' },
   { key: 'APPROVED', label: 'Approved' },
   { key: 'REJECTED', label: 'Rejected' },
   { key: 'REFUND_REQUIRED', label: 'Refund' },
+  { key: 'BANK', label: 'Bank match' },
 ];
 
 /**
@@ -54,6 +56,10 @@ export function MemberPaymentsModule() {
 
   const load = useCallback(
     async (mode: 'initial' | 'refresh' = 'initial') => {
+      if (tab === 'BANK') {
+        setLoading(false);
+        return;
+      }
       if (mode === 'refresh') setRefreshing(true);
       else setLoading(true);
       try {
@@ -132,6 +138,9 @@ export function MemberPaymentsModule() {
           );
         })}
       </View>
+      {tab === 'BANK' ? (
+        <BankStatementView onApproved={() => setTab('APPROVED')} />
+      ) : (
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load('refresh')} />}
@@ -157,6 +166,13 @@ export function MemberPaymentsModule() {
         ) : null}
         {items.map((item) => (
           <SubmissionRow key={item.id} item={item} screenshotPath={officePaymentScreenshotPath(item.id)} showFlat>
+            {item.bankCheck === 'FOUND' ? (
+              <Text style={{ color: '#15803d', fontWeight: '700', fontSize: 12 }}>✓ Found in bank statement</Text>
+            ) : item.bankCheck === 'NOT_FOUND' ? (
+              <Text style={{ color: '#b91c1c', fontWeight: '700', fontSize: 12 }}>
+                ⚠ Not found in the uploaded bank statement for this date. Check before approving.
+              </Text>
+            ) : null}
             {canReview && item.status === 'PENDING_REVIEW' ? (
               <View style={styles.actions}>
                 <Pressable
@@ -181,6 +197,7 @@ export function MemberPaymentsModule() {
           </SubmissionRow>
         ))}
       </ScrollView>
+      )}
 
       <Modal visible={!!rejecting} transparent animationType="fade" onRequestClose={() => setRejecting(null)}>
         <ModalKeyboardAvoidingView style={styles.backdrop}>

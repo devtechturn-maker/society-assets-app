@@ -33,9 +33,11 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   onSaved: () => void;
+  /** v21: a bank credit to record (amount, date, UTR); the office then picks the flat and months. */
+  prefill?: { amount: number; date: string; referenceNo?: string | null; note?: string } | null;
 };
 
-export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
+export function AddMaintenanceModal({ visible, onClose, onSaved, prefill }: Props) {
   const { alert } = useAppAlert();
   const { theme } = useTheme();
   const [members, setMembers] = useState<SocietyMember[]>([]);
@@ -52,6 +54,16 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
   const [paymentType, setPaymentType] = useState<PaymentType>('CASH');
   const [description, setDescription] = useState('');
   const [screenshot, setScreenshot] = useState<PickedPhoto | null>(null);
+  const [referenceNo, setReferenceNo] = useState('');
+
+  useEffect(() => {
+    if (!visible || !prefill) return;
+    setAmount(String(prefill.amount));
+    setExpenseDate(prefill.date);
+    setPaymentType('ONLINE');
+    setReferenceNo(prefill.referenceNo ?? '');
+    setDescription(prefill.note ?? 'From bank statement');
+  }, [visible, prefill]);
 
   const selectedMember = members.find((m) => m.id === memberId);
 
@@ -65,6 +77,7 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
   }, [visible]);
 
   function resetForm() {
+    setReferenceNo('');
     setMemberId('');
     setCollectBalance(false);
     setAmount('');
@@ -109,8 +122,8 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
       return;
     }
 
-    if (paymentType === 'ONLINE' && !screenshot) {
-      alert('Payment screenshot', 'Attach a screenshot of the online payment.', { variant: 'error' });
+    if (paymentType === 'ONLINE' && !screenshot && !referenceNo.trim()) {
+      alert('Payment proof', 'Attach a screenshot or enter the UTR / reference number of the online payment.', { variant: 'error' });
       return;
     }
 
@@ -125,6 +138,7 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
         collectBalance,
         maintenanceFromMonth: fromMonth.trim(),
         maintenanceToMonth: toMonth.trim() ? toMonth.trim() : null,
+        referenceNo: paymentType === 'ONLINE' ? referenceNo.trim() : undefined,
       }, paymentType === 'ONLINE' ? screenshot : null);
       alert('Success', 'Maintenance added successfully.', { variant: 'success' });
       resetForm();
@@ -283,7 +297,19 @@ export function AddMaintenanceModal({ visible, onClose, onSaved }: Props) {
             </Field>
 
             {paymentType === 'ONLINE' ? (
-              <Field label="Payment Screenshot" theme={theme}>
+              <Field label="UTR / reference no. (or attach a screenshot)" theme={theme}>
+                <TextInput
+                  style={inputStyle(theme)}
+                  value={referenceNo}
+                  onChangeText={setReferenceNo}
+                  placeholder="12-digit UTR from the bank"
+                  placeholderTextColor={theme.placeholder}
+                  maxLength={80}
+                />
+              </Field>
+            ) : null}
+            {paymentType === 'ONLINE' ? (
+              <Field label="Payment Screenshot (optional with UTR)" theme={theme}>
                 <Pressable
                   style={[inputStyle(theme), styles.screenshotBtn]}
                   onPress={() =>
