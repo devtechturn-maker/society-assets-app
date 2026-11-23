@@ -4,6 +4,7 @@ import { AddMaintenanceModal } from '../../components/maintenance/AddMaintenance
 import { Badge, paymentBadgeTone } from '../../components/dashboard/Badge';
 import { ExpenseRowCard } from '../../components/dashboard/ExpenseRowCard';
 import { ReverseEntryButton } from '../../components/dashboard/ReverseEntryButton';
+import { WaiveLateFeeButton } from '../../components/dashboard/WaiveLateFeeButton';
 import { ListEmpty, ListError, ListLoading } from '../../components/dashboard/ListStates';
 import { LoadMoreButton } from '../../components/dashboard/LoadMoreButton';
 import { SectionCard } from '../../components/dashboard/SectionCard';
@@ -113,6 +114,13 @@ export function MaintenanceModule() {
                     row={row}
                     maintenance
                     onReversed={() => {
+                      history.refresh();
+                      pending.refresh();
+                    }}
+                  />
+                  <WaiveLateFeeButton
+                    row={row}
+                    onWaived={() => {
                       history.refresh();
                       pending.refresh();
                     }}

@@ -1,3 +1,5 @@
+import { TeamSection } from '../../components/office/TeamSection';
+import { ActivityLogSection } from '../../components/office/ActivityLogSection';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   Pressable,
@@ -30,7 +32,7 @@ import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import type { MaintenanceSettings } from '../../types/api';
 
-type ServicesSectionKey = 'security' | 'maintenance' | 'payments' | 'contracts';
+type ServicesSectionKey = 'security' | 'maintenance' | 'payments' | 'contracts' | 'team' | 'activity';
 
 function ServicesAccordionSection({
   title,
@@ -135,6 +137,8 @@ export function SettingsModule() {
     maintenance: false,
     payments: false,
     contracts: false,
+    team: false,
+    activity: false,
   });
 
   function toggleSection(section: ServicesSectionKey) {
@@ -334,6 +338,26 @@ export function SettingsModule() {
       keyboardShouldPersistTaps="handled"
     >
       {pageLoading ? <ListLoading /> : null}
+
+      {!pageLoading ? (
+      <ServicesAccordionSection
+        title="Office team (treasurer, committee, auditors)"
+        expanded={expandedSections.team}
+        onToggle={() => toggleSection('team')}
+      >
+        {expandedSections.team ? <TeamSection /> : null}
+      </ServicesAccordionSection>
+      ) : null}
+
+      {!pageLoading ? (
+      <ServicesAccordionSection
+        title="Activity log"
+        expanded={expandedSections.activity}
+        onToggle={() => toggleSection('activity')}
+      >
+        {expandedSections.activity ? <ActivityLogSection /> : null}
+      </ServicesAccordionSection>
+      ) : null}
 
       {!pageLoading ? (
       <ServicesAccordionSection

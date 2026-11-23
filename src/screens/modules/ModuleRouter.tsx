@@ -16,6 +16,7 @@ import { SupportModule } from './SupportModule';
 import { ComplaintModule } from './ComplaintModule';
 import { AmenityBookingModule } from './AmenityBookingModule';
 import { NoticeModule } from './NoticeModule';
+import { NoticesAndPolls } from '../../components/notices/NoticesAndPolls';
 import { AboutSocietyModule } from './AboutSocietyModule';
 import { HelpModule } from './HelpModule';
 import { AboutUsModule } from './AboutUsModule';
@@ -214,7 +215,7 @@ export function ModuleRouter({
         );
       case 'notices':
         return (
-          <NoticeModule
+          <NoticesAndPolls
             memberPortal
             initialNoticeId={initialNoticeId}
             onInitialNoticeConsumed={onNoticeConsumed}
@@ -318,8 +319,9 @@ export function ModuleRouter({
       );
     case 'notices':
       return (
-        <NoticeModule
-          canManageNotices={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
+        <NoticesAndPolls
+          canManageNotices={['CHAIRMAN', 'TREASURER', 'USER'].includes((userRole ?? '').toUpperCase())}
+          canCreatePolls={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
           initialNoticeId={initialNoticeId}
           onInitialNoticeConsumed={onNoticeConsumed}
         />

@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { createNotice, fetchNoticeDetail, fetchNotices } from '../../services/api';
+import { NoticeReadStatus } from '../../components/notices/NoticeReadStatus';
 import type { NoticeDetail, NoticeSummary } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { ListEmpty } from '../../components/dashboard/ListStates';
@@ -182,6 +183,7 @@ export function NoticeModule({
           <Text style={[styles.detailLabel, { color: theme.text }]}>Description</Text>
           <Text style={[styles.detailBody, { color: theme.textSoft }]}>{activeNotice.description}</Text>
         </View>
+        {!memberPortal ? <NoticeReadStatus noticeId={activeNotice.noticeId} canRemind={canManageNotices} /> : null}
       </ScrollView>
     );
   }

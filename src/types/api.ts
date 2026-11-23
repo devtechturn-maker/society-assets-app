@@ -495,6 +495,9 @@ export interface RecentExpense {
   remainingDueAmount?: number;
   createdAt: string | null;
   /** v20 ledger details; older servers leave these out. */
+  receiptNo?: string;
+  waivedAmount?: number;
+  waiverReason?: string;
   payee?: string;
   voucherNo?: string;
   referenceNo?: string;
@@ -511,6 +514,11 @@ export interface PendingMaintenanceMember {
   remainingDueAmount: number;
   lastPaymentDate: string | null;
   lastPaymentType: string;
+  /** v20 defaulter details; older servers leave these out. */
+  unpaidMonths?: number;
+  oldestUnpaidMonth?: string | null;
+  daysOverdue?: number;
+  ageGroup?: 'NOT_DUE' | '0-30' | '31-60' | '61-90' | '90+';
 }
 
 export interface MaintenanceSettings {
@@ -592,6 +600,41 @@ export interface FlatStatement {
   closingBalance: number;
   outstanding: number;
   rows: FlatStatementRow[];
+}
+
+export interface NoticeReadStatus {
+  noticeId: string;
+  recipients: number;
+  read: number;
+  unread: { name: string; flatNumber: string; tenant: boolean }[];
+  lastRemindedAt?: string | null;
+}
+
+export interface TeamMember {
+  userId: string;
+  name: string;
+  email: string;
+  role: 'CHAIRMAN' | 'TREASURER' | 'USER' | 'AUDITOR';
+  roleLabel: string;
+  active: boolean;
+  invitePending: boolean;
+  isMe: boolean;
+}
+
+export interface OfficeTeam {
+  members: TeamMember[];
+  canManage: boolean;
+  roles: { value: string; label: string }[];
+}
+
+export interface ActivityRow {
+  id: string;
+  module: string;
+  action: string;
+  actorName?: string | null;
+  amount?: number | null;
+  summary?: string | null;
+  createdAt: string;
 }
 
 export interface FinancialYearRow {
@@ -902,6 +945,9 @@ export interface ComplaintSummary {
   flatNumber?: string;
   /** v20: "Ramesh (Plumber)"; older servers leave these out. */
   assignedTo?: string | null;
+  /** v20: 1 to 5 stars once resolved. */
+  rating?: number | null;
+  canRate?: boolean;
   dueDate?: string | null;
   overdue?: boolean;
 }
@@ -921,6 +967,7 @@ export interface ComplaintDetail extends ComplaintSummary {
   chairmanNote?: string | null;
   memberId?: string;
   attachments?: { index: number; url: string; memberUrl?: string }[];
+  ratingComment?: string | null;
   /** v20, office only. */
   assignedStaffId?: string | null;
   assignedStaffPhone?: string | null;

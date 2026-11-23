@@ -24,6 +24,7 @@ export function ReportsModule() {
   const { theme } = useTheme();
   const [period, setPeriod] = useState<ReportPeriod>('THIS_FY');
   const [open, setOpen] = useState<'book' | 'statement' | 'year' | null>(null);
+  const [age, setAge] = useState<string>('ALL');
   const range = useMemo(() => periodRange(period), [period]);
   const summary = useAsyncLoad(() => fetchReportSummary(range), [range.from, range.to]);
   const monthly = useAsyncLoad(fetchReportMonthlyMaintenance, []);
@@ -138,13 +139,39 @@ export function ReportsModule() {
       ) : null}
 
       {!pageLoading ? (
-        <SectionCard title="Member Pending Report">
-          {memberPending.data?.map((r) => (
+        <SectionCard title="Defaulters / Member Pending" subtitle="How long each flat has been late">
+          <View style={styles.periods}>
+            {['ALL', '0-30', '31-60', '61-90', '90+'].map((g) => {
+              const on = g === age;
+              const count = g === 'ALL' ? memberPending.data?.length ?? 0
+                : memberPending.data?.filter((r) => r.ageGroup === g).length ?? 0;
+              return (
+                <Pressable
+                  key={g}
+                  onPress={() => setAge(g)}
+                  style={[
+                    styles.period,
+                    { borderColor: on ? theme.accent : theme.cardBorder, backgroundColor: on ? theme.accentSoft : theme.cardBg },
+                  ]}
+                >
+                  <Text style={{ color: on ? theme.accent : theme.text, fontWeight: '700', fontSize: 13 }}>
+                    {g === 'ALL' ? 'All' : `${g} days`} ({count})
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {memberPending.data?.filter((r) => age === 'ALL' || r.ageGroup === age).map((r) => (
             <View key={r.memberId} style={[styles.row, { borderTopColor: theme.divider }]}>
               <Text style={[styles.rowTitle, { color: theme.text }]}>{r.memberName}</Text>
               <Text style={[styles.meta, { color: theme.textSoft }]}>
                 {unitName(r.flatNumber)} · Pending {formatInr(r.remainingDueAmount)}
               </Text>
+              {r.daysOverdue !== undefined && r.daysOverdue > 0 ? (
+                <Text style={[styles.meta, { color: r.daysOverdue > 90 ? '#b91c1c' : '#b45309', fontWeight: '700' }]}>
+                  {r.daysOverdue} days late{r.oldestUnpaidMonth ? ` · since ${r.oldestUnpaidMonth}` : ''}
+                </Text>
+              ) : null}
               <Badge label={r.lastPaymentType || '—'} tone={paymentBadgeTone(r.lastPaymentType)} />
               <Text style={[styles.meta, { color: theme.textSoft }]}>{formatDate(r.lastPaymentDate)}</Text>
             </View>

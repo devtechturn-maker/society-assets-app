@@ -978,6 +978,52 @@ export async function reopenFinancialYear(fy: number, reason: string): Promise<i
   return data.data;
 }
 
+export const fetchNoticeReads = (noticeId: string) =>
+  getData<import('../types/api').NoticeReadStatus>(`/society/notices/${noticeId}/reads`);
+
+export async function remindNoticeUnread(noticeId: string): Promise<{ reminded: number }> {
+  const { data } = await client.post<ApiResponse<{ reminded: number }>>(`/society/notices/${noticeId}/remind`);
+  return data.data;
+}
+
+export const fetchOfficeTeam = () => getData<import('../types/api').OfficeTeam>('/society/team');
+
+export async function addTeamMember(payload: { name: string; email: string; role: string }) {
+  const { data } = await client.post<ApiResponse<import('../types/api').OfficeTeam>>('/society/team', payload);
+  return data.data;
+}
+
+export async function changeTeamRole(userId: string, role: string) {
+  const { data } = await client.put<ApiResponse<import('../types/api').OfficeTeam>>(`/society/team/${userId}/role`, { role });
+  return data.data;
+}
+
+export async function setTeamMemberActive(userId: string, active: boolean) {
+  const { data } = await client.put<ApiResponse<import('../types/api').OfficeTeam>>(`/society/team/${userId}/active`, { active });
+  return data.data;
+}
+
+export const fetchActivityLog = (page = 0, module?: string) =>
+  getData<{ content: import('../types/api').ActivityRow[]; totalPages: number; number: number }>(
+    `/society/activity?page=${page}&size=30${module ? `&module=${encodeURIComponent(module)}` : ''}`
+  );
+
+export async function rateComplaint(complaintId: string, rating: number, comment?: string) {
+  const { data } = await client.post<ApiResponse<import('../types/api').ComplaintDetail>>(
+    `/member/complaints/${complaintId}/rate`,
+    { rating, comment: comment || undefined }
+  );
+  return data.data;
+}
+
+export async function waiveLateFee(expenseId: string, reason: string) {
+  const { data } = await client.post<ApiResponse<{ waived: number; remainingDueAmount: number }>>(
+    `/expenses/${expenseId}/waive-late-fee`,
+    { reason }
+  );
+  return data.data;
+}
+
 export const fetchLedgerCategories = () =>
   getData<{ expense: import('../types/api').LedgerCategoryOption[]; income: import('../types/api').LedgerCategoryOption[] }>(
     '/expenses/categories'

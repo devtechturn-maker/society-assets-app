@@ -22,6 +22,7 @@ import {
   fetchComplaintDetail,
   fetchComplaints,
   updateComplaint,
+  rateComplaint,
 } from '../../services/api';
 import type { ComplaintAssignees, ComplaintDetail, ComplaintHistoryEntry, ComplaintSummary } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
@@ -103,6 +104,8 @@ function historyText(entry: ComplaintHistoryEntry): string {
       return entry.detail && /^\d{4}-\d{2}-\d{2}$/.test(entry.detail) ? `Due date set to ${entry.detail}` : 'Due date removed';
     case 'NOTE':
       return 'Note added';
+    case 'RATED':
+      return `Rated ${entry.detail ?? ''}`;
     default:
       return entry.action;
   }
@@ -199,6 +202,8 @@ export function ComplaintModule({
   /** 'staff:<id>', 'user:<id>' or '' for nobody. */
   const [assignee, setAssignee] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [stars, setStars] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
 
   const formScrollRef = useRef<ScrollView>(null);
@@ -562,6 +567,56 @@ export function ComplaintModule({
               <Text style={{ color: theme.text, lineHeight: 22 }}>{activeComplaint.chairmanNote}</Text>
             </View>
           ) : null}
+          {activeComplaint.rating ? (
+            <View style={[styles.detailBox, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
+              <Text style={[styles.label, { color: theme.textMuted }]}>Resident rating</Text>
+              <Text style={{ color: '#b45309', fontSize: 20 }}>
+                {'★'.repeat(activeComplaint.rating)}
+                <Text style={{ color: theme.divider }}>{'★'.repeat(5 - activeComplaint.rating)}</Text>
+              </Text>
+              {activeComplaint.ratingComment ? <Text style={{ color: theme.text }}>{activeComplaint.ratingComment}</Text> : null}
+            </View>
+          ) : null}
+          {memberPortal && activeComplaint.canRate ? (
+            <View style={[styles.detailBox, { backgroundColor: theme.cardBg, borderColor: theme.accent }]}>
+              <Text style={[styles.label, { color: theme.text }]}>How was it solved? Rate the society office</Text>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Pressable key={n} onPress={() => setStars(n)} hitSlop={6} accessibilityLabel={`${n} star${n > 1 ? 's' : ''}`}>
+                    <Text style={{ fontSize: 30, color: n <= stars ? '#b45309' : theme.divider }}>★</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.pageBg, color: theme.text, borderColor: theme.cardBorder }]}
+                value={ratingComment}
+                onChangeText={setRatingComment}
+                placeholder="Comment (optional)"
+                placeholderTextColor={theme.textMuted}
+                maxLength={500}
+              />
+              <Pressable
+                disabled={stars < 1 || saving}
+                style={[styles.primaryBtn, { backgroundColor: theme.accent, opacity: stars < 1 || saving ? 0.5 : 1 }]}
+                onPress={async () => {
+                  setSaving(true);
+                  try {
+                    const updated = await rateComplaint(activeComplaint.complaintId, stars, ratingComment.trim());
+                    setActiveComplaint(updated);
+                    setStars(0);
+                    setRatingComment('');
+                    await alert('Thank you', 'Your rating was sent to the society office.');
+                  } catch (err) {
+                    await alert('Could not rate', err instanceof Error ? err.message : 'Try again');
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                <Text style={styles.primaryBtnText}>Send rating</Text>
+              </Pressable>
+            </View>
+          ) : null}
           {activeComplaint.history?.length ? (
             <View style={[styles.detailBox, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
               <Text style={[styles.label, { color: theme.textMuted }]}>History</Text>
@@ -761,6 +816,9 @@ export function ComplaintModule({
               <Text style={[styles.memberLine, { color: theme.accent }]}>
                 {item.memberName} · {item.flatNumber}
               </Text>
+            ) : null}
+            {item.rating ? (
+              <Text style={[styles.meta, { color: '#b45309' }]}>{'★'.repeat(item.rating)} rated</Text>
             ) : null}
             {item.assignedTo || item.dueDate ? (
               <Text style={[styles.meta, { color: item.overdue ? '#b91c1c' : theme.textMuted, fontWeight: item.overdue ? '700' : '400' }]}>

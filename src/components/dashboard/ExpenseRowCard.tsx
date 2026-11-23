@@ -52,6 +52,14 @@ export function ExpenseRowCard({ row, showMember = false, showEntryType = false,
       <Text style={[styles.meta, { color: theme.textSoft }]}>
         Description: {row.description?.trim() ? row.description : '—'}
       </Text>
+      {row.receiptNo ? (
+        <Text style={[styles.meta, { color: theme.textSoft }]}>Receipt {row.receiptNo}</Text>
+      ) : null}
+      {row.waivedAmount ? (
+        <Text style={[styles.meta, { color: '#15803d' }]}>
+          Late fee {formatInr(row.waivedAmount)} waived{row.waiverReason ? `: ${row.waiverReason}` : ''}
+        </Text>
+      ) : null}
       {row.payee ? (
         <Text style={[styles.meta, { color: theme.textSoft }]}>
           {row.entryType === 'INCOME' ? 'From' : 'Paid to'}: {row.payee}
