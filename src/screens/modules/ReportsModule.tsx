@@ -1,4 +1,7 @@
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BookView, FlatStatementView } from '../../components/reports/AccountsViews';
+import { REPORT_PERIODS, periodRange, type ReportPeriod } from '../../utils/reportPeriods';
 import { Badge, paymentBadgeTone } from '../../components/dashboard/Badge';
 import { KpiGrid } from '../../components/dashboard/KpiGrid';
 import { ListEmpty, ListError, ListLoading } from '../../components/dashboard/ListStates';
@@ -18,10 +21,13 @@ import { unitName } from '../../utils/unitName';
 
 export function ReportsModule() {
   const { theme } = useTheme();
-  const summary = useAsyncLoad(fetchReportSummary, []);
+  const [period, setPeriod] = useState<ReportPeriod>('THIS_FY');
+  const [open, setOpen] = useState<'book' | 'statement' | null>(null);
+  const range = useMemo(() => periodRange(period), [period]);
+  const summary = useAsyncLoad(() => fetchReportSummary(range), [range.from, range.to]);
   const monthly = useAsyncLoad(fetchReportMonthlyMaintenance, []);
-  const categories = useAsyncLoad(fetchReportExpenseCategories, []);
-  const modes = useAsyncLoad(fetchReportPaymentModes, []);
+  const categories = useAsyncLoad(() => fetchReportExpenseCategories(range), [range.from, range.to]);
+  const modes = useAsyncLoad(() => fetchReportPaymentModes(range), [range.from, range.to]);
   const memberPending = useAsyncLoad(fetchReportMemberPending, []);
 
   const refreshing =
@@ -51,6 +57,26 @@ export function ReportsModule() {
       contentContainerStyle={[styles.scroll, { backgroundColor: theme.pageBg }]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} />}
     >
+      <View style={styles.periods}>
+        {REPORT_PERIODS.map((p) => {
+          const on = p.value === period;
+          return (
+            <Pressable
+              key={p.value}
+              onPress={() => setPeriod(p.value)}
+              style={[
+                styles.period,
+                { borderColor: on ? theme.accent : theme.cardBorder, backgroundColor: on ? theme.accentSoft : theme.cardBg },
+              ]}
+            >
+              <Text style={{ color: on ? theme.accent : theme.text, fontWeight: '700', fontSize: 13 }}>{p.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text style={[styles.meta, { color: theme.textMuted, marginBottom: 8 }]}>
+        Money is counted on the date it was received or paid. Pending is always what is owed today.
+      </Text>
       {pageLoading ? <ListLoading /> : null}
 
       {!pageLoading && summary.error ? <ListError message={summary.error} /> : null}
@@ -61,6 +87,12 @@ export function ReportsModule() {
             { label: 'Other Income', value: summary.data.totalOtherIncome ?? 0 },
             { label: 'Expense Outflow', value: summary.data.totalExpenseOutflow },
             { label: 'Net Balance', value: summary.data.netBalance },
+            ...(summary.data.openingBalance !== undefined && summary.data.closingBalance !== undefined
+              ? [
+                  { label: 'Opening Balance', value: summary.data.openingBalance },
+                  { label: 'Closing Balance', value: summary.data.closingBalance },
+                ]
+              : []),
             { label: 'Penalty Collected', value: summary.data.totalPenaltyCollected },
             { label: 'Total Pending', value: summary.data.totalPending },
           ]}
@@ -86,7 +118,7 @@ export function ReportsModule() {
         <SectionCard title="Expense Category Report">
           {categories.data?.map((r) => (
             <View key={r.category} style={[styles.row, { borderTopColor: theme.divider }]}>
-              <Badge label={r.category} tone="info" />
+              <Badge label={r.label ?? r.category} tone="info" />
               <Text style={[styles.amount, { color: theme.text }]}>{formatInr(r.amount)}</Text>
             </View>
           ))}
@@ -119,6 +151,30 @@ export function ReportsModule() {
         </SectionCard>
       ) : null}
 
+      {!pageLoading ? (
+        <SectionCard title="Cash & Bank Book" subtitle="Every entry with a running balance, for the dates above">
+          {open === 'book' ? (
+            <BookView range={range} />
+          ) : (
+            <Pressable onPress={() => setOpen('book')}>
+              <Text style={[styles.open, { color: theme.accent }]}>Open cash & bank book</Text>
+            </Pressable>
+          )}
+        </SectionCard>
+      ) : null}
+
+      {!pageLoading ? (
+        <SectionCard title="Flat Statement" subtitle="One flat's bills, payments and balance, to share with the member">
+          {open === 'statement' ? (
+            <FlatStatementView />
+          ) : (
+            <Pressable onPress={() => setOpen('statement')}>
+              <Text style={[styles.open, { color: theme.accent }]}>Open flat statement</Text>
+            </Pressable>
+          )}
+        </SectionCard>
+      ) : null}
+
       {!pageLoading ? <ReportEmailForm /> : null}
     </ScrollView>
   );
@@ -126,6 +182,9 @@ export function ReportsModule() {
 
 const styles = StyleSheet.create({
   scroll: { padding: 12, paddingBottom: 24 },
+  periods: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6 },
+  period: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 18, borderWidth: 1 },
+  open: { fontWeight: '800', paddingVertical: 8 },
   row: {
     borderTopWidth: 1,
     paddingVertical: 10,

@@ -494,6 +494,11 @@ export interface RecentExpense {
   totalDueAmount?: number;
   remainingDueAmount?: number;
   createdAt: string | null;
+  /** v20 ledger details; older servers leave these out. */
+  payee?: string;
+  voucherNo?: string;
+  referenceNo?: string;
+  hasAttachment?: boolean;
 }
 
 export interface PendingMaintenanceMember {
@@ -531,6 +536,67 @@ export interface ReportSummary {
   netBalance: number;
   totalPenaltyCollected: number;
   totalPending: number;
+  /** v20, only when a date range was asked for. */
+  from?: string | null;
+  to?: string;
+  openingBalance?: number;
+  closingBalance?: number;
+}
+
+/** Inclusive dates (YYYY-MM-DD); both empty means lifetime. */
+export interface ReportRange {
+  from?: string;
+  to?: string;
+}
+
+export interface BookRow {
+  expenseId: string;
+  date: string;
+  particulars: string;
+  category: string;
+  mode: 'CASH' | 'BANK';
+  voucherNo?: string | null;
+  referenceNo?: string | null;
+  in: number;
+  out: number;
+  balance: number;
+}
+
+export interface BookReport {
+  mode: 'CASH' | 'BANK' | 'ALL';
+  from: string | null;
+  to: string;
+  openingBalance: number;
+  totalIn: number;
+  totalOut: number;
+  closingBalance: number;
+  rows: BookRow[];
+}
+
+export interface FlatStatementRow {
+  date: string | null;
+  particulars: string;
+  charge: number;
+  paid: number;
+  mode?: string | null;
+  referenceNo?: string | null;
+  balance: number;
+}
+
+export interface FlatStatement {
+  memberId: string;
+  flatNumber: string;
+  memberName: string;
+  totalCharged: number;
+  totalPaid: number;
+  closingBalance: number;
+  outstanding: number;
+  rows: FlatStatementRow[];
+}
+
+export interface LedgerCategoryOption {
+  value: string;
+  label: string;
 }
 
 export interface MonthlyMaintenanceReportRow {
@@ -544,6 +610,8 @@ export interface MonthlyMaintenanceReportRow {
 export interface ExpenseCategoryReportRow {
   category: string;
   amount: number;
+  /** v20: "Bank charges". */
+  label?: string;
 }
 
 export interface PaymentModeReport {

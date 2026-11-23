@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -12,7 +13,9 @@ import {
 import { ModalKeyboardAvoidingView } from '../KeyboardSafeView';
 import axios from 'axios';
 import { OTHER_INCOME_CATEGORY_OPTIONS } from '../../constants/otherIncomeCategories';
-import { addExpense, addOtherIncome, type PaymentType } from '../../services/api';
+import { addExpense, addOtherIncome, fetchLedgerCategories, type PaymentType } from '../../services/api';
+import type { LedgerCategoryOption } from '../../types/api';
+import { pickPhotoFromCamera, pickPhotoFromLibrary, showPhotoSourcePicker, type PickedPhoto } from '../../utils/pickPhoto';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { isValidIsoDate, todayIsoDate } from '../../utils/dates';
@@ -41,6 +44,85 @@ export function AddLedgerEntryModal({ visible, onClose, onSaved }: Props) {
   const [entryDate, setEntryDate] = useState(todayIsoDate());
   const [paymentType, setPaymentType] = useState<PaymentType>('CASH');
   const [description, setDescription] = useState('');
+  const [payee, setPayee] = useState('');
+  const [voucherNo, setVoucherNo] = useState('');
+  const [referenceNo, setReferenceNo] = useState('');
+  const [bill, setBill] = useState<PickedPhoto | null>(null);
+  const [expenseOptions, setExpenseOptions] = useState<LedgerCategoryOption[]>([]);
+
+  useEffect(() => {
+    if (!visible) return;
+    // Older servers do not have this list; the form still works with typed categories.
+    fetchLedgerCategories()
+      .then((c) => setExpenseOptions(c.expense))
+      .catch(() => setExpenseOptions([]));
+  }, [visible]);
+
+  const detailsPayload = {
+    payee: payee.trim() || undefined,
+    voucherNo: voucherNo.trim() || undefined,
+    referenceNo: referenceNo.trim() || undefined,
+  };
+
+  function detailsFields(kind: 'EXPENSE' | 'INCOME') {
+    return (
+      <>
+        <Field label={kind === 'EXPENSE' ? 'Paid to (optional)' : 'Received from (optional)'} theme={theme}>
+          <TextInput
+            style={inputStyle(theme)}
+            value={payee}
+            onChangeText={setPayee}
+            placeholder={kind === 'EXPENSE' ? 'e.g. Shree Electricals' : 'e.g. Hall booking by A-101'}
+            placeholderTextColor={theme.placeholder}
+            maxLength={120}
+          />
+        </Field>
+        <Field label="Bill / voucher no. (optional)" theme={theme}>
+          <TextInput
+            style={inputStyle(theme)}
+            value={voucherNo}
+            onChangeText={setVoucherNo}
+            placeholder="e.g. INV-2041"
+            placeholderTextColor={theme.placeholder}
+            maxLength={40}
+          />
+        </Field>
+        {paymentType === 'ONLINE' ? (
+          <Field label="UTR / cheque no. (optional)" theme={theme}>
+            <TextInput
+              style={inputStyle(theme)}
+              value={referenceNo}
+              onChangeText={setReferenceNo}
+              placeholder="12-digit UTR or cheque number"
+              placeholderTextColor={theme.placeholder}
+              maxLength={80}
+            />
+          </Field>
+        ) : null}
+        <Field label={kind === 'EXPENSE' ? 'Bill photo (optional)' : 'Receipt photo (optional)'} theme={theme}>
+          <View style={styles.payRow}>
+            {bill ? <Image source={{ uri: bill.uri }} style={styles.billThumb} /> : null}
+            <Pressable
+              style={[styles.billBtn, { borderColor: theme.inputBorder }]}
+              onPress={() =>
+                showPhotoSourcePicker(
+                  () => void pickPhotoFromCamera().then((p) => p && setBill(p)),
+                  () => void pickPhotoFromLibrary().then((p) => p && setBill(p))
+                )
+              }
+            >
+              <Text style={{ color: theme.accent, fontWeight: '700' }}>{bill ? 'Change photo' : '+ Add photo'}</Text>
+            </Pressable>
+            {bill ? (
+              <Pressable onPress={() => setBill(null)} style={styles.billBtn}>
+                <Text style={{ color: theme.textMuted, fontWeight: '600' }}>Remove</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </Field>
+      </>
+    );
+  }
 
   const selectedIncomeLabel =
     OTHER_INCOME_CATEGORY_OPTIONS.find((o) => o.value === incomeCategory)?.label ?? 'Select category';
@@ -56,6 +138,10 @@ export function AddLedgerEntryModal({ visible, onClose, onSaved }: Props) {
     setPaymentType('CASH');
     setDescription('');
     setShowCategoryList(false);
+    setPayee('');
+    setVoucherNo('');
+    setReferenceNo('');
+    setBill(null);
   }
 
   function handleClose() {
@@ -86,13 +172,17 @@ export function AddLedgerEntryModal({ visible, onClose, onSaved }: Props) {
 
     setSaving(true);
     try {
-      await addExpense({
-        category: cat.toUpperCase(),
-        amount: amountNum,
-        description: description.trim(),
-        expenseDate: entryDate.trim() ? entryDate.trim() : null,
-        paymentType,
-      });
+      await addExpense(
+        {
+          category: cat.toUpperCase(),
+          amount: amountNum,
+          description: description.trim(),
+          expenseDate: entryDate.trim() ? entryDate.trim() : null,
+          paymentType,
+          ...detailsPayload,
+        },
+        bill
+      );
       alert('Success', 'Expense added successfully.', { variant: 'success' });
       resetForm();
       onSaved();
@@ -128,14 +218,18 @@ export function AddLedgerEntryModal({ visible, onClose, onSaved }: Props) {
 
     setSaving(true);
     try {
-      await addOtherIncome({
-        category: resolvedCategory,
-        flatNumber: flatNumber.trim() ? flatNumber.trim().toUpperCase() : null,
-        amount: amountNum,
-        description: description.trim(),
-        expenseDate: entryDate.trim() ? entryDate.trim() : null,
-        paymentType,
-      });
+      await addOtherIncome(
+        {
+          category: resolvedCategory,
+          flatNumber: flatNumber.trim() ? flatNumber.trim().toUpperCase() : null,
+          amount: amountNum,
+          description: description.trim(),
+          expenseDate: entryDate.trim() ? entryDate.trim() : null,
+          paymentType,
+          ...detailsPayload,
+        },
+        bill
+      );
       alert('Success', 'Income added successfully.', { variant: 'success' });
       resetForm();
       onSaved();
@@ -207,11 +301,35 @@ export function AddLedgerEntryModal({ visible, onClose, onSaved }: Props) {
             <>
               <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.form}>
                 <Field label="Category" theme={theme}>
+                  {expenseOptions.length > 0 ? (
+                    <View style={styles.catChips}>
+                      {expenseOptions.map((opt) => {
+                        const on = expenseCategory.trim().toUpperCase().replace(/[\s-]+/g, '_') === opt.value;
+                        return (
+                          <Pressable
+                            key={opt.value}
+                            onPress={() => setExpenseCategory(opt.value)}
+                            style={[
+                              styles.catChip,
+                              {
+                                borderColor: on ? theme.accent : theme.inputBorder,
+                                backgroundColor: on ? theme.accentSoft : 'transparent',
+                              },
+                            ]}
+                          >
+                            <Text style={{ color: on ? theme.accent : theme.text, fontWeight: '600', fontSize: 13 }}>
+                              {opt.label}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  ) : null}
                   <TextInput
                     style={inputStyle(theme)}
                     value={expenseCategory}
                     onChangeText={setExpenseCategory}
-                    placeholder="ELECTRICITY / REPAIR / SALARY"
+                    placeholder={expenseOptions.length > 0 ? 'Or type a new category' : 'ELECTRICITY / REPAIR / SALARY'}
                     placeholderTextColor={theme.placeholder}
                     autoCapitalize="characters"
                   />
@@ -260,6 +378,7 @@ export function AddLedgerEntryModal({ visible, onClose, onSaved }: Props) {
                     multiline
                   />
                 </Field>
+                {detailsFields('EXPENSE')}
               </ScrollView>
 
               <View style={styles.actions}>
@@ -389,6 +508,7 @@ export function AddLedgerEntryModal({ visible, onClose, onSaved }: Props) {
                     multiline
                   />
                 </Field>
+                {detailsFields('INCOME')}
               </ScrollView>
 
               <View style={styles.actions}>
@@ -535,7 +655,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   descInput: { minHeight: 72, textAlignVertical: 'top' },
-  payRow: { flexDirection: 'row', gap: 10 },
+  payRow: { flexDirection: 'row', gap: 10, alignItems: 'center', flexWrap: 'wrap' },
+  catChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  catChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18, borderWidth: 1 },
+  billThumb: { width: 56, height: 56, borderRadius: 8 },
+  billBtn: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' },
   payChip: {
     flex: 1,
     paddingVertical: 10,

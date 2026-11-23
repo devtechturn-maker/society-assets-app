@@ -1,5 +1,6 @@
-import { type ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AuthenticatedImage } from '../chat/AuthenticatedImage';
 import type { RecentExpense } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { formatDate, formatDateTime, formatInr, formatMonthRange } from '../../utils/format';
@@ -14,6 +15,7 @@ type Props = {
 
 export function ExpenseRowCard({ row, showMember = false, showEntryType = false, children }: Props) {
   const { theme } = useTheme();
+  const [showBill, setShowBill] = useState(false);
   const period =
     row.maintenanceFromMonth || row.maintenanceToMonth
       ? formatMonthRange(row.maintenanceFromMonth, row.maintenanceToMonth)
@@ -50,6 +52,26 @@ export function ExpenseRowCard({ row, showMember = false, showEntryType = false,
       <Text style={[styles.meta, { color: theme.textSoft }]}>
         Description: {row.description?.trim() ? row.description : '—'}
       </Text>
+      {row.payee ? (
+        <Text style={[styles.meta, { color: theme.textSoft }]}>
+          {row.entryType === 'INCOME' ? 'From' : 'Paid to'}: {row.payee}
+        </Text>
+      ) : null}
+      {row.voucherNo || row.referenceNo ? (
+        <Text style={[styles.meta, { color: theme.textSoft }]}>
+          {[row.voucherNo ? `Bill/voucher ${row.voucherNo}` : '', row.referenceNo ? `Ref ${row.referenceNo}` : '']
+            .filter(Boolean)
+            .join(' · ')}
+        </Text>
+      ) : null}
+      {row.hasAttachment ? (
+        <Pressable onPress={() => setShowBill((v) => !v)} hitSlop={8}>
+          <Text style={[styles.meta, { color: theme.accent, fontWeight: '700' }]}>{showBill ? 'Hide bill' : 'View bill'}</Text>
+        </Pressable>
+      ) : null}
+      {showBill ? (
+        <AuthenticatedImage path={`/expenses/${row.expenseId}/attachment`} style={styles.bill} resizeMode="contain" />
+      ) : null}
       <View style={styles.footer}>
         <Badge
           label={row.paymentType === 'OPENING' ? 'Opening balance' : row.paymentType || '—'}
@@ -64,6 +86,7 @@ export function ExpenseRowCard({ row, showMember = false, showEntryType = false,
 }
 
 const styles = StyleSheet.create({
+  bill: { width: '100%', height: 260, borderRadius: 10, marginTop: 4 },
   card: {
     borderTopWidth: 1,
     paddingVertical: 12,

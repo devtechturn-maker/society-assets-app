@@ -934,13 +934,48 @@ export async function addContractType(payload: {
 export async function deleteContractType(id: string): Promise<void> {
   await client.delete<ApiResponse<null>>(`/society/settings/contract-types/${id}`);
 }
-export const fetchReportSummary = () => getData<ReportSummary>('/society/dashboard/reports/summary');
+function rangeQuery(range?: import('../types/api').ReportRange): string {
+  const params: string[] = [];
+  if (range?.from) params.push(`from=${encodeURIComponent(range.from)}`);
+  if (range?.to) params.push(`to=${encodeURIComponent(range.to)}`);
+  return params.length ? `?${params.join('&')}` : '';
+}
+
+export const fetchReportSummary = (range?: import('../types/api').ReportRange) =>
+  getData<ReportSummary>(`/society/dashboard/reports/summary${rangeQuery(range)}`);
 export const fetchReportMonthlyMaintenance = () =>
   getData<MonthlyMaintenanceReportRow[]>('/society/dashboard/reports/monthly-maintenance');
-export const fetchReportExpenseCategories = () =>
-  getData<ExpenseCategoryReportRow[]>('/society/dashboard/reports/expense-categories');
-export const fetchReportPaymentModes = () =>
-  getData<PaymentModeReport>('/society/dashboard/reports/payment-modes');
+export const fetchReportExpenseCategories = (range?: import('../types/api').ReportRange) =>
+  getData<ExpenseCategoryReportRow[]>(`/society/dashboard/reports/expense-categories${rangeQuery(range)}`);
+export const fetchReportPaymentModes = (range?: import('../types/api').ReportRange) =>
+  getData<PaymentModeReport>(`/society/dashboard/reports/payment-modes${rangeQuery(range)}`);
+
+export function fetchBook(mode: 'CASH' | 'BANK' | 'ALL', range?: import('../types/api').ReportRange) {
+  const q = rangeQuery(range);
+  return getData<import('../types/api').BookReport>(
+    `/society/dashboard/reports/book${q ? `${q}&` : '?'}mode=${mode}`
+  );
+}
+
+export const fetchFlatStatement = (memberId: string) =>
+  getData<import('../types/api').FlatStatement>(`/society/dashboard/reports/flat-statement/${memberId}`);
+
+export const fetchLedgerCategories = () =>
+  getData<{ expense: import('../types/api').LedgerCategoryOption[]; income: import('../types/api').LedgerCategoryOption[] }>(
+    '/expenses/categories'
+  );
+
+/** Downloads a PDF from a GET endpoint into the app cache; returns where it was saved. */
+export async function downloadPdfToDevice(path: string, fallbackName: string): Promise<{ uri: string; filename: string }> {
+  const response = await client.get<ArrayBuffer>(path, { responseType: 'arraybuffer' });
+  const disposition = response.headers['content-disposition'];
+  const filename = parseContentDispositionFilename(typeof disposition === 'string' ? disposition : null) ?? fallbackName;
+  const fileUri = await secureCachePath(filename);
+  await FileSystem.writeAsStringAsync(fileUri, uint8ArrayToBase64(new Uint8Array(response.data)), {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return { uri: fileUri, filename };
+}
 export const fetchReportMemberPending = () =>
   getData<PendingMaintenanceMember[]>('/society/dashboard/reports/member-pending');
 
@@ -960,7 +995,14 @@ export interface AddMaintenancePayload {
   maintenanceToMonth: string | null;
 }
 
-export interface AddExpensePayload {
+export interface LedgerDetails {
+  /** Paid to (expense) or received from (income). */
+  payee?: string;
+  voucherNo?: string;
+  referenceNo?: string;
+}
+
+export interface AddExpensePayload extends LedgerDetails {
   category: string;
   amount: number;
   description: string;
@@ -968,17 +1010,39 @@ export interface AddExpensePayload {
   paymentType: PaymentType;
 }
 
-export async function addExpense(payload: AddExpensePayload): Promise<void> {
-  await client.post<ApiResponse<null>>('/expenses', {
-    category: payload.category,
-    amount: payload.amount,
-    description: payload.description,
-    expenseDate: payload.expenseDate,
-    paymentType: payload.paymentType,
+type PickedFile = { uri: string; fileName: string; mimeType: string };
+
+async function postLedgerEntry(path: string, body: Record<string, unknown>, bill?: PickedFile | null): Promise<void> {
+  if (!bill) {
+    await client.post<ApiResponse<null>>(path, body);
+    return;
+  }
+  const formData = new FormData();
+  formData.append('payload', JSON.stringify(body));
+  formData.append('bill', { uri: bill.uri, name: bill.fileName, type: bill.mimeType } as unknown as Blob);
+  await client.post<ApiResponse<null>>(`${path}/with-bill`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
   });
 }
 
-export interface AddOtherIncomePayload {
+export async function addExpense(payload: AddExpensePayload, bill?: PickedFile | null): Promise<void> {
+  await postLedgerEntry(
+    '/expenses',
+    {
+      category: payload.category,
+      amount: payload.amount,
+      description: payload.description,
+      expenseDate: payload.expenseDate,
+      paymentType: payload.paymentType,
+      payee: payload.payee || undefined,
+      voucherNo: payload.voucherNo || undefined,
+      referenceNo: payload.referenceNo || undefined,
+    },
+    bill
+  );
+}
+
+export interface AddOtherIncomePayload extends LedgerDetails {
   category: string;
   flatNumber: string | null;
   amount: number;
@@ -987,15 +1051,22 @@ export interface AddOtherIncomePayload {
   paymentType: PaymentType;
 }
 
-export async function addOtherIncome(payload: AddOtherIncomePayload): Promise<void> {
-  await client.post<ApiResponse<null>>('/expenses/income', {
-    category: payload.category,
-    flatNumber: payload.flatNumber,
-    amount: payload.amount,
-    description: payload.description,
-    expenseDate: payload.expenseDate,
-    paymentType: payload.paymentType,
-  });
+export async function addOtherIncome(payload: AddOtherIncomePayload, receipt?: PickedFile | null): Promise<void> {
+  await postLedgerEntry(
+    '/expenses/income',
+    {
+      category: payload.category,
+      flatNumber: payload.flatNumber,
+      amount: payload.amount,
+      description: payload.description,
+      expenseDate: payload.expenseDate,
+      paymentType: payload.paymentType,
+      payee: payload.payee || undefined,
+      voucherNo: payload.voucherNo || undefined,
+      referenceNo: payload.referenceNo || undefined,
+    },
+    receipt
+  );
 }
 
 export async function addMaintenance(
