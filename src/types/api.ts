@@ -397,6 +397,8 @@ export interface MemberMaintenanceDue {
   monthlyMaintenanceAmount: number;
   carryForwardDue: number;
   penaltyAmount: number;
+  /** v20: GST included in the payable amount; missing from older servers. */
+  gstAmount?: number;
   totalDueAmount: number;
   payableAmount: number;
   maintenanceFromMonth: string;
@@ -513,6 +515,12 @@ export interface MaintenanceSettings {
   maintenancePenaltyGraceDay: number;
   maintenancePenaltyAmount: number;
   allowCustomMemberMaintenance: boolean;
+  /** v20: FIXED late fee per month, or INTEREST % a year. Older servers leave these out. */
+  lateFeeMode?: 'FIXED' | 'INTEREST';
+  lateInterestRate?: number | null;
+  gstEnabled?: boolean;
+  gstRate?: number;
+  gstThreshold?: number;
   configured: boolean;
 }
 

@@ -111,6 +111,11 @@ export function SettingsModule() {
   const [penaltyGraceDay, setPenaltyGraceDay] = useState('');
   const [penaltyAmount, setPenaltyAmount] = useState('');
   const [allowCustomMaintenance, setAllowCustomMaintenance] = useState(false);
+  const [lateFeeMode, setLateFeeMode] = useState<'FIXED' | 'INTEREST'>('FIXED');
+  const [interestRate, setInterestRate] = useState('');
+  const [gstEnabled, setGstEnabled] = useState(false);
+  const [gstRate, setGstRate] = useState('18');
+  const [gstThreshold, setGstThreshold] = useState('7500');
   const [savingSettings, setSavingSettings] = useState(false);
 
   const [bankHolder, setBankHolder] = useState('');
@@ -144,6 +149,11 @@ export function SettingsModule() {
     setPenaltyGraceDay(String(s.maintenancePenaltyGraceDay));
     setPenaltyAmount(String(s.maintenancePenaltyAmount));
     setAllowCustomMaintenance(s.allowCustomMemberMaintenance);
+    setLateFeeMode(s.lateFeeMode === 'INTEREST' ? 'INTEREST' : 'FIXED');
+    setInterestRate(s.lateInterestRate != null ? String(s.lateInterestRate) : '');
+    setGstEnabled(s.gstEnabled === true);
+    setGstRate(String(s.gstRate ?? 18));
+    setGstThreshold(String(s.gstThreshold ?? 7500));
     if (s.configured === false) {
       setExpandedSections((current) => ({ ...current, maintenance: true }));
     }
@@ -199,12 +209,29 @@ export function SettingsModule() {
       return;
     }
 
+    const lateInterestRate = interestRate.trim() ? Number(interestRate) : null;
+    if (lateFeeMode === 'INTEREST' && (lateInterestRate === null || !(lateInterestRate > 0) || lateInterestRate > 21)) {
+      alert('Invalid value', 'Interest must be more than 0% and at most 21% a year. Check your bye-laws.', { variant: 'error' });
+      return;
+    }
+    const gstRateValue = Number(gstRate);
+    const gstThresholdValue = Number(gstThreshold);
+    if (gstEnabled && (!(gstRateValue > 0) || gstRateValue > 28 || !Number.isFinite(gstThresholdValue) || gstThresholdValue < 0)) {
+      alert('Invalid value', 'Enter a GST rate between 0 and 28%, and the monthly limit.', { variant: 'error' });
+      return;
+    }
+
     const payload: MaintenanceSettings = {
       defaultMaintenanceAmount,
       shopMaintenanceAmount,
       maintenancePenaltyGraceDay: Math.round(maintenancePenaltyGraceDay),
       maintenancePenaltyAmount,
       allowCustomMemberMaintenance: allowCustomMaintenance,
+      lateFeeMode,
+      lateInterestRate,
+      gstEnabled,
+      gstRate: gstRateValue,
+      gstThreshold: gstThresholdValue,
     };
 
     setSavingSettings(true);
@@ -361,16 +388,91 @@ export function SettingsModule() {
                 placeholderTextColor={theme.placeholder}
               />
             </FormField>
-            <FormField label="Penalty amount after grace day (INR)" theme={theme}>
-              <TextInput
-                style={inputStyle(theme)}
-                value={penaltyAmount}
-                onChangeText={setPenaltyAmount}
-                keyboardType="decimal-pad"
-                placeholder="100"
-                placeholderTextColor={theme.placeholder}
-              />
+            <FormField label="Late fee type" theme={theme}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {(['FIXED', 'INTEREST'] as const).map((mode) => {
+                  const on = lateFeeMode === mode;
+                  return (
+                    <Pressable
+                      key={mode}
+                      onPress={() => setLateFeeMode(mode)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: on }}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 10,
+                        borderRadius: 10,
+                        borderWidth: 1.5,
+                        alignItems: 'center',
+                        borderColor: on ? theme.accent : theme.cardBorder,
+                        backgroundColor: on ? theme.accent : 'transparent',
+                      }}
+                    >
+                      <Text style={{ color: on ? '#fff' : theme.text, fontWeight: '700' }}>
+                        {mode === 'FIXED' ? 'Fixed amount' : 'Interest % a year'}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </FormField>
+            {lateFeeMode === 'FIXED' ? (
+              <FormField label="Late fee per late month (INR)" theme={theme}>
+                <TextInput
+                  style={inputStyle(theme)}
+                  value={penaltyAmount}
+                  onChangeText={setPenaltyAmount}
+                  keyboardType="decimal-pad"
+                  placeholder="100"
+                  placeholderTextColor={theme.placeholder}
+                />
+              </FormField>
+            ) : (
+              <FormField label="Interest on late payment (% a year, max 21)" theme={theme}>
+                <TextInput
+                  style={inputStyle(theme)}
+                  value={interestRate}
+                  onChangeText={setInterestRate}
+                  keyboardType="decimal-pad"
+                  placeholder="18"
+                  placeholderTextColor={theme.placeholder}
+                />
+              </FormField>
+            )}
+            <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
+              {lateFeeMode === 'FIXED'
+                ? 'Charged once for each month paid after the no-penalty day.'
+                : 'Counted for each day a month is paid after the no-penalty day. Use the rate in your bye-laws.'}
+            </Text>
+            <CheckboxField label="Add GST to maintenance" checked={gstEnabled} onChange={setGstEnabled} />
+            {gstEnabled ? (
+              <>
+                <FormField label="GST rate (%)" theme={theme}>
+                  <TextInput
+                    style={inputStyle(theme)}
+                    value={gstRate}
+                    onChangeText={setGstRate}
+                    keyboardType="decimal-pad"
+                    placeholder="18"
+                    placeholderTextColor={theme.placeholder}
+                  />
+                </FormField>
+                <FormField label="GST only when monthly maintenance is above (INR)" theme={theme}>
+                  <TextInput
+                    style={inputStyle(theme)}
+                    value={gstThreshold}
+                    onChangeText={setGstThreshold}
+                    keyboardType="decimal-pad"
+                    placeholder="7500"
+                    placeholderTextColor={theme.placeholder}
+                  />
+                </FormField>
+              </>
+            ) : null}
+            <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
+              Check with your CA whether your society must charge GST. It is added only for flats paying more than the
+              limit each month.
+            </Text>
             <CheckboxField
               label="Allow different maintenance per member"
               checked={allowCustomMaintenance}

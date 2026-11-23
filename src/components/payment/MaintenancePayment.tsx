@@ -604,9 +604,14 @@ export function MaintenancePaymentPanel({
               <Text style={[styles.meta, { color: theme.textMuted }]}>{monthsLabel(due.maintenanceFromMonth, due.maintenanceToMonth)}</Text>
               <Text style={[styles.dueAmount, { color: theme.text }]}>{inr(due.payableAmount)}</Text>
             </View>
-            {due.penaltyAmount > 0 ? (
-              <Text style={[styles.meta, { color: '#b45309' }]}>incl. late fee {inr(due.penaltyAmount)}</Text>
-            ) : null}
+            <View style={{ alignItems: 'flex-end' }}>
+              {due.penaltyAmount > 0 ? (
+                <Text style={[styles.meta, { color: '#b45309' }]}>incl. late fee {inr(due.penaltyAmount)}</Text>
+              ) : null}
+              {(due.gstAmount ?? 0) > 0 ? (
+                <Text style={[styles.meta, { color: theme.textMuted }]}>incl. GST {inr(due.gstAmount ?? 0)}</Text>
+              ) : null}
+            </View>
           </View>
           {payOnline ? (
             <>
