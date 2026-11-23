@@ -777,6 +777,20 @@ export interface ComplaintSummary {
   resolvedAt: string | null;
   memberName?: string;
   flatNumber?: string;
+  /** v20: "Ramesh (Plumber)"; older servers leave these out. */
+  assignedTo?: string | null;
+  dueDate?: string | null;
+  overdue?: boolean;
+}
+
+export interface ComplaintHistoryEntry {
+  action: 'CREATED' | 'STATUS' | 'ASSIGNED' | 'DUE_DATE' | 'NOTE' | string;
+  fromStatus?: string | null;
+  toStatus?: string | null;
+  detail?: string | null;
+  note?: string | null;
+  byName?: string | null;
+  createdAt: string;
 }
 
 export interface ComplaintDetail extends ComplaintSummary {
@@ -784,6 +798,18 @@ export interface ComplaintDetail extends ComplaintSummary {
   chairmanNote?: string | null;
   memberId?: string;
   attachments?: { index: number; url: string; memberUrl?: string }[];
+  /** v20, office only. */
+  assignedStaffId?: string | null;
+  assignedStaffPhone?: string | null;
+  assignedUserId?: string | null;
+  allowedStatuses?: string[];
+  /** v20: every change, oldest first. */
+  history?: ComplaintHistoryEntry[];
+}
+
+export interface ComplaintAssignees {
+  staff: { id: string; name: string; designation?: string | null; phone?: string | null }[];
+  committee: { id: string; name: string; role: string }[];
 }
 
 export interface RuleSummary {

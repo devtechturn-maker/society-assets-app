@@ -303,7 +303,7 @@ export function ModuleRouter({
     case 'complaints':
       return (
         <ComplaintModule
-          canManageComplaints={(userRole ?? '').toUpperCase() === 'CHAIRMAN'}
+          canManageComplaints={['CHAIRMAN', 'TREASURER', 'USER'].includes((userRole ?? '').toUpperCase())}
           initialComplaintId={initialComplaintId}
           onInitialComplaintConsumed={onComplaintConsumed}
         />

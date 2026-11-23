@@ -1294,9 +1294,21 @@ export async function createComplaint(payload: {
   return data.data;
 }
 
+export function fetchComplaintAssignees(): Promise<import('../types/api').ComplaintAssignees> {
+  return getData<import('../types/api').ComplaintAssignees>('/society/complaints/assignees');
+}
+
 export async function updateComplaint(
   complaintId: string,
-  payload: { status: string; chairmanNote?: string }
+  payload: {
+    status: string;
+    chairmanNote?: string;
+    /** Send both to change the assignee ('' for nobody). */
+    assignedStaffId?: string;
+    assignedUserId?: string;
+    /** YYYY-MM-DD, or '' to clear. */
+    dueDate?: string;
+  }
 ): Promise<ComplaintDetail> {
   const { data } = await client.post<ApiResponse<ComplaintDetail>>(
     `/society/complaints/${complaintId}/update`,

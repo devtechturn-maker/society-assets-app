@@ -5,6 +5,7 @@ import {
   FlatList,
   Image,
   Keyboard,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -17,11 +18,12 @@ import {
 } from 'react-native';
 import {
   createComplaint,
+  fetchComplaintAssignees,
   fetchComplaintDetail,
   fetchComplaints,
   updateComplaint,
 } from '../../services/api';
-import type { ComplaintDetail, ComplaintSummary } from '../../types/api';
+import type { ComplaintAssignees, ComplaintDetail, ComplaintHistoryEntry, ComplaintSummary } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { Badge } from '../../components/dashboard/Badge';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
@@ -44,11 +46,16 @@ const CATEGORIES = [
   { value: 'SECURITY', label: 'Security' },
   { value: 'PARKING', label: 'Parking' },
   { value: 'CLEANING', label: 'Cleaning' },
+  { value: 'LIFT', label: 'Lift' },
+  { value: 'PLUMBING', label: 'Plumbing' },
+  { value: 'ELECTRICITY', label: 'Electricity' },
+  { value: 'WATER', label: 'Water' },
   { value: 'OTHER', label: 'Other' },
 ] as const;
 
 const STATUSES = [
   { value: 'OPEN', label: 'Open' },
+  { value: 'ASSIGNED', label: 'Assigned' },
   { value: 'IN_PROGRESS', label: 'In progress' },
   { value: 'RESOLVED', label: 'Resolved' },
   { value: 'CLOSED', label: 'Closed' },
@@ -73,6 +80,7 @@ function statusBadgeTone(status: string): 'info' | 'warn' | 'neutral' | 'success
   switch (status) {
     case 'OPEN':
       return 'warn';
+    case 'ASSIGNED':
     case 'IN_PROGRESS':
       return 'info';
     case 'RESOLVED':
@@ -80,6 +88,32 @@ function statusBadgeTone(status: string): 'info' | 'warn' | 'neutral' | 'success
     default:
       return 'neutral';
   }
+}
+
+/** One line of the complaint timeline, e.g. "Status: Open → In progress". */
+function historyText(entry: ComplaintHistoryEntry): string {
+  switch (entry.action) {
+    case 'CREATED':
+      return 'Complaint raised';
+    case 'STATUS':
+      return `Status: ${statusLabel(entry.fromStatus ?? '')} → ${statusLabel(entry.toStatus ?? '')}`;
+    case 'ASSIGNED':
+      return `Assigned to ${entry.detail ?? 'nobody'}`;
+    case 'DUE_DATE':
+      return entry.detail && /^\d{4}-\d{2}-\d{2}$/.test(entry.detail) ? `Due date set to ${entry.detail}` : 'Due date removed';
+    case 'NOTE':
+      return 'Note added';
+    default:
+      return entry.action;
+  }
+}
+
+const DUE_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function currentAssignee(detail: ComplaintDetail): string {
+  if (detail.assignedStaffId) return `staff:${detail.assignedStaffId}`;
+  if (detail.assignedUserId) return `user:${detail.assignedUserId}`;
+  return '';
 }
 
 const BOTTOM_TAB_BAR_HEIGHT = 62;
@@ -161,6 +195,10 @@ export function ComplaintModule({
   const [category, setCategory] = useState<string>('OTHER');
   const [status, setStatus] = useState<string>('OPEN');
   const [chairmanNote, setChairmanNote] = useState('');
+  const [assignees, setAssignees] = useState<ComplaintAssignees | null>(null);
+  /** 'staff:<id>', 'user:<id>' or '' for nobody. */
+  const [assignee, setAssignee] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
 
   const formScrollRef = useRef<ScrollView>(null);
@@ -231,6 +269,13 @@ export function ComplaintModule({
         setActiveComplaint(detail);
         setStatus(detail.status);
         setChairmanNote(detail.chairmanNote ?? '');
+        setAssignee(currentAssignee(detail));
+        setDueDate(detail.dueDate ?? '');
+        if (!memberPortal && canManageComplaints) {
+          fetchComplaintAssignees()
+            .then(setAssignees)
+            .catch(() => setAssignees(null));
+        }
         setScreen('detail');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not load complaint');
@@ -238,7 +283,7 @@ export function ComplaintModule({
         setLoading(false);
       }
     },
-    [memberPortal]
+    [memberPortal, canManageComplaints]
   );
 
   useEffect(() => {
@@ -286,13 +331,26 @@ export function ComplaintModule({
 
   async function submitUpdate() {
     if (!activeComplaint) return;
+    const due = dueDate.trim();
+    if (due && !DUE_DATE.test(due)) {
+      await alert('Due date', 'Enter the due date like 2026-12-31, or leave it empty.');
+      return;
+    }
+    const payload: Parameters<typeof updateComplaint>[1] = { status, chairmanNote: chairmanNote.trim() };
+    if (assignee !== currentAssignee(activeComplaint)) {
+      payload.assignedStaffId = assignee.startsWith('staff:') ? assignee.slice(6) : '';
+      payload.assignedUserId = assignee.startsWith('user:') ? assignee.slice(5) : '';
+    }
+    if (due !== (activeComplaint.dueDate ?? '')) {
+      payload.dueDate = due;
+    }
     setSaving(true);
     try {
-      const updated = await updateComplaint(activeComplaint.complaintId, {
-        status,
-        chairmanNote: chairmanNote.trim(),
-      });
+      const updated = await updateComplaint(activeComplaint.complaintId, payload);
       setActiveComplaint(updated);
+      setStatus(updated.status);
+      setAssignee(currentAssignee(updated));
+      setDueDate(updated.dueDate ?? '');
       await loadComplaints();
       await alert('Updated', 'Complaint status saved. The member will be notified.');
     } catch (err) {
@@ -478,17 +536,102 @@ export function ComplaintModule({
               </View>
             </View>
           ) : null}
+          {activeComplaint.assignedTo || activeComplaint.dueDate ? (
+            <View style={[styles.detailBox, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
+              {activeComplaint.assignedTo ? (
+                <Text style={{ color: theme.text }}>
+                  Assigned to <Text style={{ fontWeight: '700' }}>{activeComplaint.assignedTo}</Text>
+                </Text>
+              ) : null}
+              {activeComplaint.assignedStaffPhone ? (
+                <Pressable onPress={() => void Linking.openURL(`tel:${activeComplaint.assignedStaffPhone}`)}>
+                  <Text style={{ color: theme.accent, fontWeight: '700' }}>Call {activeComplaint.assignedStaffPhone}</Text>
+                </Pressable>
+              ) : null}
+              {activeComplaint.dueDate ? (
+                <Text style={{ color: activeComplaint.overdue ? '#b91c1c' : theme.textMuted, fontWeight: activeComplaint.overdue ? '700' : '400' }}>
+                  Due {activeComplaint.dueDate}
+                  {activeComplaint.overdue ? ' · Overdue' : ''}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
           {activeComplaint.chairmanNote ? (
             <View style={[styles.detailBox, { backgroundColor: theme.accentSoft, borderColor: theme.accent }]}>
-              <Text style={[styles.label, { color: theme.accent }]}>Chairman response</Text>
+              <Text style={[styles.label, { color: theme.accent }]}>Latest response</Text>
               <Text style={{ color: theme.text, lineHeight: 22 }}>{activeComplaint.chairmanNote}</Text>
             </View>
           ) : null}
-          {canManageComplaints ? (
+          {activeComplaint.history?.length ? (
+            <View style={[styles.detailBox, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
+              <Text style={[styles.label, { color: theme.textMuted }]}>History</Text>
+              {activeComplaint.history.map((entry, index) => (
+                <View key={`${entry.createdAt}-${index}`} style={styles.historyRow}>
+                  <View style={[styles.historyDot, { backgroundColor: theme.accent }]} />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={{ color: theme.text, fontWeight: '600' }}>{historyText(entry)}</Text>
+                    {entry.note ? <Text style={{ color: theme.text, lineHeight: 20 }}>{entry.note}</Text> : null}
+                    <Text style={[styles.meta, { color: theme.textMuted }]}>
+                      {[entry.byName, formatWhen(entry.createdAt)].filter(Boolean).join(' · ')}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null}
+          {canManageComplaints && activeComplaint.status === 'CLOSED' ? (
+            <Text style={[styles.meta, { color: theme.textMuted }]}>This complaint is closed and cannot be changed.</Text>
+          ) : null}
+          {canManageComplaints && activeComplaint.status !== 'CLOSED' ? (
             <>
+              <Text style={[styles.label, { color: theme.textMuted }]}>Assign to</Text>
+              <View style={styles.chipRow}>
+                {[
+                  { key: '', label: 'Nobody' },
+                  ...(assignees?.staff ?? []).map((s) => ({
+                    key: `staff:${s.id}`,
+                    label: s.designation ? `${s.name} (${s.designation})` : s.name,
+                  })),
+                  ...(assignees?.committee ?? []).map((u) => ({ key: `user:${u.id}`, label: `${u.name} (committee)` })),
+                ].map((option) => (
+                  <Pressable
+                    key={option.key || 'nobody'}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: assignee === option.key ? theme.accentSoft : theme.chipBg,
+                        borderColor: assignee === option.key ? theme.accent : theme.cardBorder,
+                      },
+                    ]}
+                    onPress={() => setAssignee(option.key)}
+                  >
+                    <Text style={{ color: assignee === option.key ? theme.accent : theme.text, fontWeight: '600' }}>
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={[styles.meta, { color: theme.textMuted }]}>
+                Staff are listed from your Staff page. Committee members get a notification.
+              </Text>
+              <Text style={[styles.label, { color: theme.textMuted }]}>Due date (optional)</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.cardBg, color: theme.text, borderColor: theme.cardBorder }]}
+                value={dueDate}
+                onChangeText={setDueDate}
+                placeholder="YYYY-MM-DD, e.g. 2026-12-31"
+                placeholderTextColor={theme.textMuted}
+                maxLength={10}
+                keyboardType="numbers-and-punctuation"
+              />
               <Text style={[styles.label, { color: theme.textMuted }]}>Status</Text>
               <View style={styles.chipRow}>
-                {STATUSES.map((item) => (
+                {STATUSES.filter(
+                  (item) =>
+                    item.value === activeComplaint.status ||
+                    !activeComplaint.allowedStatuses ||
+                    activeComplaint.allowedStatuses.includes(item.value)
+                ).map((item) => (
                   <Pressable
                     key={item.value}
                     style={[
@@ -619,6 +762,13 @@ export function ComplaintModule({
                 {item.memberName} · {item.flatNumber}
               </Text>
             ) : null}
+            {item.assignedTo || item.dueDate ? (
+              <Text style={[styles.meta, { color: item.overdue ? '#b91c1c' : theme.textMuted, fontWeight: item.overdue ? '700' : '400' }]}>
+                {[item.assignedTo ? `To ${item.assignedTo}` : '', item.dueDate ? `Due ${item.dueDate}` : '', item.overdue ? 'Overdue' : '']
+                  .filter(Boolean)
+                  .join(' · ')}
+              </Text>
+            ) : null}
           </Pressable>
         )}
       />
@@ -675,6 +825,8 @@ const styles = StyleSheet.create({
   cardSubject: { flex: 1, fontSize: 16, fontWeight: '700' },
   memberLine: { marginTop: 2, fontSize: 12, fontWeight: '700' },
   detailBox: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 6 },
+  historyRow: { flexDirection: 'row', gap: 10, paddingVertical: 4 },
+  historyDot: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
   photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
   photoThumbWrap: { position: 'relative' },
   photoThumb: { width: 88, height: 88, borderRadius: 10 },

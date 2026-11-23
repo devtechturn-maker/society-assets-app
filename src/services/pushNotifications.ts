@@ -34,7 +34,7 @@ export type AppPushNotification = {
   complaintId: string;
   subject: string;
   preview: string;
-  type: 'COMPLAINT_CREATED' | 'COMPLAINT_UPDATED';
+  type: 'COMPLAINT_CREATED' | 'COMPLAINT_UPDATED' | 'COMPLAINT_ASSIGNED';
 } | {
   kind: 'amenity';
   notificationId?: string;
@@ -372,7 +372,7 @@ function parseAppPushNotification(
       type: data.type,
     };
   }
-  if (data?.type === 'COMPLAINT_CREATED' || data?.type === 'COMPLAINT_UPDATED') {
+  if (data?.type === 'COMPLAINT_CREATED' || data?.type === 'COMPLAINT_UPDATED' || data?.type === 'COMPLAINT_ASSIGNED') {
     const complaintId = data.complaintId ? String(data.complaintId) : '';
     if (!complaintId) return null;
     const subject =
@@ -381,7 +381,11 @@ function parseAppPushNotification(
       'Complaint';
     const preview =
       (content.body && String(content.body).trim()) ||
-      (data.type === 'COMPLAINT_UPDATED' ? 'Complaint updated' : 'New complaint');
+      (data.type === 'COMPLAINT_UPDATED'
+        ? 'Complaint updated'
+        : data.type === 'COMPLAINT_ASSIGNED'
+          ? 'Complaint assigned to you'
+          : 'New complaint');
     return {
       kind: 'complaint',
       notificationId: readNotificationId(data),
