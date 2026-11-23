@@ -38,6 +38,7 @@ import type {
 } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { apiErrorMessage } from '../../utils/apiError';
+import { evidenceErrors, normalizeReference } from '../../utils/paymentEvidence';
 import { pickPhotoFromCamera, pickPhotoFromLibrary, showPhotoSourcePicker, type PickedPhoto } from '../../utils/pickPhoto';
 
 export function inr(value: number | undefined | null): string {
@@ -290,7 +291,7 @@ function today(): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-/** "I have paid" form. The screenshot is required; the amount comes from the server. */
+/** "I have paid" form. UPI needs the 12-digit reference or a screenshot; other methods a screenshot. The amount comes from the server. */
 function SubmitPaymentSheet({
   due,
   visible,
@@ -313,9 +314,8 @@ function SubmitPaymentSheet({
   const [busy, setBusy] = useState(false);
   const input = [styles.input, { backgroundColor: theme.inputBg, color: theme.inputText, borderColor: theme.inputBorder }];
 
-  const referenceError = reference.trim().length < 4 ? 'Enter the transaction / UTR reference number.' : '';
+  const { reference: referenceError, photo: photoError } = evidenceErrors(method, reference, photo != null);
   const dateError = /^\d{4}-\d{2}-\d{2}$/.test(paidOn.trim()) ? '' : 'Use the format YYYY-MM-DD.';
-  const photoError = photo ? '' : 'A screenshot of the payment is required.';
 
   function choosePhoto() {
     showPhotoSourcePicker(
@@ -326,19 +326,21 @@ function SubmitPaymentSheet({
 
   async function submit() {
     setTried(true);
-    if (referenceError || dateError || photoError || !photo) return;
+    if (referenceError || dateError || photoError) return;
     setBusy(true);
     try {
       await submitMaintenancePayment({
         paymentMethod: method,
-        referenceNo: reference.trim(),
+        referenceNo: normalizeReference(reference),
         paidOn: paidOn.trim(),
         note: note.trim() || undefined,
         screenshot: photo,
       });
       alert(
         'Payment submitted',
-        'The society office will check your screenshot and confirm the payment. You will get a notification.',
+        photo
+          ? 'The society office will check your screenshot and confirm the payment. You will get a notification.'
+          : 'The society office will match your UPI reference with its bank statement and confirm the payment. You will get a notification.',
         { variant: 'success' }
       );
       setReference('');
@@ -394,7 +396,9 @@ function SubmitPaymentSheet({
             })}
           </View>
 
-          <Text style={[styles.label, { color: theme.text }]}>Transaction / UTR reference *</Text>
+          <Text style={[styles.label, { color: theme.text }]}>
+            {method === 'UPI' ? 'UPI reference number (UTR) *' : 'Transaction / UTR reference *'}
+          </Text>
           <TextInput
             style={input}
             value={reference}
@@ -402,15 +406,23 @@ function SubmitPaymentSheet({
             placeholder="e.g. 431298765432"
             placeholderTextColor={theme.placeholder}
             autoCapitalize="characters"
+            keyboardType={method === 'UPI' && !photo ? 'number-pad' : 'default'}
             maxLength={80}
           />
+          {method === 'UPI' ? (
+            <Text style={[styles.meta, { color: theme.textMuted }]}>
+              The 12-digit number in your UPI app's payment details, often called UTR, UPI Ref No or RRN.
+            </Text>
+          ) : null}
           {tried && referenceError ? <Text style={styles.error}>{referenceError}</Text> : null}
 
           <Text style={[styles.label, { color: theme.text }]}>Payment date *</Text>
           <TextInput style={input} value={paidOn} onChangeText={setPaidOn} placeholder="YYYY-MM-DD" placeholderTextColor={theme.placeholder} maxLength={10} />
           {tried && dateError ? <Text style={styles.error}>{dateError}</Text> : null}
 
-          <Text style={[styles.label, { color: theme.text }]}>Payment screenshot *</Text>
+          <Text style={[styles.label, { color: theme.text }]}>
+            {method === 'UPI' ? 'Payment screenshot (optional with UTR)' : 'Payment screenshot *'}
+          </Text>
           {photo ? (
             <View style={[styles.previewBox, { borderColor: theme.cardBorder }]}>
               <Image source={{ uri: photo.uri }} style={styles.preview} resizeMode="contain" />

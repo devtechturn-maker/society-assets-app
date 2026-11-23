@@ -78,7 +78,11 @@ export function MemberPaymentsModule() {
   function approve(item: MaintenancePaymentSubmission) {
     confirm({
       title: 'Approve this payment?',
-      message: `${inr(item.amount)} from flat ${item.flatNumber} (ref ${item.referenceNo}) will be recorded as maintenance and a receipt emailed. Check that the screenshot and your bank statement match first.`,
+      message: `${inr(item.amount)} from flat ${item.flatNumber} (ref ${item.referenceNo}) will be recorded as maintenance and a receipt emailed. ${
+        item.hasScreenshot
+          ? 'Check that the screenshot and your bank statement match first.'
+          : 'There is no screenshot: find this UPI reference in your bank statement first.'
+      }`,
       confirmText: 'Approve',
       onConfirm: async () => {
         setBusyId(item.id);
@@ -134,8 +138,8 @@ export function MemberPaymentsModule() {
       >
         {tab === 'PENDING_REVIEW' ? (
           <Text style={[styles.hint, { color: theme.textMuted }]}>
-            Members paid these into the society's bank account. Tap the screenshot to enlarge it, check it against your bank
-            statement, then approve or reject.
+            Members paid these into the society's bank account. Find each reference number in your bank statement (tap a
+            screenshot to enlarge it), then approve or reject.
           </Text>
         ) : null}
         {tab === 'REFUND_REQUIRED' ? (

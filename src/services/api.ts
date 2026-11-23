@@ -433,18 +433,21 @@ export async function submitMaintenancePayment(input: {
   referenceNo: string;
   paidOn: string;
   note?: string;
-  screenshot: { uri: string; fileName: string; mimeType: string };
+  /** Optional when paid by UPI with the 12-digit reference. */
+  screenshot?: { uri: string; fileName: string; mimeType: string } | null;
 }): Promise<MaintenancePaymentSubmission> {
   const formData = new FormData();
   formData.append('paymentMethod', input.paymentMethod);
   formData.append('referenceNo', input.referenceNo);
   formData.append('paidOn', input.paidOn);
   if (input.note) formData.append('note', input.note);
-  formData.append('screenshot', {
-    uri: input.screenshot.uri,
-    name: input.screenshot.fileName,
-    type: input.screenshot.mimeType,
-  } as unknown as Blob);
+  if (input.screenshot) {
+    formData.append('screenshot', {
+      uri: input.screenshot.uri,
+      name: input.screenshot.fileName,
+      type: input.screenshot.mimeType,
+    } as unknown as Blob);
+  }
   const { data } = await client.post<ApiResponse<MaintenancePaymentSubmission>>('/member/maintenance/payments', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 120000,
