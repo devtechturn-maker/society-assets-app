@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -26,6 +26,7 @@ import * as WebBrowser from 'expo-web-browser';
 import {
   confirmOnlineMaintenanceOrder,
   createOnlineMaintenanceOrder,
+  fetchMemberMaintenanceDueAhead,
   memberPaymentScreenshotPath,
   societyPaymentQrPath,
   submitMaintenancePayment,
@@ -335,6 +336,7 @@ function SubmitPaymentSheet({
         paidOn: paidOn.trim(),
         note: note.trim() || undefined,
         screenshot: photo,
+        monthsAhead: due.monthsAhead,
       });
       alert(
         'Payment submitted',
@@ -552,7 +554,7 @@ function PayOnlineButton({ amount, onDone }: { amount: number; onDone?: () => vo
  * {@code compact} is the short dashboard version.
  */
 export function MaintenancePaymentPanel({
-  due,
+  due: baseDue,
   compact = false,
   onSubmitted,
 }: {
@@ -562,7 +564,70 @@ export function MaintenancePaymentPanel({
 }) {
   const { theme } = useTheme();
   const [open, setOpen] = useState(false);
+  // v21: pay ahead for 3, 6 or 12 months; the server works out the amount and any discount.
+  const [ahead, setAhead] = useState(1);
+  const [aheadDue, setAheadDue] = useState<MemberMaintenanceDue | null>(null);
+  const [aheadError, setAheadError] = useState<string | null>(null);
+  useEffect(() => {
+    if (ahead <= 1) {
+      setAheadDue(null);
+      setAheadError(null);
+      return;
+    }
+    let live = true;
+    fetchMemberMaintenanceDueAhead(ahead)
+      .then((d) => live && (setAheadDue(d), setAheadError(null)))
+      .catch((e) => live && (setAheadDue(null), setAheadError(apiErrorMessage(e, 'Could not work out the amount'))));
+    return () => {
+      live = false;
+    };
+  }, [ahead]);
+  const due = ahead > 1 && aheadDue ? aheadDue : baseDue;
   if (!due) return null;
+  const advance = baseDue?.advance;
+  const aheadChooser =
+    !compact && advance && !due.submissions?.some((s) => s.status === 'PENDING_REVIEW') ? (
+      <View style={{ gap: 6 }}>
+        <Text style={[styles.meta, { color: theme.textMuted }]}>Pay for</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          {advance.options.map((n) => {
+            const on = n === ahead;
+            const disabled = n > 1 && !advance.available;
+            const pct = n >= 12 ? advance.discount12 ?? advance.discount6 : n >= 6 ? advance.discount6 : null;
+            return (
+              <Pressable
+                key={n}
+                disabled={disabled}
+                onPress={() => setAhead(n)}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 7,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  opacity: disabled ? 0.4 : 1,
+                  borderColor: on ? theme.accent : theme.cardBorder,
+                  backgroundColor: on ? theme.accentSoft : 'transparent',
+                }}
+              >
+                <Text style={{ color: on ? theme.accent : theme.text, fontWeight: '700', fontSize: 12 }}>
+                  {n === 1 ? 'Due now' : `${n} months`}
+                  {pct ? ` · ${Math.round(pct * 100) / 100}% off` : ''}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {!advance.available && advance.reason ? (
+          <Text style={[styles.meta, { color: theme.textMuted }]}>{advance.reason}</Text>
+        ) : null}
+        {aheadError ? <Text style={[styles.meta, { color: '#b91c1c' }]}>{aheadError}</Text> : null}
+        {(due.discountAmount ?? 0) > 0 ? (
+          <Text style={[styles.meta, { color: '#15803d', fontWeight: '700' }]}>
+            Advance discount {inr(due.discountAmount ?? 0)} included
+          </Text>
+        ) : null}
+      </View>
+    ) : null;
 
   const latest = due.submissions?.[0];
   const pending = due.submissions?.find((s) => s.status === 'PENDING_REVIEW');
@@ -571,15 +636,19 @@ export function MaintenancePaymentPanel({
 
   if (due.alreadyPaid && !pending) {
     return compact ? null : (
-      <View style={[styles.note, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
-        <Ionicons name="checkmark-circle" size={20} color="#15803d" />
-        <Text style={[styles.noteText, { color: '#166534' }]}>{due.alreadyPaidMessage || 'Maintenance is up to date.'}</Text>
+      <View style={{ gap: 10 }}>
+        <View style={[styles.note, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
+          <Ionicons name="checkmark-circle" size={20} color="#15803d" />
+          <Text style={[styles.noteText, { color: '#166534' }]}>{due.alreadyPaidMessage || 'Maintenance is up to date.'}</Text>
+        </View>
+        {aheadChooser}
       </View>
     );
   }
 
   return (
     <View style={{ gap: 10 }}>
+      {aheadChooser}
       {pending ? (
         <View style={[styles.note, { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }]}>
           <Ionicons name="time-outline" size={20} color="#b45309" />

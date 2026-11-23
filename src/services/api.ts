@@ -474,9 +474,12 @@ export async function submitMaintenancePayment(input: {
   note?: string;
   /** Optional when paid by UPI with the 12-digit reference. */
   screenshot?: { uri: string; fileName: string; mimeType: string } | null;
+  /** v21: pay this many months from the current month (1, 3, 6 or 12). */
+  monthsAhead?: number;
 }): Promise<MaintenancePaymentSubmission> {
   const formData = new FormData();
   formData.append('paymentMethod', input.paymentMethod);
+  if (input.monthsAhead && input.monthsAhead > 1) formData.append('monthsAhead', String(input.monthsAhead));
   formData.append('referenceNo', input.referenceNo);
   formData.append('paidOn', input.paidOn);
   if (input.note) formData.append('note', input.note);
@@ -497,6 +500,10 @@ export async function submitMaintenancePayment(input: {
 }
 
 /** Pay online (Cashfree): opens a checkout for exactly what is due; the money settles to the society's account. */
+/** v21: the amount for paying {@code monthsAhead} months (not cached). */
+export const fetchMemberMaintenanceDueAhead = (monthsAhead: number) =>
+  getData<MemberMaintenanceDue>(`/member/maintenance/due?monthsAhead=${monthsAhead}`);
+
 export async function createOnlineMaintenanceOrder(): Promise<OnlineMaintenanceOrder> {
   const { data } = await client.post<ApiResponse<OnlineMaintenanceOrder>>('/member/maintenance/online-order');
   return data.data;

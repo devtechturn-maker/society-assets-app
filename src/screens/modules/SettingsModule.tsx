@@ -114,6 +114,8 @@ export function SettingsModule() {
   const [shopMaintenance, setShopMaintenance] = useState('');
   const [sqftRate, setSqftRate] = useState('');
   const [billingEnabled, setBillingEnabled] = useState(false);
+  const [discount6, setDiscount6] = useState('');
+  const [discount12, setDiscount12] = useState('');
   const [penaltyGraceDay, setPenaltyGraceDay] = useState('');
   const [penaltyAmount, setPenaltyAmount] = useState('');
   const [allowCustomMaintenance, setAllowCustomMaintenance] = useState(false);
@@ -158,6 +160,8 @@ export function SettingsModule() {
     setShopMaintenance(s.shopMaintenanceAmount ? String(s.shopMaintenanceAmount) : '');
     setSqftRate(s.maintenanceSqftRate ? String(s.maintenanceSqftRate) : '');
     setBillingEnabled(s.billingEnabled === true);
+    setDiscount6(s.advanceDiscount6 ? String(s.advanceDiscount6) : '');
+    setDiscount12(s.advanceDiscount12 ? String(s.advanceDiscount12) : '');
     setPenaltyGraceDay(String(s.maintenancePenaltyGraceDay));
     setPenaltyAmount(String(s.maintenancePenaltyAmount));
     setAllowCustomMaintenance(s.allowCustomMemberMaintenance);
@@ -247,6 +251,9 @@ export function SettingsModule() {
       // 0 clears it: flats then pay the standard amount.
       maintenanceSqftRate: sqftRate.trim() ? Number(sqftRate) : 0,
       billingEnabled,
+      // Blank = no discount.
+      advanceDiscount6: discount6.trim() ? Number(discount6) : 0,
+      advanceDiscount12: discount12.trim() ? Number(discount12) : 0,
     };
 
     setSavingSettings(true);
@@ -546,6 +553,30 @@ export function SettingsModule() {
               checked={allowCustomMaintenance}
               onChange={setAllowCustomMaintenance}
             />
+            <FormField label="Discount for paying 6 months ahead (%, optional)" theme={theme}>
+              <TextInput
+                style={inputStyle(theme)}
+                value={discount6}
+                onChangeText={(t) => setDiscount6(t.replace(/[^0-9.]/g, ''))}
+                keyboardType="decimal-pad"
+                placeholder="No discount"
+                placeholderTextColor={theme.placeholder}
+              />
+            </FormField>
+            <FormField label="Discount for paying 12 months ahead (%, optional)" theme={theme}>
+              <TextInput
+                style={inputStyle(theme)}
+                value={discount12}
+                onChangeText={(t) => setDiscount12(t.replace(/[^0-9.]/g, ''))}
+                keyboardType="decimal-pad"
+                placeholder="e.g. 8.33 = one month free"
+                placeholderTextColor={theme.placeholder}
+              />
+            </FormField>
+            <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
+              Members can pay 3, 6 or 12 months ahead. The discount applies to months from this month on, never to earlier
+              unpaid months. Flats charged by meter reading cannot pay ahead.
+            </Text>
             <CheckboxField label="Monthly bills (send a numbered bill to every flat on the 1st)" checked={billingEnabled} onChange={setBillingEnabled} />
             <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
               Bills list maintenance, each charge, any earlier unpaid amount and GST, with your UPI details and QR. See them under Maintenance → Monthly bills.

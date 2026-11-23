@@ -405,6 +405,16 @@ export interface MemberMaintenanceDue {
   gstAmount?: number;
   /** v21: maintenance and each charge for one month. */
   breakdown?: AmountLine[];
+  /** v21: months paid from the current month (1 = normal), and the advance discount taken. */
+  monthsAhead?: number;
+  discountAmount?: number;
+  advance?: {
+    options: number[];
+    available: boolean;
+    reason?: string | null;
+    discount6?: number | null;
+    discount12?: number | null;
+  };
   totalDueAmount: number;
   payableAmount: number;
   maintenanceFromMonth: string;
@@ -540,6 +550,9 @@ export interface MaintenanceSettings {
   gstEnabled?: boolean;
   gstRate?: number;
   gstThreshold?: number;
+  /** v21: optional early-payment discount (%) for 6 and 12 months ahead. */
+  advanceDiscount6?: number | null;
+  advanceDiscount12?: number | null;
   /** v21: numbered monthly bills on the 1st (off unless turned on). */
   billingEnabled?: boolean;
   /** v21: maintenance per sq ft for flats with an area (null = not used). */
