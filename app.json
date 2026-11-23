@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.devtechturn.societyassets",
-      "versionCode": 19,
+      "versionCode": 21,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0f172a"
