@@ -25,6 +25,7 @@ import { SubscriptionModule } from './SubscriptionModule';
 import { GateKeeperDashboardModule } from './GateKeeperDashboardModule';
 import { GateKeeperProfileModule } from './GateKeeperProfileModule';
 import { VisitorEntryModule } from './VisitorEntryModule';
+import { GateHistoryTabs } from '../../components/delivery/GateHistoryTabs';
 import { VisitorHistoryModule } from './VisitorHistoryModule';
 import { MemberVisitorModule } from './MemberVisitorModule';
 import { SocietyVisitorAdminModule } from './SocietyVisitorAdminModule';
@@ -133,7 +134,7 @@ export function ModuleRouter({
       case 'visitor-entry':
         return <VisitorEntryModule />;
       case 'visitor-history':
-        return <VisitorHistoryModule gateKeeper />;
+        return <GateHistoryTabs />;
       case 'notifications':
         return notificationInbox ? <NotificationsModule {...notificationInbox} /> : null;
       case 'about-society':

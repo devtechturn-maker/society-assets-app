@@ -29,6 +29,7 @@ import {
   type PickedPhoto,
 } from '../../utils/pickPhoto';
 import { unitName } from '../../utils/unitName';
+import { DeliveryForm } from '../../components/delivery/DeliveryForm';
 
 const PURPOSE_OPTIONS = [
   'Guest Visit',
@@ -62,6 +63,7 @@ function FormField({
 
 export function VisitorEntryModule() {
   const { theme } = useTheme();
+  const [mode, setMode] = useState<'visitor' | 'delivery'>('visitor');
   const { toast } = useAppAlert();
   const { scrollRef, keyboardScrollPadding, scrollToField, onScrollOffset } = useKeyboardAwareScroll();
 
@@ -182,7 +184,12 @@ export function VisitorEntryModule() {
         },
         visitorPhoto
       );
-      toast('Visitor registered — awaiting resident approval', 'success');
+      toast(
+        selected.residentOnApp === false
+          ? 'Visitor registered and allowed. Mark entry from the dashboard.'
+          : 'Visitor registered — awaiting resident approval',
+        'success'
+      );
       setVisitorName('');
       setMobileNumber('');
       setVehicleNumber('');
@@ -220,6 +227,28 @@ export function VisitorEntryModule() {
         onScroll={(e) => onScrollOffset(e.nativeEvent.contentOffset.y)}
         scrollEventThrottle={16}
       >
+        <View style={[styles.modeRow, { backgroundColor: theme.chipBg, borderColor: theme.chipBorder }]}>
+          {(['visitor', 'delivery'] as const).map((m) => {
+            const active = mode === m;
+            return (
+              <Pressable
+                key={m}
+                onPress={() => setMode(m)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                style={[styles.modeBtn, active ? { backgroundColor: theme.accent } : null]}
+              >
+                <Text style={{ color: active ? '#fff' : theme.text, fontWeight: '800' }}>
+                  {m === 'visitor' ? 'Visitor' : 'Delivery'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {mode === 'delivery' ? (
+          <DeliveryForm />
+        ) : (
+        <>
         <Text style={[styles.screenTitle, { color: theme.text }]}>Visitor Entry</Text>
         <Text style={[styles.screenSubtitle, { color: theme.textMuted }]}>
           Register a guest at the gate. The flat resident will get a notification to approve entry.
@@ -331,6 +360,11 @@ export function VisitorEntryModule() {
               <Text style={[styles.selectedText, { color: theme.text }]}>
                 {unitName(selected.flatNumber)} · {selected.name}
               </Text>
+              {selected.residentOnApp === false ? (
+                <Text style={{ color: '#b45309', fontWeight: '700', marginTop: 6 }}>
+                  No one in this flat uses the app. Call {selected.phone ?? 'the resident'} and allow entry only if they agree.
+                </Text>
+              ) : null}
               <Pressable onPress={() => setSelected(null)}>
                 <Text style={[styles.changeLink, { color: theme.accent }]}>Change</Text>
               </Pressable>
@@ -359,7 +393,10 @@ export function VisitorEntryModule() {
                 >
                   <View>
                     <Text style={[styles.residentFlat, { color: theme.text }]}>{unitName(r.flatNumber)}</Text>
-                    <Text style={[styles.residentName, { color: theme.textMuted }]}>{r.name}</Text>
+                    <Text style={[styles.residentName, { color: theme.textMuted }]}>
+                      {r.name}
+                      {r.residentOnApp === false ? ' · no app' : ''}
+                    </Text>
                   </View>
                   <Text style={[styles.selectHint, { color: theme.accent }]}>Select</Text>
                 </Pressable>
@@ -448,6 +485,8 @@ export function VisitorEntryModule() {
             <Text style={styles.submitText}>Register visitor & notify resident</Text>
           )}
         </Pressable>
+        </>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -455,6 +494,8 @@ export function VisitorEntryModule() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  modeRow: { flexDirection: 'row', borderWidth: 1, borderRadius: 14, padding: 4, gap: 4, marginBottom: 14 },
+  modeBtn: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10 },
   scrollContent: { padding: 16, paddingTop: 12 },
   screenTitle: { fontSize: 22, fontWeight: '800', marginBottom: 6 },
   screenSubtitle: { fontSize: 14, lineHeight: 20, marginBottom: 16 },

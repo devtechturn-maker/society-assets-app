@@ -1,3 +1,4 @@
+import { DeliveryRegister } from '../../components/delivery/DeliveryRegister';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -27,11 +28,12 @@ import { ListError } from '../../components/dashboard/ListStates';
 import { VisitorHistoryModule } from './VisitorHistoryModule';
 import { RecentVisitorRow } from '../../components/visitor/RecentVisitorRow';
 
-type Tab = 'overview' | 'history' | 'gatekeepers';
+type Tab = 'overview' | 'history' | 'deliveries' | 'gatekeepers';
 
 const TABS: { id: Tab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { id: 'overview', label: 'Overview', icon: 'grid-outline' },
   { id: 'history', label: 'History', icon: 'time-outline' },
+  { id: 'deliveries', label: 'Deliveries', icon: 'cube-outline' },
   { id: 'gatekeepers', label: 'Gate keepers', icon: 'shield-checkmark-outline' },
 ];
 
@@ -413,6 +415,11 @@ export function SocietyVisitorAdminModule() {
       {tab === 'history' ? (
         <View style={styles.historyPane}>
           <VisitorHistoryModule chairman />
+        </View>
+      ) : null}
+      {tab === 'deliveries' ? (
+        <View style={styles.historyPane}>
+          <DeliveryRegister office />
         </View>
       ) : null}
       {tab === 'gatekeepers' ? gatekeepersContent : null}

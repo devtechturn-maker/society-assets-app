@@ -70,6 +70,15 @@ export function VisitorHistoryRow({
             {item.purpose}
           </Text>
         ) : null}
+        {item.parcelStatus === 'AT_GATE' ? (
+          <Text style={[styles.purpose, { color: '#b45309', fontWeight: '700' }]}>Parcel waiting at the gate</Text>
+        ) : null}
+        {item.parcelStatus === 'COLLECTED' ? (
+          <Text style={[styles.purpose, { color: theme.textSoft }]} numberOfLines={1}>
+            Parcel collected by {item.collectedByName ?? 'resident'}
+            {item.collectedAt ? ` · ${formatDateTime(item.collectedAt)}` : ''}
+          </Text>
+        ) : null}
       </View>
     </View>
   );

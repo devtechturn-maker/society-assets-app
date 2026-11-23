@@ -920,6 +920,28 @@ export interface VisitorSummary {
   guestRelationship?: string | null;
   validFrom?: string | null;
   validUntil?: string | null;
+  /** v20 deliveries; older servers leave these out. */
+  visitType?: 'VISITOR' | 'DELIVERY';
+  deliveryCompany?: string | null;
+  deliveryType?: string | null;
+  deliveryBatchId?: string | null;
+  parcelStatus?: 'AT_GATE' | 'COLLECTED' | null;
+  parcelKeptAt?: string | null;
+  collectedByName?: string | null;
+  collectedAt?: string | null;
+  keptByName?: string | null;
+  handedOverByName?: string | null;
+  /** False when nobody in the flat uses the app (the guard calls instead). */
+  residentOnApp?: boolean;
+}
+
+export interface DeliveryRegister {
+  date: string;
+  count: number;
+  couriers: number;
+  atGateCount: number;
+  items: VisitorSummary[];
+  atGate: VisitorSummary[];
 }
 
 export interface VisitorDetail extends VisitorSummary {
@@ -971,6 +993,8 @@ export interface ResidentSearchResult {
   flatNumber: string;
   name: string;
   phone?: string | null;
+  /** v20: false when nobody in the flat uses the app. */
+  residentOnApp?: boolean;
 }
 
 // ---------------------------------------------------------------- Society events & festivals

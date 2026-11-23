@@ -1517,6 +1517,38 @@ export async function fetchChairmanVisitorDashboard(): Promise<ChairmanVisitorDa
   );
 }
 
+export async function createDelivery(payload: {
+  company: string;
+  deliveryType: string;
+  mobileNumber: string;
+  deliveryPersonName?: string;
+  memberIds: string[];
+  remarks?: string;
+}): Promise<{ deliveryBatchId: string; entries: VisitorDetail[] }> {
+  const { data } = await client.post<ApiResponse<{ deliveryBatchId: string; entries: VisitorDetail[] }>>(
+    '/gatekeeper/deliveries',
+    payload
+  );
+  return data.data;
+}
+
+export function fetchDeliveryRegister(office: boolean, date?: string): Promise<import('../types/api').DeliveryRegister> {
+  const path = office ? '/society/deliveries' : '/gatekeeper/deliveries';
+  return getData<import('../types/api').DeliveryRegister>(date ? `${path}?date=${encodeURIComponent(date)}` : path);
+}
+
+export async function keepParcelAtGate(visitorId: string): Promise<VisitorDetail> {
+  const { data } = await client.put<ApiResponse<VisitorDetail>>(`/gatekeeper/deliveries/${visitorId}/keep-at-gate`);
+  return data.data;
+}
+
+export async function handOverParcel(visitorId: string, collectedBy: string): Promise<VisitorDetail> {
+  const { data } = await client.put<ApiResponse<VisitorDetail>>(`/gatekeeper/deliveries/${visitorId}/hand-over`, {
+    collectedBy,
+  });
+  return data.data;
+}
+
 export async function searchResidentsForVisitor(q: string): Promise<ResidentSearchResult[]> {
   return getData<ResidentSearchResult[]>(`/gatekeeper/visitors/residents/search${q ? `?q=${encodeURIComponent(q)}` : ''}`);
 }
