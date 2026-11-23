@@ -1,3 +1,5 @@
+import { ChargesSection } from '../../components/charges/ChargesSection';
+import { FlatAreasSection } from '../../components/charges/FlatAreasSection';
 import { TeamSection } from '../../components/office/TeamSection';
 import { ActivityLogSection } from '../../components/office/ActivityLogSection';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -32,7 +34,7 @@ import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import type { MaintenanceSettings } from '../../types/api';
 
-type ServicesSectionKey = 'security' | 'maintenance' | 'payments' | 'contracts' | 'team' | 'activity';
+type ServicesSectionKey = 'security' | 'maintenance' | 'payments' | 'contracts' | 'team' | 'activity' | 'charges' | 'areas';
 
 function ServicesAccordionSection({
   title,
@@ -110,6 +112,7 @@ export function SettingsModule() {
 
   const [defaultMaintenance, setDefaultMaintenance] = useState('');
   const [shopMaintenance, setShopMaintenance] = useState('');
+  const [sqftRate, setSqftRate] = useState('');
   const [penaltyGraceDay, setPenaltyGraceDay] = useState('');
   const [penaltyAmount, setPenaltyAmount] = useState('');
   const [allowCustomMaintenance, setAllowCustomMaintenance] = useState(false);
@@ -139,6 +142,8 @@ export function SettingsModule() {
     contracts: false,
     team: false,
     activity: false,
+    charges: false,
+    areas: false,
   });
 
   function toggleSection(section: ServicesSectionKey) {
@@ -150,6 +155,7 @@ export function SettingsModule() {
     const s = settingsLoad.data;
     setDefaultMaintenance(String(s.defaultMaintenanceAmount));
     setShopMaintenance(s.shopMaintenanceAmount ? String(s.shopMaintenanceAmount) : '');
+    setSqftRate(s.maintenanceSqftRate ? String(s.maintenanceSqftRate) : '');
     setPenaltyGraceDay(String(s.maintenancePenaltyGraceDay));
     setPenaltyAmount(String(s.maintenancePenaltyAmount));
     setAllowCustomMaintenance(s.allowCustomMemberMaintenance);
@@ -236,6 +242,8 @@ export function SettingsModule() {
       gstEnabled,
       gstRate: gstRateValue,
       gstThreshold: gstThresholdValue,
+      // 0 clears it: flats then pay the standard amount.
+      maintenanceSqftRate: sqftRate.trim() ? Number(sqftRate) : 0,
     };
 
     setSavingSettings(true);
@@ -341,6 +349,26 @@ export function SettingsModule() {
 
       {!pageLoading ? (
       <ServicesAccordionSection
+        title="Charges (sinking fund, parking, water…)"
+        expanded={expandedSections.charges}
+        onToggle={() => toggleSection('charges')}
+      >
+        {expandedSections.charges ? <ChargesSection /> : null}
+      </ServicesAccordionSection>
+      ) : null}
+
+      {!pageLoading ? (
+      <ServicesAccordionSection
+        title="Flat areas (sq ft)"
+        expanded={expandedSections.areas}
+        onToggle={() => toggleSection('areas')}
+      >
+        {expandedSections.areas ? <FlatAreasSection /> : null}
+      </ServicesAccordionSection>
+      ) : null}
+
+      {!pageLoading ? (
+      <ServicesAccordionSection
         title="Office team (treasurer, committee, auditors)"
         expanded={expandedSections.team}
         onToggle={() => toggleSection('team')}
@@ -398,6 +426,19 @@ export function SettingsModule() {
                 placeholderTextColor={theme.placeholder}
               />
             </FormField>
+            <FormField label="Maintenance per sq ft (₹, optional)" theme={theme}>
+              <TextInput
+                style={inputStyle(theme)}
+                value={sqftRate}
+                onChangeText={(t) => setSqftRate(t.replace(/[^0-9.]/g, ''))}
+                keyboardType="decimal-pad"
+                placeholder="Not used"
+                placeholderTextColor={theme.placeholder}
+              />
+            </FormField>
+            <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
+              Per sq ft applies to flats whose area is set (Settings → Flat areas); others pay the default amount.
+            </Text>
             <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
               A new amount applies from this month. Earlier months keep the amount they had, except while a new society is
               still setting up (first 31 days, before any payment is recorded).

@@ -1017,6 +1017,41 @@ export async function reopenFinancialYear(fy: number, reason: string): Promise<i
   return data.data;
 }
 
+export const fetchCharges = () => getData<import('../types/api').ChargeList>('/society/charges');
+
+export async function createCharge(body: Record<string, unknown>) {
+  const { data } = await client.post<ApiResponse<import('../types/api').ChargeList>>('/society/charges', body);
+  return data.data;
+}
+
+export async function updateCharge(chargeId: string, body: Record<string, unknown>) {
+  const { data } = await client.put<ApiResponse<import('../types/api').ChargeList>>(`/society/charges/${chargeId}`, body);
+  return data.data;
+}
+
+export async function endCharge(chargeId: string) {
+  const { data } = await client.delete<ApiResponse<import('../types/api').ChargeList>>(`/society/charges/${chargeId}`);
+  return data.data;
+}
+
+export const fetchMeterReadings = (chargeId: string, month: string) =>
+  getData<import('../types/api').MeterReadingSheet>(`/society/charges/${chargeId}/readings?month=${month}`);
+
+export async function saveMeterReadings(chargeId: string, month: string, readings: { memberId: string; reading: string }[]) {
+  const { data } = await client.put<ApiResponse<import('../types/api').MeterReadingSheet>>(
+    `/society/charges/${chargeId}/readings?month=${month}`,
+    { readings }
+  );
+  return data.data;
+}
+
+export const fetchFlatAreas = () => getData<import('../types/api').FlatAreaRow[]>('/society/charges/areas');
+
+export async function saveFlatAreas(areas: { memberId: string; areaSqft: string }[]) {
+  const { data } = await client.put<ApiResponse<import('../types/api').FlatAreaRow[]>>('/society/charges/areas', { areas });
+  return data.data;
+}
+
 export async function uploadBankStatement(file: { uri: string; name: string; mimeType?: string | null }) {
   const formData = new FormData();
   formData.append('file', { uri: file.uri, name: file.name, type: file.mimeType || 'application/octet-stream' } as unknown as Blob);

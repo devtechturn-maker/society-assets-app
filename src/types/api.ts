@@ -403,6 +403,8 @@ export interface MemberMaintenanceDue {
   penaltyAmount: number;
   /** v20: GST included in the payable amount; missing from older servers. */
   gstAmount?: number;
+  /** v21: maintenance and each charge for one month. */
+  breakdown?: AmountLine[];
   totalDueAmount: number;
   payableAmount: number;
   maintenanceFromMonth: string;
@@ -538,6 +540,8 @@ export interface MaintenanceSettings {
   gstEnabled?: boolean;
   gstRate?: number;
   gstThreshold?: number;
+  /** v21: maintenance per sq ft for flats with an area (null = not used). */
+  maintenanceSqftRate?: number | null;
   configured: boolean;
 }
 
@@ -604,6 +608,53 @@ export interface FlatStatement {
   closingBalance: number;
   outstanding: number;
   rows: FlatStatementRow[];
+}
+
+export type ChargeMethod = 'FIXED' | 'PER_SQFT' | 'PER_VEHICLE' | 'METERED' | 'PERCENT_OF_MAINTENANCE';
+export type ChargeTarget = 'ALL' | 'FLATS' | 'SHOPS' | 'RENTED' | 'SELECTED';
+
+export interface ChargeHeadRow {
+  chargeId: string;
+  name: string;
+  kind: 'MONTHLY' | 'ONE_TIME';
+  method: ChargeMethod;
+  rate: number;
+  twoWheelerRate?: number | null;
+  appliesTo: ChargeTarget;
+  selectedMemberIds: string[];
+  fromMonth: string;
+  untilMonth?: string | null;
+  gstApplicable: boolean;
+  description: string;
+  running: boolean;
+  ended: boolean;
+}
+
+export interface ChargeList {
+  charges: ChargeHeadRow[];
+  canManage: boolean;
+  thisMonth: string;
+}
+
+export interface MeterReadingSheet {
+  chargeId: string;
+  name: string;
+  rate: number;
+  month: string;
+  rows: { memberId: string; flatNumber: string; name: string; previous: number | null; current: number | null; units: number | null; amount: number | null }[];
+}
+
+export interface FlatAreaRow {
+  memberId: string;
+  flatNumber: string;
+  name: string;
+  areaSqft: number | null;
+}
+
+export interface AmountLine {
+  name: string;
+  amount: number;
+  note?: string;
 }
 
 export type BankLineStatus = 'MATCHED' | 'AMOUNT_DIFFERS' | 'ALREADY_RECORDED' | 'UNKNOWN' | 'APPROVED';

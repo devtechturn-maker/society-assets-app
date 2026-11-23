@@ -613,6 +613,20 @@ export function MaintenancePaymentPanel({
               ) : null}
             </View>
           </View>
+          {due.breakdown && due.breakdown.length > 1 ? (
+            <View style={{ gap: 2, marginTop: 4 }}>
+              <Text style={[styles.meta, { color: theme.textMuted }]}>Each month:</Text>
+              {due.breakdown.map((line, i) => (
+                <View key={`${line.name}-${i}`} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={[styles.meta, { color: theme.text }]}>
+                    {line.name}
+                    {line.note ? ` (${line.note})` : ''}
+                  </Text>
+                  <Text style={[styles.meta, { color: theme.text }]}>{inr(line.amount)}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
           {payOnline ? (
             <>
               <PayOnlineButton amount={due.payableAmount} onDone={onSubmitted} />

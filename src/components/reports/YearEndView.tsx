@@ -204,7 +204,7 @@ export function YearEndView() {
             {ie.from} to {ie.to} · maintenance counted for the months billed
           </Text>
           <Line label="Income" value={ie.totalIncome} bold color="#15803d" />
-          <Line label="   Maintenance billed" value={ie.maintenanceBilled} />
+          <Line label="   Maintenance and charges billed" value={ie.maintenanceBilled} />
           {ie.lateFeesBilled ? <Line label="   Late fees billed" value={ie.lateFeesBilled} /> : null}
           {ie.gstBilled ? <Line label="   GST billed" value={ie.gstBilled} /> : null}
           <Heads rows={ie.otherIncome} />
