@@ -1,5 +1,6 @@
 import { ChargesSection } from '../../components/charges/ChargesSection';
 import { FlatAreasSection } from '../../components/charges/FlatAreasSection';
+import { BulkImportSection } from '../../components/charges/BulkImportSection';
 import { TeamSection } from '../../components/office/TeamSection';
 import { ActivityLogSection } from '../../components/office/ActivityLogSection';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -34,7 +35,7 @@ import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import type { MaintenanceSettings } from '../../types/api';
 
-type ServicesSectionKey = 'security' | 'maintenance' | 'payments' | 'contracts' | 'team' | 'activity' | 'charges' | 'areas';
+type ServicesSectionKey = 'security' | 'maintenance' | 'payments' | 'contracts' | 'team' | 'activity' | 'charges' | 'areas' | 'imports';
 
 function ServicesAccordionSection({
   title,
@@ -147,6 +148,7 @@ export function SettingsModule() {
     activity: false,
     charges: false,
     areas: false,
+    imports: false,
   });
 
   function toggleSection(section: ServicesSectionKey) {
@@ -374,6 +376,16 @@ export function SettingsModule() {
         onToggle={() => toggleSection('areas')}
       >
         {expandedSections.areas ? <FlatAreasSection /> : null}
+      </ServicesAccordionSection>
+      ) : null}
+
+      {!pageLoading ? (
+      <ServicesAccordionSection
+        title="Bulk import from Excel (vehicles, flat areas)"
+        expanded={expandedSections.imports}
+        onToggle={() => toggleSection('imports')}
+      >
+        {expandedSections.imports ? <BulkImportSection /> : null}
       </ServicesAccordionSection>
       ) : null}
 

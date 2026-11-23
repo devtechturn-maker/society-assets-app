@@ -939,6 +939,33 @@ export async function downloadOpeningDuesSample(): Promise<string> {
   return result.uri;
 }
 
+/** v21 bulk import for existing flats. */
+export type BulkImportKind = 'vehicles' | 'areas';
+export type BulkImportRow = { rowNumber: number; flatNumber?: string; valid: boolean; errors: string[] } & Record<string, unknown>;
+export type BulkImportResult = { total: number; valid: number; invalid: number; rows: BulkImportRow[]; imported?: number };
+
+export async function downloadBulkImportSample(kind: BulkImportKind): Promise<string> {
+  const token = await getToken();
+  const target = await secureCachePath(`${kind}-import-sample.xlsx`);
+  const result = await FileSystem.downloadAsync(`${API_BASE_URL}/society/imports/${kind}/sample-excel`, target, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (result.status !== 200) throw new Error('Could not download the sample file');
+  return result.uri;
+}
+
+export async function checkBulkImport(kind: BulkImportKind, fileUri: string, fileName: string, mimeType: string | null): Promise<BulkImportResult> {
+  const { data } = await client.post<ApiResponse<BulkImportResult>>(`/society/imports/${kind}/check`,
+    excelForm(fileUri, fileName, mimeType), { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 });
+  return data.data;
+}
+
+export async function runBulkImport(kind: BulkImportKind, fileUri: string, fileName: string, mimeType: string | null): Promise<BulkImportResult> {
+  const { data } = await client.post<ApiResponse<BulkImportResult>>(`/society/imports/${kind}/upload`,
+    excelForm(fileUri, fileName, mimeType), { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 });
+  return data.data;
+}
+
 export const fetchOnlinePaymentsStatus = () => getData<OnlinePaymentsStatus>('/society/settings/online-payments');
 
 /** Chairman: register the society's saved bank account with Cashfree so members can pay online. */

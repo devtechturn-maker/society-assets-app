@@ -264,7 +264,7 @@ export function MembersModule() {
 
           title="Add Members with Excel"
 
-          subtitle="Columns: name, email, flatNumber, phone, customMaintenance"
+          subtitle="Columns: name, email, flatNumber, phone, customMaintenance, areaSqft (optional)"
 
         >
 
