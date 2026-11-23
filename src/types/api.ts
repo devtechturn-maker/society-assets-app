@@ -197,6 +197,8 @@ export interface SocietyInventoryFlat {
 
 export interface LoginData {
   token: string;
+  /** v20: renewal token for the short login; stored in its own secure key, never inside the user record. */
+  refreshToken?: string;
   role: string;
   societyId: string | null;
   firstLogin: boolean;

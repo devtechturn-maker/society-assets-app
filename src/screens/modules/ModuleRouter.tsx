@@ -289,7 +289,7 @@ export function ModuleRouter({
     case 'opening-balances':
       return <OpeningBalancesModule />;
     case 'settings':
-      return <SettingsModule onMaintenanceConfigured={onMaintenanceConfigured} />;
+      return <SettingsModule />;
     case 'chat':
       return (
         <ChatModule
@@ -341,7 +341,7 @@ export function ModuleRouter({
     case 'support':
       return <SupportModule />;
     case 'appearance':
-      return <AppearanceModule onLogout={onLogout} />;
+      return <AppearanceModule />;
     case 'subscription':
       return <SubscriptionModule />;
     case 'visitor-admin':

@@ -158,23 +158,7 @@ export function subscribeGlobalLoading(listener: LoadingListener): () => void {
   return () => listeners.delete(listener);
 }
 
-export function attachGlobalLoadingInterceptors(axiosInstance: {
-  interceptors: {
-    request: {
-      use: (
-        onFulfilled: (
-          config: InternalAxiosRequestConfig
-        ) => InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>
-      ) => void;
-    };
-    response: {
-      use: (
-        onFulfilled: (response: { config: InternalAxiosRequestConfig }) => unknown,
-        onRejected: (error: { config?: InternalAxiosRequestConfig }) => unknown
-      ) => void;
-    };
-  };
-}): void {
+export function attachGlobalLoadingInterceptors(axiosInstance: Pick<import('axios').AxiosInstance, 'interceptors'>): void {
   axiosInstance.interceptors.request.use((config) => {
     trackApiRequestStart(config);
     return config;

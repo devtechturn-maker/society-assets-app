@@ -225,7 +225,7 @@ export function SettingsModule() {
       return;
     }
 
-    const payload: MaintenanceSettings = {
+    const payload: Omit<MaintenanceSettings, 'configured'> = {
       defaultMaintenanceAmount,
       shopMaintenanceAmount,
       maintenancePenaltyGraceDay: Math.round(maintenancePenaltyGraceDay),

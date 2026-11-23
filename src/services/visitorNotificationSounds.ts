@@ -53,7 +53,10 @@ export async function playVisitorNotificationSound(type?: string | null): Promis
     const player = createAudioPlayer(source, { updateInterval: 200 });
     activePlayer = player;
     player.volume = 1;
-    activeSubscription = player.addListener('playbackStatusUpdate', (status) => {
+    // The listener exists at runtime (shared object events); this expo-audio version's types do not declare it.
+    activeSubscription = (player as unknown as {
+      addListener: (event: 'playbackStatusUpdate', cb: (status: { didJustFinish?: boolean }) => void) => { remove: () => void };
+    }).addListener('playbackStatusUpdate', (status) => {
       if (!status.didJustFinish) return;
       if (activePlayer === player) {
         releaseActivePlayer();

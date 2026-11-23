@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   link: { alignSelf: 'flex-end', paddingVertical: 4 },
   linkText: { color: '#dc2626', fontWeight: '700', fontSize: 13 },
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15, 23, 42, 0.45)' },
+  backdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)' },
   sheet: { borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 18, gap: 10 },
   title: { fontSize: 18, fontWeight: '700' },
   body: { fontSize: 14, lineHeight: 20 },

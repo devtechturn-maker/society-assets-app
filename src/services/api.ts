@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as FileSystem from 'expo-file-system/legacy';
 import { secureCachePath } from './secureFileCache';
 import { API_BASE_URL } from '../config/env';
-import { clearSession, getToken } from './storage';
+import { clearSession, getRefreshToken, getToken, updateStoredUser } from './storage';
 import { notifySessionInvalid } from './session';
 import { cachedGet, invalidateCachedGet } from './requestCache';
 import type {
@@ -94,26 +94,54 @@ import { encryptPasswordForLogin } from '../crypto/rsaEncrypt';
 import { attachGlobalLoadingInterceptors } from './globalApiLoading';
 import { isEmailNotVerifiedError, requestMemberProfileNavigation } from './memberProfileNavigation';
 
-/** Identifies society mobile app to the API (long-lived JWT on login). */
+/** Identifies society mobile app to the API. */
 export const MOBILE_CLIENT_TYPE = 'MOBILE';
+
+/**
+ * v20+: tells the server this app renews a short login with a renewal token. Older apps do not send it and keep
+ * the long login, so nobody is signed out by the change.
+ */
+const APP_HEADERS = {
+  'Content-Type': 'application/json',
+  'X-Client-Type': MOBILE_CLIENT_TYPE,
+  'X-Auth-Refresh': '1',
+};
 
 const client = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-    'X-Client-Type': MOBILE_CLIENT_TYPE,
-  },
+  headers: APP_HEADERS,
 });
 
 const publicClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-    'X-Client-Type': MOBILE_CLIENT_TYPE,
-  },
+  headers: APP_HEADERS,
 });
+
+/** One renewal at a time: requests that hit an expired login while renewing wait for the same result. */
+let renewing: Promise<string | null> | null = null;
+
+async function renewLogin(): Promise<string | null> {
+  if (!renewing) {
+    renewing = (async () => {
+      const refreshToken = await getRefreshToken();
+      if (!refreshToken) return null;
+      try {
+        const { data } = await publicClient.post<ApiResponse<LoginData>>('/auth/mobile/refresh', { refreshToken });
+        const next = data.data;
+        if (!next?.token) return null;
+        await updateStoredUser(next);
+        return next.token;
+      } catch {
+        return null;
+      }
+    })().finally(() => {
+      renewing = null;
+    });
+  }
+  return renewing;
+}
 
 attachGlobalLoadingInterceptors(client);
 attachGlobalLoadingInterceptors(publicClient);
@@ -132,6 +160,17 @@ client.interceptors.response.use(
     if (axios.isAxiosError(error)) {
       if (error.response?.status === 401) {
         const url = error.config?.url ?? '';
+        const original = error.config as (typeof error.config & { _renewed?: boolean }) | undefined;
+        // The short login ended: renew it silently once and repeat the request.
+        if (original && !original._renewed && !url.includes('/auth/login') && !url.includes('/auth/mobile/refresh')) {
+          const token = await renewLogin();
+          if (token) {
+            original._renewed = true;
+            original.headers = original.headers ?? {};
+            (original.headers as Record<string, string>).Authorization = `Bearer ${token}`;
+            return client.request(original);
+          }
+        }
         if (!url.includes('/auth/login')) {
           await clearSession();
           notifySessionInvalid();
@@ -231,7 +270,7 @@ export async function verifyEmailLoginOtp(email: string, otp: string): Promise<E
   if (payload.onboardingRequired || payload.selectionRequired) {
     return payload;
   }
-  return assertMobileLoginData(payload as LoginData);
+  return assertMobileLoginData(payload as LoginData) as EmailLoginVerifyResult;
 }
 
 export async function completeEmailLoginOtp(
@@ -797,7 +836,7 @@ export const fetchMaintenanceSettings = () =>
   getData<MaintenanceSettings>('/society/settings/maintenance');
 
 export async function updateMaintenanceSettings(
-  payload: MaintenanceSettings
+  payload: Omit<MaintenanceSettings, 'configured'>
 ): Promise<MaintenanceSettings> {
   const { data } = await client.put<ApiResponse<MaintenanceSettings>>(
     '/society/settings/maintenance',

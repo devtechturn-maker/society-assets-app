@@ -240,7 +240,7 @@ export function VisitorDateCalendarModal({ visible, selection, onClose, onApply 
 
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'center', padding: 20 },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15, 23, 42, 0.5)' },
+  backdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(15, 23, 42, 0.5)' },
   sheet: {
     borderRadius: 16,
     borderWidth: 1,

@@ -43,7 +43,7 @@ export function scrollFieldIntoView(
     const field = fieldRef.current;
     if (!scroll || !field) return;
 
-    scroll.measureInWindow((_scrollX, scrollY, _scrollW, scrollHeight) => {
+    (scroll as unknown as { measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) => void }).measureInWindow((_scrollX, scrollY, _scrollW, scrollHeight) => {
       field.measureInWindow((_fieldX, fieldY, _fieldW, fieldHeight) => {
         const fieldBottom = fieldY + fieldHeight;
         const scrollBottom = scrollY + scrollHeight;

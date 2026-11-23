@@ -1,5 +1,6 @@
 import * as Sharing from 'expo-sharing';
-import { downloadReportsToDevice, type ReportDownloadPayload } from '../services/api';
+import { downloadReportsToDevice } from '../services/api';
+import type { ReportDownloadPayload } from '../types/api';
 
 export async function openReportDownload(payload: ReportDownloadPayload): Promise<void> {
   const { uri, filename, mimeType } = await downloadReportsToDevice(payload);

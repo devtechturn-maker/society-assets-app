@@ -126,7 +126,7 @@ export function RoleSelectionScreen({ user, onSelected, onUserUpdated, onLogout 
         </View>
 
         {showSocietyCard ? (
-          <View style={[styles.groupCard, { borderColor: colors.border, backgroundColor: theme.surface }]}>
+          <View style={[styles.groupCard, { borderColor: colors.border, backgroundColor: theme.cardBg }]}>
             <Text style={[styles.groupTitle, { color: colors.navy900 }]}>Society</Text>
             <Text style={[styles.groupSubtitle, { color: theme.textMuted }]}>
               Link your flat or register another society.
