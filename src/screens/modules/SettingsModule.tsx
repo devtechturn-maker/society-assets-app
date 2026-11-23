@@ -113,6 +113,7 @@ export function SettingsModule() {
   const [defaultMaintenance, setDefaultMaintenance] = useState('');
   const [shopMaintenance, setShopMaintenance] = useState('');
   const [sqftRate, setSqftRate] = useState('');
+  const [billingEnabled, setBillingEnabled] = useState(false);
   const [penaltyGraceDay, setPenaltyGraceDay] = useState('');
   const [penaltyAmount, setPenaltyAmount] = useState('');
   const [allowCustomMaintenance, setAllowCustomMaintenance] = useState(false);
@@ -156,6 +157,7 @@ export function SettingsModule() {
     setDefaultMaintenance(String(s.defaultMaintenanceAmount));
     setShopMaintenance(s.shopMaintenanceAmount ? String(s.shopMaintenanceAmount) : '');
     setSqftRate(s.maintenanceSqftRate ? String(s.maintenanceSqftRate) : '');
+    setBillingEnabled(s.billingEnabled === true);
     setPenaltyGraceDay(String(s.maintenancePenaltyGraceDay));
     setPenaltyAmount(String(s.maintenancePenaltyAmount));
     setAllowCustomMaintenance(s.allowCustomMemberMaintenance);
@@ -244,6 +246,7 @@ export function SettingsModule() {
       gstThreshold: gstThresholdValue,
       // 0 clears it: flats then pay the standard amount.
       maintenanceSqftRate: sqftRate.trim() ? Number(sqftRate) : 0,
+      billingEnabled,
     };
 
     setSavingSettings(true);
@@ -543,6 +546,10 @@ export function SettingsModule() {
               checked={allowCustomMaintenance}
               onChange={setAllowCustomMaintenance}
             />
+            <CheckboxField label="Monthly bills (send a numbered bill to every flat on the 1st)" checked={billingEnabled} onChange={setBillingEnabled} />
+            <Text style={[styles.paymentHint, { color: theme.textMuted }]}>
+              Bills list maintenance, each charge, any earlier unpaid amount and GST, with your UPI details and QR. See them under Maintenance → Monthly bills.
+            </Text>
             <Pressable
               style={[styles.primaryBtn, { backgroundColor: theme.accent }, savingSettings ? styles.disabled : null]}
               onPress={saveSettings}

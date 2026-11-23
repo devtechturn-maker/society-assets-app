@@ -1,3 +1,4 @@
+import { MyBillsView } from '../../components/bills/BillsViews';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text } from 'react-native';
 import axios from 'axios';
@@ -66,6 +67,10 @@ export function MemberMaintenanceModule() {
           }}
         />
         {due.data?.submissions?.length ? <MySubmissions items={due.data.submissions} /> : null}
+      </SectionCard>
+
+      <SectionCard title="My bills" subtitle="Tap a bill to see what it includes">
+        <MyBillsView />
       </SectionCard>
 
       <SectionCard

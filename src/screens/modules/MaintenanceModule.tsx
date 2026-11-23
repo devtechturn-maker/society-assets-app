@@ -1,3 +1,4 @@
+import { OfficeBillsView } from '../../components/bills/BillsViews';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AddMaintenanceModal } from '../../components/maintenance/AddMaintenanceModal';
@@ -59,6 +60,9 @@ export function MaintenanceModule() {
 
         {!pageLoading ? (
           <>
+            <SectionCard title="Monthly bills" subtitle="Numbered bills per flat, paid or unpaid">
+              <OfficeBillsView />
+            </SectionCard>
             <SectionCard
               title="Member Pending Summary (Audit View)"
               subtitle="Latest pending status by member for year-end audit"

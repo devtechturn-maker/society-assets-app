@@ -1017,6 +1017,23 @@ export async function reopenFinancialYear(fy: number, reason: string): Promise<i
   return data.data;
 }
 
+export const fetchBills = (month?: string) =>
+  getData<import('../types/api').BillsMonth>(`/society/bills${month ? `?month=${month}` : ''}`);
+
+export async function generateBills(month: string) {
+  const { data } = await client.post<ApiResponse<import('../types/api').BillsMonth>>(`/society/bills/generate?month=${month}`, undefined, {
+    timeout: 120000,
+  });
+  return data.data;
+}
+
+export async function regenerateBill(billId: string) {
+  const { data } = await client.post<ApiResponse<import('../types/api').BillRow>>(`/society/bills/${billId}/regenerate`);
+  return data.data;
+}
+
+export const fetchMyBills = () => getData<import('../types/api').BillRow[]>('/member/bills');
+
 export const fetchCharges = () => getData<import('../types/api').ChargeList>('/society/charges');
 
 export async function createCharge(body: Record<string, unknown>) {

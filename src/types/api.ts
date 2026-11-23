@@ -540,6 +540,8 @@ export interface MaintenanceSettings {
   gstEnabled?: boolean;
   gstRate?: number;
   gstThreshold?: number;
+  /** v21: numbered monthly bills on the 1st (off unless turned on). */
+  billingEnabled?: boolean;
   /** v21: maintenance per sq ft for flats with an area (null = not used). */
   maintenanceSqftRate?: number | null;
   configured: boolean;
@@ -608,6 +610,33 @@ export interface FlatStatement {
   closingBalance: number;
   outstanding: number;
   rows: FlatStatementRow[];
+}
+
+export interface BillRow {
+  billId: string;
+  billNo: string;
+  month: string;
+  flatNumber: string;
+  memberName: string;
+  issueDate: string;
+  dueDate: string;
+  monthAmount: number;
+  gstAmount: number;
+  arrears: number;
+  total: number;
+  status: 'PAID' | 'PARTLY_PAID' | 'UNPAID';
+  lateFeeNote?: string | null;
+  lines?: AmountLine[];
+}
+
+export interface BillsMonth {
+  month: string;
+  enabled: boolean;
+  canManage: boolean;
+  count: number;
+  billed: number;
+  counts: Record<'PAID' | 'PARTLY_PAID' | 'UNPAID', number>;
+  bills: BillRow[];
 }
 
 export type ChargeMethod = 'FIXED' | 'PER_SQFT' | 'PER_VEHICLE' | 'METERED' | 'PERCENT_OF_MAINTENANCE';
