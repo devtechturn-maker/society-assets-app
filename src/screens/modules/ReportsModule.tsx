@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BookView, FlatStatementView } from '../../components/reports/AccountsViews';
+import { YearEndView } from '../../components/reports/YearEndView';
 import { REPORT_PERIODS, periodRange, type ReportPeriod } from '../../utils/reportPeriods';
 import { Badge, paymentBadgeTone } from '../../components/dashboard/Badge';
 import { KpiGrid } from '../../components/dashboard/KpiGrid';
@@ -22,7 +23,7 @@ import { unitName } from '../../utils/unitName';
 export function ReportsModule() {
   const { theme } = useTheme();
   const [period, setPeriod] = useState<ReportPeriod>('THIS_FY');
-  const [open, setOpen] = useState<'book' | 'statement' | null>(null);
+  const [open, setOpen] = useState<'book' | 'statement' | 'year' | null>(null);
   const range = useMemo(() => periodRange(period), [period]);
   const summary = useAsyncLoad(() => fetchReportSummary(range), [range.from, range.to]);
   const monthly = useAsyncLoad(fetchReportMonthlyMaintenance, []);
@@ -170,6 +171,18 @@ export function ReportsModule() {
           ) : (
             <Pressable onPress={() => setOpen('statement')}>
               <Text style={[styles.open, { color: theme.accent }]}>Open flat statement</Text>
+            </Pressable>
+          )}
+        </SectionCard>
+      ) : null}
+
+      {!pageLoading ? (
+        <SectionCard title="Year End" subtitle="Receipts & Payments, Income & Expenditure, and closing the year after audit">
+          {open === 'year' ? (
+            <YearEndView />
+          ) : (
+            <Pressable onPress={() => setOpen('year')}>
+              <Text style={[styles.open, { color: theme.accent }]}>Open year end</Text>
             </Pressable>
           )}
         </SectionCard>

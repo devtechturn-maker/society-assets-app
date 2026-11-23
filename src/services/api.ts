@@ -960,6 +960,24 @@ export function fetchBook(mode: 'CASH' | 'BANK' | 'ALL', range?: import('../type
 export const fetchFlatStatement = (memberId: string) =>
   getData<import('../types/api').FlatStatement>(`/society/dashboard/reports/flat-statement/${memberId}`);
 
+export const fetchFinancialYears = () => getData<import('../types/api').FinancialYears>('/society/years');
+export const fetchReceiptsPayments = (fy: number) =>
+  getData<import('../types/api').ReceiptsPayments>(`/society/years/${fy}/receipts-payments`);
+export const fetchIncomeExpenditure = (fy: number) =>
+  getData<import('../types/api').IncomeExpenditure>(`/society/years/${fy}/income-expenditure`);
+
+export async function closeFinancialYear(fy: number): Promise<import('../types/api').FinancialYears> {
+  const { data } = await client.post<ApiResponse<import('../types/api').FinancialYears>>(`/society/years/${fy}/close`);
+  return data.data;
+}
+
+export async function reopenFinancialYear(fy: number, reason: string): Promise<import('../types/api').FinancialYears> {
+  const { data } = await client.post<ApiResponse<import('../types/api').FinancialYears>>(`/society/years/${fy}/reopen`, {
+    reason,
+  });
+  return data.data;
+}
+
 export const fetchLedgerCategories = () =>
   getData<{ expense: import('../types/api').LedgerCategoryOption[]; income: import('../types/api').LedgerCategoryOption[] }>(
     '/expenses/categories'

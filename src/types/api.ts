@@ -594,6 +594,61 @@ export interface FlatStatement {
   rows: FlatStatementRow[];
 }
 
+export interface FinancialYearRow {
+  fyStart: number;
+  label: string;
+  from: string;
+  to: string;
+  ended: boolean;
+  closed: boolean;
+  closedAt?: string | null;
+  closedByName?: string | null;
+  reopenedAt?: string | null;
+  reopenedByName?: string | null;
+  reopenReason?: string | null;
+}
+
+export interface FinancialYears {
+  years: FinancialYearRow[];
+  canClose: boolean;
+  canReopen: boolean;
+}
+
+export interface StatementHead {
+  head: string;
+  amount: number;
+}
+
+export interface ReceiptsPayments {
+  label: string;
+  from: string;
+  to: string;
+  openingCash: number;
+  openingBank: number;
+  receipts: StatementHead[];
+  totalReceipts: number;
+  payments: StatementHead[];
+  totalPayments: number;
+  closingCash: number;
+  closingBank: number;
+}
+
+export interface IncomeExpenditure {
+  label: string;
+  from: string;
+  to: string;
+  maintenanceBilled: number;
+  lateFeesBilled: number;
+  gstBilled: number;
+  otherIncome: StatementHead[];
+  totalIncome: number;
+  expenditure: StatementHead[];
+  totalExpenditure: number;
+  surplus: number;
+  billedStillUnpaid: number;
+  note: string;
+}
+
 export interface LedgerCategoryOption {
   value: string;
   label: string;

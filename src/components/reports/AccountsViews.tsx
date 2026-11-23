@@ -38,7 +38,7 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () 
   );
 }
 
-function PdfButton({ path, name }: { path: string; name: string }) {
+export function PdfButton({ path, name }: { path: string; name: string }) {
   const { theme } = useTheme();
   const { toast } = useAppAlert();
   const [busy, setBusy] = useState(false);
