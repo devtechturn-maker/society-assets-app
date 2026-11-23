@@ -258,6 +258,22 @@ export interface SocietyOverview {
   openingBalanceDate?: string | null;
   expenseCount: number;
   totalUsers: number;
+  /** The fields below are absent on servers older than v19. */
+  totalOutstanding?: number;
+  /** null when the society's plan has no Complaints. */
+  openComplaints?: number | null;
+  /** null when the society's plan has no Visitors. */
+  todayVisitors?: number | null;
+  thisMonth?: MonthTotals;
+  lastMonth?: MonthTotals;
+}
+
+export interface MonthTotals {
+  /** YYYY-MM */
+  month: string;
+  income: number;
+  expenses: number;
+  net: number;
 }
 
 export interface OpeningDueRow {

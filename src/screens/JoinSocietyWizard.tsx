@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   JoinCodeBoxInput,
-  SelectableOptionCard,
   WizardShell,
   WizardTextField,
   WIZARD_ACCENT,
@@ -13,7 +12,6 @@ import {
   joinSocietyMobile,
   listOnboardingOpenFlats,
   lookupOnboardingJoinCode,
-  searchOnboardingSocieties,
 } from '../services/api';
 import type { LoginData, OnboardingOpenFlat, OnboardingSocietyOption } from '../types/api';
 import { apiErrorMessage } from '../utils/apiError';
@@ -29,16 +27,12 @@ type Props = {
   onBack: () => void;
 };
 
-type Step = 'code' | 'search' | 'flat' | 'name';
+type Step = 'code' | 'flat' | 'name';
 
 const STEP_COPY: Record<Step, { title: string; subtitle: string }> = {
   code: {
     title: 'Enter society join code',
-    subtitle: 'Ask your chairman for the 8-character code, or search by society name.',
-  },
-  search: {
-    title: 'Find your society',
-    subtitle: 'Search by society name, then pick your open flat.',
+    subtitle: 'Ask your chairman for the 8-character code.',
   },
   flat: {
     title: 'Choose your flat',
@@ -56,8 +50,6 @@ export function JoinSocietyWizard({ email, selectionToken, onJoined, onBack }: P
   const { alert } = useAppAlert();
   const [step, setStep] = useState<Step>('code');
   const [joinCode, setJoinCode] = useState('');
-  const [query, setQuery] = useState('');
-  const [societies, setSocieties] = useState<OnboardingSocietyOption[]>([]);
   const [selectedSociety, setSelectedSociety] = useState<OnboardingSocietyOption | null>(null);
   const [flats, setFlats] = useState<OnboardingOpenFlat[]>([]);
   const [selectedFlat, setSelectedFlat] = useState<OnboardingOpenFlat | null>(null);
@@ -66,15 +58,14 @@ export function JoinSocietyWizard({ email, selectionToken, onJoined, onBack }: P
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
-  const [viaJoinCode, setViaJoinCode] = useState(false);
 
-  async function pickSociety(society: OnboardingSocietyOption) {
+  async function pickSociety(society: OnboardingSocietyOption, code: string) {
     setSelectedSociety(society);
     setSelectedFlat(null);
     setLoading(true);
     setInlineError(null);
     try {
-      const open = await listOnboardingOpenFlats(society.societyId);
+      const open = await listOnboardingOpenFlats(code);
       setFlats(open);
       if (open.length === 0) {
         setInlineError('No open flats in this society. Ask the chairman to add your flat.');
@@ -88,11 +79,6 @@ export function JoinSocietyWizard({ email, selectionToken, onJoined, onBack }: P
     }
   }
 
-  async function pickSocietyFromSearch(society: OnboardingSocietyOption) {
-    setViaJoinCode(false);
-    await pickSociety(society);
-  }
-
   async function lookupByCode() {
     const normalized = normalizeJoinCodeInput(joinCode);
     if (normalized.length !== JOIN_CODE_LENGTH) {
@@ -103,28 +89,7 @@ export function JoinSocietyWizard({ email, selectionToken, onJoined, onBack }: P
     setInlineError(null);
     try {
       const society = await lookupOnboardingJoinCode(normalized);
-      setViaJoinCode(true);
-      await pickSociety(society);
-    } catch (e: unknown) {
-      setInlineError(apiErrorMessage(e));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function runSearch() {
-    if (query.trim().length < 2) {
-      setInlineError('Enter at least 2 characters.');
-      return;
-    }
-    setLoading(true);
-    setInlineError(null);
-    try {
-      const list = await searchOnboardingSocieties(query);
-      setSocieties(list);
-      if (list.length === 0) {
-        setInlineError('No societies found. Check the name or ask your chairman for the join code.');
-      }
+      await pickSociety(society, normalized);
     } catch (e: unknown) {
       setInlineError(apiErrorMessage(e));
     } finally {
@@ -145,14 +110,9 @@ export function JoinSocietyWizard({ email, selectionToken, onJoined, onBack }: P
       return;
     }
     if (step === 'flat') {
-      setStep(viaJoinCode ? 'code' : 'search');
+      setStep('code');
       setSelectedSociety(null);
       setFlats([]);
-      return;
-    }
-    if (step === 'search') {
-      setStep('code');
-      setSocieties([]);
       return;
     }
     onBack();
@@ -227,50 +187,6 @@ export function JoinSocietyWizard({ email, selectionToken, onJoined, onBack }: P
         </>
       ) : null}
 
-      {step === 'search' ? (
-        <>
-          <View style={styles.searchRow}>
-            <View style={styles.searchInput}>
-              <WizardTextField
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Society name"
-                autoFocus
-                onSubmitEditing={() => void runSearch()}
-                returnKeyType="search"
-              />
-            </View>
-            <Pressable style={styles.searchBtn} onPress={() => void runSearch()} disabled={loading}>
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={wizardStyles.primaryBtnText}>Search</Text>
-              )}
-            </Pressable>
-          </View>
-          {societies.map((society) => (
-            <SelectableOptionCard
-              key={society.societyId}
-              title={society.societyName}
-              meta={`${society.openFlats} open flat${society.openFlats === 1 ? '' : 's'}${
-                society.totalFlats != null ? ` · ${society.totalFlats} total` : ''
-              }`}
-              showChevron
-              onPress={() => void pickSocietyFromSearch(society)}
-            />
-          ))}
-          <Pressable
-            style={styles.linkBtn}
-            onPress={() => {
-              setInlineError(null);
-              setStep('code');
-            }}
-          >
-            <Text style={styles.linkText}>Use join code instead</Text>
-          </Pressable>
-        </>
-      ) : null}
-
       {step === 'flat' ? (
         loading ? (
           <ActivityIndicator color={WIZARD_ACCENT} />
@@ -325,13 +241,6 @@ export function JoinSocietyWizard({ email, selectionToken, onJoined, onBack }: P
 }
 
 const styles = StyleSheet.create({
-  searchRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
-    alignItems: 'flex-start',
-  },
-  searchInput: { flex: 1 },
   searchBtn: {
     minWidth: 88,
     height: 50,

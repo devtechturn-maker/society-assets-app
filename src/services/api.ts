@@ -274,13 +274,6 @@ export async function previewFlatNumbers(payload: {
   return data.data;
 }
 
-export async function searchOnboardingSocieties(query: string): Promise<OnboardingSocietyOption[]> {
-  const { data } = await client.get<ApiResponse<OnboardingSocietyOption[]>>('/auth/onboarding/societies', {
-    params: { q: query.trim() },
-  });
-  return data.data ?? [];
-}
-
 export async function lookupOnboardingJoinCode(code: string): Promise<OnboardingSocietyOption & { joinCode: string }> {
   const normalized = code.trim().replace(/[^A-Za-z0-9]/g, '').toUpperCase();
   const { data } = await client.get<ApiResponse<OnboardingSocietyOption & { joinCode: string }>>(
@@ -289,9 +282,10 @@ export async function lookupOnboardingJoinCode(code: string): Promise<Onboarding
   return data.data;
 }
 
-export async function listOnboardingOpenFlats(societyId: string): Promise<OnboardingOpenFlat[]> {
+export async function listOnboardingOpenFlats(joinCode: string): Promise<OnboardingOpenFlat[]> {
+  const normalized = joinCode.trim().replace(/[^A-Za-z0-9]/g, '').toUpperCase();
   const { data } = await client.get<ApiResponse<OnboardingOpenFlat[]>>(
-    `/auth/onboarding/societies/${societyId}/open-flats`
+    `/auth/onboarding/join-code/${encodeURIComponent(normalized)}/open-flats`
   );
   return data.data ?? [];
 }

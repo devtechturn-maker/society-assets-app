@@ -49,6 +49,9 @@ function valueFontSize(text: string, threeColumn: boolean): number {
 function iconForLabel(label: string): keyof typeof Ionicons.glyphMap {
   const key = label.trim().toLowerCase();
   if (key.includes('last')) return 'wallet-outline';
+  if (key.includes('complaint')) return 'chatbox-ellipses-outline';
+  if (key.includes('visitor')) return 'people-outline';
+  if (key.includes('collected')) return 'cash-outline';
   if (key.includes('total')) return 'cash-outline';
   if (key.includes('pending')) return 'alert-circle-outline';
   return 'stats-chart-outline';

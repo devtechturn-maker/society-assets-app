@@ -2,9 +2,11 @@ import { RefreshControl, ScrollView, StyleSheet } from 'react-native';
 import { KpiGrid } from '../../components/dashboard/KpiGrid';
 import { ExpenseRowCard } from '../../components/dashboard/ExpenseRowCard';
 import { ListEmpty, ListError, ListLoading } from '../../components/dashboard/ListStates';
+import { MonthComparison } from '../../components/dashboard/MonthComparison';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { fetchOverview, fetchRecentExpenses } from '../../services/api';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
+import { dashboardKpis } from '../../utils/dashboardKpis';
 
 export function DashboardModule() {
   const overview = useAsyncLoad(fetchOverview, []);
@@ -30,17 +32,13 @@ export function DashboardModule() {
       {pageLoading ? <ListLoading /> : null}
       {overview.error ? <ListError message={overview.error} /> : null}
       {!pageLoading && overview.data ? (
-        <KpiGrid
-          items={[
-            { label: 'Total Income', value: overview.data.totalIncome },
-            { label: 'Other Income', value: overview.data.totalOtherIncome ?? 0 },
-            { label: 'Total Expenses', value: overview.data.totalExpenses },
-            { label: 'Cash On Hand', value: overview.data.cashOnHand },
-            { label: 'Bank Balance', value: overview.data.bankBalance ?? 0 },
-            { label: 'Expense Count', value: overview.data.expenseCount, isCurrency: false },
-            { label: 'Total Members', value: overview.data.totalUsers, isCurrency: false },
-          ]}
-        />
+        <KpiGrid items={dashboardKpis(overview.data)} />
+      ) : null}
+
+      {!pageLoading && overview.data?.thisMonth && overview.data.lastMonth ? (
+        <SectionCard title="This month vs last month" subtitle="By the date money was received or paid">
+          <MonthComparison thisMonth={overview.data.thisMonth} lastMonth={overview.data.lastMonth} />
+        </SectionCard>
       ) : null}
 
       {!pageLoading && overview.data && !overview.data.openingBalanceDate ? (
