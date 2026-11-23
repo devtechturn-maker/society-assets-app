@@ -18,6 +18,10 @@ import { SectionCard } from '../../components/dashboard/SectionCard';
 import { DirectoryAddButton, DirectoryListItem } from '../../components/directory/DirectoryListItem';
 import { useAppAlert } from '../../context/AppAlertContext';
 import {
+  addHouseholdLogin,
+  fetchMyHousehold,
+  removeHouseholdLogin,
+  type MyHousehold,
   createMemberFamilyMember,
   deleteMemberFamilyMember,
   fetchMemberFamilyMembers,
@@ -26,6 +30,7 @@ import {
 import type { FamilyMemberPayload, FamilyRelationship, MemberFamilyMember } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { DirectorySectionShell } from './DirectoryHubModule';
+import { apiErrorMessage } from '../../utils/apiError';
 
 const RELATIONSHIPS: { value: FamilyRelationship; label: string }[] = [
   { value: 'SPOUSE', label: 'Spouse' },
@@ -197,6 +202,136 @@ function FamilyMemberFormModal({
   );
 }
 
+/** v21: owner (or tenant, for the rental) gives family members their own sign-in for this flat. */
+function FamilyLoginsCard() {
+  const { theme } = useTheme();
+  const { toast, confirm } = useAppAlert();
+  const [data, setData] = useState<MyHousehold | null>(null);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [relationship, setRelationship] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setData(await fetchMyHousehold());
+    } catch {
+      setData(null); // older server or no flat: hide the card
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (!data) return null;
+  if (!data.canManage) {
+    return data.isFamily ? (
+      <SectionCard title="Family login" subtitle="You sign in as a family member of this flat">
+        <Text style={{ color: theme.textMuted, fontSize: 13, lineHeight: 19 }}>
+          You can see notices, visitors, complaints and dues, and pay maintenance. Only the flat owner or tenant can
+          vote in polls or change family logins.
+        </Text>
+      </SectionCard>
+    ) : null;
+  }
+
+  async function add() {
+    const n = name.trim();
+    const e = email.trim();
+    if (n.length < 2) return toast('Enter a valid name', 'error');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return toast('Enter a valid email', 'error');
+    setSaving(true);
+    try {
+      await addHouseholdLogin({ name: n, email: e, relationship: relationship.trim() || undefined });
+      toast(`${n} can now sign in with ${e}`, 'success');
+      setName('');
+      setEmail('');
+      setRelationship('');
+      await load();
+    } catch (err) {
+      toast(apiErrorMessage(err, 'Could not add'), 'error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function remove(id: string, who: string) {
+    confirm({
+      title: 'Remove family login?',
+      message: `${who} will no longer be able to sign in for this flat.`,
+      confirmText: 'Remove',
+      destructive: true,
+      onConfirm: async () => {
+        try {
+          await removeHouseholdLogin(id);
+          toast('Family login removed', 'success');
+          await load();
+        } catch (err) {
+          toast(apiErrorMessage(err, 'Remove failed'), 'error');
+        }
+      },
+    });
+  }
+
+  const full = data.members.length >= data.limit;
+  const inputStyle = [styles.input, { color: theme.inputText, borderColor: theme.inputBorder, backgroundColor: theme.inputBg }];
+  return (
+    <SectionCard
+      title="Family logins"
+      subtitle={
+        data.household === 'TENANT'
+          ? `Up to ${data.limit} people can sign in for your rental. Access ends when the rental ends.`
+          : `Up to ${data.limit} people can sign in with their own email for this flat.`
+      }
+    >
+      {data.members.map((m) => (
+        <DirectoryListItem
+          key={m.id}
+          title={m.name}
+          meta={[m.relationship, m.email].filter(Boolean).join(' · ')}
+          avatarIcon="family"
+          onDelete={() => remove(m.id, m.name)}
+        />
+      ))}
+      {full ? (
+        <Text style={{ color: theme.textMuted, fontSize: 13 }}>You have added the most family logins allowed.</Text>
+      ) : (
+        <View style={{ gap: 6, marginTop: 6 }}>
+          <TextInput value={name} onChangeText={setName} placeholder="Name" placeholderTextColor={theme.placeholder} style={inputStyle} />
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder="Email (they sign in with a code)"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            placeholderTextColor={theme.placeholder}
+            style={inputStyle}
+          />
+          <TextInput
+            value={relationship}
+            onChangeText={setRelationship}
+            placeholder="Relationship (optional)"
+            placeholderTextColor={theme.placeholder}
+            style={inputStyle}
+          />
+          <Pressable
+            disabled={saving}
+            onPress={() => void add()}
+            style={[styles.primaryBtn, { flex: 0, backgroundColor: theme.accent, opacity: saving ? 0.6 : 1 }]}
+          >
+            <Text style={styles.primaryBtnText}>{saving ? 'Adding…' : 'Give family login'}</Text>
+          </Pressable>
+          <Text style={{ color: theme.textMuted, fontSize: 12, lineHeight: 17 }}>
+            Family can see notices, visitors, complaints and dues and pay maintenance. They cannot vote in polls or
+            change family logins.
+          </Text>
+        </View>
+      )}
+    </SectionCard>
+  );
+}
+
 export function DirectoryFamilyMembersModule({ onBack }: { onBack: () => void }) {
   const { theme } = useTheme();
   const { toast, confirm } = useAppAlert();
@@ -259,6 +394,7 @@ export function DirectoryFamilyMembersModule({ onBack }: { onBack: () => void })
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} />}
       >
+        <FamilyLoginsCard />
         <SectionCard
           title="Your household"
           subtitle="Add family members living in your flat for society records and gate access"

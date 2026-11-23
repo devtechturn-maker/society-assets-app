@@ -648,6 +648,34 @@ export const fetchSocietyJoinCode = () =>
   getData<{ societyId: string; societyName: string; joinCode: string }>('/society/join-code');
 export const fetchMemberDirectory = () => getData<DirectoryEntry[]>('/member/directory');
 
+/** v21 family logins: people who sign in with their own email for this flat. */
+export type HouseholdLogin = {
+  id: string;
+  name: string;
+  email: string;
+  relationship?: string | null;
+  status: string;
+  addedAt?: string;
+  flatNumber?: string;
+  household?: 'OWNER' | 'TENANT';
+};
+export type MyHousehold = {
+  limit: number;
+  flatNumber?: string;
+  canManage: boolean;
+  isFamily: boolean;
+  household?: 'OWNER' | 'TENANT';
+  members: HouseholdLogin[];
+};
+export const fetchMyHousehold = () => getData<MyHousehold>('/member/household');
+export async function addHouseholdLogin(payload: { name: string; email: string; relationship?: string }): Promise<HouseholdLogin> {
+  const { data } = await client.post<ApiResponse<HouseholdLogin>>('/member/household', payload);
+  return data.data;
+}
+export async function removeHouseholdLogin(id: string): Promise<void> {
+  await client.delete(`/member/household/${id}`);
+}
+
 export const fetchMemberFamilyMembers = () =>
   getData<MemberFamilyMember[]>('/member/family-members');
 
