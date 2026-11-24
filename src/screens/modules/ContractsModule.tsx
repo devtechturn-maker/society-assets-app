@@ -8,8 +8,22 @@ import { useAppAlert } from '../../context/AppAlertContext';
 import { useAsyncLoad } from '../../hooks/useAsyncLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import { formatDate, formatInr } from '../../utils/format';
+import { AssetRegister } from '../../components/office/AssetRegister';
+import { SimpleTabs } from '../../components/office/SimpleTabs';
 
+/** v23: contracts plus the asset register. */
 export function ContractsModule() {
+  return (
+    <SimpleTabs
+      tabs={[
+        { id: 'contracts', label: 'Contracts', render: () => <ContractsList /> },
+        { id: 'assets', label: 'Assets', render: () => <AssetRegister /> },
+      ]}
+    />
+  );
+}
+
+function ContractsList() {
   const { alert } = useAppAlert();
   const { theme } = useTheme();
   const [modalOpen, setModalOpen] = useState(false);

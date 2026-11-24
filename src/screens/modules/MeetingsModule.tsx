@@ -16,6 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
 import { RecordFiles, askFileVisibility } from '../../components/records/RecordFiles';
+import { AgmSection } from '../../components/meetings/AgmSection';
+import { CommitteeTasks } from '../../components/office/CommitteeTasks';
+import { SimpleTabs } from '../../components/office/SimpleTabs';
 import {
   cancelMeeting,
   completeMeeting,
@@ -94,7 +97,17 @@ export function MeetingsModule({
       />
     );
   }
-  return <MeetingList portal={portal} onOpen={(id) => setScreen({ name: 'detail', id })} onCreate={() => setScreen({ name: 'form' })} />;
+  const list = <MeetingList portal={portal} onOpen={(id) => setScreen({ name: 'detail', id })} onCreate={() => setScreen({ name: 'form' })} />;
+  if (portal !== 'society') return list;
+  // v23: committee tasks sit next to meetings for the office.
+  return (
+    <SimpleTabs
+      tabs={[
+        { id: 'meetings', label: 'Meetings', render: () => list },
+        { id: 'tasks', label: 'Tasks', render: () => <CommitteeTasks /> },
+      ]}
+    />
+  );
 }
 
 function MeetingList({ portal, onOpen, onCreate }: { portal: Portal; onOpen: (id: string) => void; onCreate: () => void }) {
@@ -239,6 +252,7 @@ function MeetingDetailScreen({ portal, id, onBack, onEdit }: { portal: Portal; i
         <Text style={[styles.body, { color: theme.text }]}>{meeting.agenda}</Text>
         {meeting.description ? <Text style={[styles.body, { color: theme.textMuted, marginTop: 8 }]}>{meeting.description}</Text> : null}
       </SectionCard>
+      <AgmSection portal={portal} meetingId={meeting.id} />
       {meeting.files.length || manage ? (
         <SectionCard title="Documents">
           <RecordFiles
