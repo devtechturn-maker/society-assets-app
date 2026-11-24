@@ -75,8 +75,8 @@ export function AddGuestForm({ onAdded, onCancel }: { onAdded: () => void; onCan
         guestName: name.trim() || undefined,
         mobileNumber: digits || undefined,
         relationship: delivery ? 'Delivery' : relationship,
-        purpose: purpose.trim() || undefined,
-        visitorCount: Math.max(1, Number(count) || 1),
+        purpose: delivery ? undefined : purpose.trim() || undefined,
+        visitorCount: delivery ? 1 : Math.max(1, Number(count) || 1),
         validFrom: from.toISOString(),
         validUntil: until.toISOString(),
       });
@@ -165,18 +165,24 @@ export function AddGuestForm({ onAdded, onCancel }: { onAdded: () => void; onCan
         </>
       )}
 
-      <Text style={[styles.label, { color: theme.text }]}>Purpose (optional)</Text>
-      <TextInput style={inputStyle} value={purpose} onChangeText={setPurpose} placeholder="Personal visit" placeholderTextColor={theme.placeholder} />
+      {kind === 'DELIVERY' ? null : (
+        <>
+          <Text style={[styles.label, { color: theme.text }]}>Purpose (optional)</Text>
+          <TextInput style={inputStyle} value={purpose} onChangeText={setPurpose} placeholder="Personal visit" placeholderTextColor={theme.placeholder} />
+        </>
+      )}
 
       <View style={styles.row}>
         <View style={styles.rowItem}>
           <Text style={[styles.label, { color: theme.text }]}>Arrives at (HH:MM)</Text>
           <TextInput style={inputStyle} value={time} onChangeText={setTime} keyboardType="numbers-and-punctuation" placeholder={day === 0 ? 'Now' : '09:00'} placeholderTextColor={theme.placeholder} />
         </View>
-        <View style={styles.rowItem}>
-          <Text style={[styles.label, { color: theme.text }]}>Guests</Text>
-          <TextInput style={inputStyle} value={count} onChangeText={setCount} keyboardType="number-pad" maxLength={2} />
-        </View>
+        {kind === 'DELIVERY' ? null : (
+          <View style={styles.rowItem}>
+            <Text style={[styles.label, { color: theme.text }]}>Guests</Text>
+            <TextInput style={inputStyle} value={count} onChangeText={setCount} keyboardType="number-pad" maxLength={2} />
+          </View>
+        )}
       </View>
 
       <Text style={[styles.label, { color: theme.text }]}>Day</Text>

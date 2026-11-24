@@ -14,7 +14,7 @@ import {
   View,
   type TextInputProps,
 } from 'react-native';
-import { createVisitorEntry, searchResidentsForVisitor } from '../../services/api';
+import { checkGateBlacklist, createVisitorEntry, searchResidentsForVisitor } from '../../services/api';
 import { apiErrorMessage } from '../../utils/apiError';
 import type { ResidentSearchResult } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
@@ -69,6 +69,17 @@ export function VisitorEntryModule() {
 
   const [visitorName, setVisitorName] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
+  // v22: warn the guard as soon as a blacklisted number is typed.
+  const [blocked, setBlocked] = useState<{ name?: string | null; reason?: string | null } | null>(null);
+  useEffect(() => {
+    setBlocked(null);
+    if (mobileNumber.length !== 10) return;
+    let live = true;
+    checkGateBlacklist(mobileNumber)
+      .then((r) => { if (live && r?.blocked) setBlocked({ name: r.name, reason: r.reason }); })
+      .catch(() => undefined);
+    return () => { live = false; };
+  }, [mobileNumber]);
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [visitorCount, setVisitorCount] = useState('1');
   const [purpose, setPurpose] = useState('');
@@ -153,6 +164,10 @@ export function VisitorEntryModule() {
     Keyboard.dismiss();
     if (!visitorName.trim()) {
       toast('Enter visitor name', 'error');
+      return;
+    }
+    if (blocked) {
+      toast('This number is blacklisted. Do not allow entry.', 'error');
       return;
     }
     if (!mobileNumber.trim() || mobileNumber.trim().length < 10) {
@@ -311,6 +326,13 @@ export function VisitorEntryModule() {
               maxLength={10}
               {...fieldProps(mobileRef, { keyboardType: 'phone-pad' })}
             />
+            {blocked ? (
+              <View style={{ marginTop: 8, padding: 10, borderRadius: 10, backgroundColor: '#FDECEC', borderWidth: 1, borderColor: '#D93025' }}>
+                <Text style={{ color: '#B3261E', fontWeight: '900' }}>Blacklisted – do not allow entry</Text>
+                {blocked.name ? <Text style={{ color: '#B3261E', marginTop: 2 }}>{blocked.name}</Text> : null}
+                {blocked.reason ? <Text style={{ color: '#B3261E', marginTop: 2 }}>Reason: {blocked.reason}</Text> : null}
+              </View>
+            ) : null}
           </FormField>
 
           <View style={styles.rowFields}>
