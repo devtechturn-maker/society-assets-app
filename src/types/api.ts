@@ -1243,6 +1243,8 @@ export interface VisitorSummary {
   handedOverByName?: string | null;
   /** False when nobody in the flat uses the app (the guard calls instead). */
   residentOnApp?: boolean;
+  /** v22: 6-digit gate code of an unused guest pass; only the flat's household gets it. */
+  entryCode?: string | null;
 }
 
 export interface DeliveryRegister {
@@ -1523,14 +1525,79 @@ export interface EventEntryPayload {
 
 /** Guest added in advance by the resident (owner or active tenant). */
 export interface GuestPassInput {
-  guestName: string;
-  mobileNumber: string;
+  /** v22: DELIVERY for an expected delivery (company needed, mobile optional). */
+  kind?: 'GUEST' | 'DELIVERY';
+  deliveryCompany?: string;
+  deliveryType?: string;
+  guestName?: string;
+  mobileNumber?: string;
   relationship?: string;
   purpose?: string;
   visitorCount?: number;
   vehicleNumber?: string;
   validFrom: string;
   validUntil: string;
+}
+
+/** v22 gate types. */
+export interface GateVehicle {
+  registrationNumber: string;
+  vehicleType: string;
+  makeModel?: string | null;
+  color?: string | null;
+  parkingSlot?: string | null;
+  flatNumber: string;
+  ownerName: string;
+}
+
+export interface BlacklistEntry {
+  id: string;
+  mobileNumber?: string | null;
+  name?: string | null;
+  reason: string;
+  addedByName?: string | null;
+  createdAt: string;
+}
+
+export interface DailyHelper {
+  id: string;
+  name: string;
+  mobileNumber?: string | null;
+  workType: string;
+  flatNumber?: string | null;
+  societyStaff: boolean;
+  passCode?: string;
+  inside?: boolean;
+}
+
+export interface HelperVisit {
+  id: string;
+  helperId: string;
+  name: string;
+  workType: string;
+  flatNumber?: string | null;
+  workDate: string;
+  inTime: string;
+  outTime?: string | null;
+}
+
+export interface HelperMonth {
+  helper: DailyHelper;
+  month: string;
+  daysPresent: number;
+  visits: HelperVisit[];
+}
+
+export interface SosAlert {
+  id: string;
+  flatNumber: string;
+  raisedByName?: string | null;
+  note?: string | null;
+  status: 'OPEN' | 'RESPONDING' | 'CLOSED';
+  respondedByName?: string | null;
+  respondedAt?: string | null;
+  closedAt?: string | null;
+  createdAt: string;
 }
 
 export interface FlatTenancy {

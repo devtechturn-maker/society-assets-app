@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SectionCard } from '../../components/dashboard/SectionCard';
+import { StaffGatePassButton } from '../../components/gate/GateTools';
 import { ListEmpty, ListError } from '../../components/dashboard/ListStates';
 import {
   createStaff,
@@ -261,6 +262,7 @@ function StaffProfile({ id, onBack, onEdit }: { id: string; onBack: () => void; 
         ) : null}
         {s.upiId ? <Text style={[styles.meta, { color: theme.textMuted }]}>UPI {s.upiId}</Text> : null}
         {s.bankAccountMasked ? <Text style={[styles.meta, { color: theme.textMuted }]}>Bank {s.bankAccountMasked} · {s.bankIfsc}</Text> : null}
+        {s.status === 'ACTIVE' ? <StaffGatePassButton staffId={s.id} /> : null}
         <View style={[styles.two, { marginTop: 12 }]}>
           <Pressable onPress={() => onEdit(s)} style={[styles.secondary, { borderColor: theme.accent, flex: 1 }]}>
             <Text style={{ color: theme.accent, fontWeight: '800' }}>Edit</Text>

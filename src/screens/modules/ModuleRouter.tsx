@@ -345,7 +345,7 @@ export function ModuleRouter({
     case 'subscription':
       return <SubscriptionModule />;
     case 'visitor-admin':
-      return <SocietyVisitorAdminModule />;
+      return <SocietyVisitorAdminModule userRole={userRole} />;
     default:
       return <SupportModule />;
   }

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { KpiGrid } from '../../components/dashboard/KpiGrid';
+import { SosButton } from '../../components/sos/SosButton';
 import { ListError, ListLoading } from '../../components/dashboard/ListStates';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { MaintenancePaymentPanel } from '../../components/payment/MaintenancePayment';
@@ -136,6 +137,8 @@ export function MemberDashboardModule({ onOpenProfile, onOpenNotice, onOpenVisit
           </Pressable>
         </View>
       ) : null}
+
+      <SosButton />
 
       {overview.error ? <ListError message={overview.error} /> : null}
       {overview.loading && !overview.data ? <ListLoading /> : null}

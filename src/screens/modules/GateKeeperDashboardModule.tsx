@@ -23,6 +23,7 @@ import { KpiGrid } from '../../components/dashboard/KpiGrid';
 import { SectionCard } from '../../components/dashboard/SectionCard';
 import { RecentVisitorRow } from '../../components/visitor/RecentVisitorRow';
 import { unitName } from '../../utils/unitName';
+import { GateCodeCard, SosAlertsCard, VehicleSearchCard } from '../../components/gate/GateTools';
 
 export function GateKeeperDashboardModule() {
   const { theme } = useTheme();
@@ -93,6 +94,9 @@ export function GateKeeperDashboardModule() {
         ]}
       />
 
+      <SosAlertsCard scope="gate" />
+      <GateCodeCard onDone={() => void load(true)} />
+
       <SectionCard
         title="Expected guests"
         subtitle={expected.length === 0 ? 'No guest passes for now' : 'Added in advance by residents. Check the time before letting them in.'}
@@ -145,6 +149,8 @@ export function GateKeeperDashboardModule() {
           );
         })}
       </SectionCard>
+
+      <VehicleSearchCard />
 
       <SectionCard
         title="Recent visitors"

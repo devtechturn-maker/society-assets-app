@@ -1,4 +1,5 @@
 import { DeliveryRegister } from '../../components/delivery/DeliveryRegister';
+import { BlacklistSection, OfficeDailyHelpSection, SosAlertsCard } from '../../components/gate/GateTools';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -28,13 +29,16 @@ import { ListError } from '../../components/dashboard/ListStates';
 import { VisitorHistoryModule } from './VisitorHistoryModule';
 import { RecentVisitorRow } from '../../components/visitor/RecentVisitorRow';
 
-type Tab = 'overview' | 'history' | 'deliveries' | 'gatekeepers';
+type Tab = 'overview' | 'history' | 'deliveries' | 'gatekeepers' | 'help' | 'blacklist' | 'sos';
 
 const TABS: { id: Tab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { id: 'overview', label: 'Overview', icon: 'grid-outline' },
   { id: 'history', label: 'History', icon: 'time-outline' },
   { id: 'deliveries', label: 'Deliveries', icon: 'cube-outline' },
   { id: 'gatekeepers', label: 'Gate keepers', icon: 'shield-checkmark-outline' },
+  { id: 'help', label: 'Daily help', icon: 'people-outline' },
+  { id: 'blacklist', label: 'Blacklist', icon: 'ban-outline' },
+  { id: 'sos', label: 'SOS', icon: 'alert-circle-outline' },
 ];
 
 function GateKeeperCard({
@@ -163,7 +167,7 @@ function GateKeeperCard({
   );
 }
 
-export function SocietyVisitorAdminModule() {
+export function SocietyVisitorAdminModule({ userRole }: { userRole?: string | null } = {}) {
   const { theme } = useTheme();
   const { toast } = useAppAlert();
   const [tab, setTab] = useState<Tab>('overview');
@@ -423,6 +427,13 @@ export function SocietyVisitorAdminModule() {
         </View>
       ) : null}
       {tab === 'gatekeepers' ? gatekeepersContent : null}
+      {tab === 'help' || tab === 'blacklist' || tab === 'sos' ? (
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+          {tab === 'help' ? <OfficeDailyHelpSection /> : null}
+          {tab === 'blacklist' ? <BlacklistSection canRemove={(userRole ?? '').toUpperCase() === 'CHAIRMAN'} /> : null}
+          {tab === 'sos' ? <SosAlertsCard scope="office" /> : null}
+        </ScrollView>
+      ) : null}
     </View>
   );
 }
@@ -433,6 +444,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   tabBar: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     paddingHorizontal: 12,
     paddingTop: 10,
@@ -440,7 +452,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   tab: {
-    flex: 1,
+    flexGrow: 1,
+    minWidth: '22%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

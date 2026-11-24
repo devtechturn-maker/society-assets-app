@@ -4,6 +4,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -15,6 +16,7 @@ import { VisitorAvatar } from '../../components/visitor/VisitorAvatar';
 import { cancelGuestPass, fetchMemberOverview, fetchMemberVisitorDetail } from '../../services/api';
 import type { MemberOverview, VisitorDetail } from '../../types/api';
 import { AddGuestForm } from '../../components/visitor/AddGuestForm';
+import { DailyHelpSection } from '../../components/members/DailyHelpSection';
 import { apiErrorMessage } from '../../utils/apiError';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAppAlert } from '../../context/AppAlertContext';
@@ -22,7 +24,7 @@ import { VisitorHistoryModule } from './VisitorHistoryModule';
 import { visitorStatusLabel, visitorStatusTone } from '../../utils/visitorStatus';
 import { unitName } from '../../utils/unitName';
 
-type Screen = 'list' | 'detail' | 'add';
+type Screen = 'list' | 'detail' | 'add' | 'help';
 
 function when(iso?: string | null): string {
   if (!iso) return '';
@@ -101,6 +103,17 @@ export function MemberVisitorModule({
     );
   }
 
+  if (screen === 'help') {
+    return (
+      <ScrollView style={[styles.detail, { backgroundColor: theme.pageBg }]} keyboardShouldPersistTaps="handled">
+        <Pressable onPress={() => setScreen('list')} style={{ paddingVertical: 8 }}>
+          <Text style={{ color: theme.accent, fontWeight: '800' }}>← Visitors</Text>
+        </Pressable>
+        <DailyHelpSection />
+      </ScrollView>
+    );
+  }
+
   if (screen === 'add') {
     return (
       <ScrollView style={[styles.detail, { backgroundColor: theme.pageBg }]} keyboardShouldPersistTaps="handled">
@@ -127,13 +140,22 @@ export function MemberVisitorModule({
           ) : (
             <View />
           )}
-          <Pressable
-            onPress={() => setScreen('add')}
-            style={({ pressed }) => [styles.addButton, { backgroundColor: theme.accent, opacity: pressed ? 0.85 : 1 }]}
-          >
-            <Ionicons name="person-add" size={16} color="#fff" />
-            <Text style={styles.addButtonText}>Add guest</Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable
+              onPress={() => setScreen('help')}
+              style={({ pressed }) => [styles.addButton, { backgroundColor: theme.cardBg, borderWidth: 1, borderColor: theme.accent, opacity: pressed ? 0.85 : 1 }]}
+            >
+              <Ionicons name="people" size={16} color={theme.accent} />
+              <Text style={[styles.addButtonText, { color: theme.accent }]}>Daily help</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setScreen('add')}
+              style={({ pressed }) => [styles.addButton, { backgroundColor: theme.accent, opacity: pressed ? 0.85 : 1 }]}
+            >
+              <Ionicons name="person-add" size={16} color="#fff" />
+              <Text style={styles.addButtonText}>Add guest</Text>
+            </Pressable>
+          </View>
         </View>
         <VisitorHistoryModule
           key={historyKey}
@@ -207,6 +229,22 @@ export function MemberVisitorModule({
 
       {detail.addedByResident && detail.status === 'APPROVED' ? (
         <SectionCard title="Guest pass" subtitle="Cancel if the guest is no longer coming">
+          {detail.entryCode ? (
+            <View style={{ marginBottom: 10 }}>
+              <Text style={{ color: theme.textMuted, fontSize: 13 }}>Gate code (works once)</Text>
+              <Text style={{ color: theme.accent, fontSize: 26, fontWeight: '900', letterSpacing: 4 }}>{detail.entryCode}</Text>
+              <Pressable
+                onPress={() =>
+                  void Share.share({
+                    message: `Show this code at the society gate: ${detail.entryCode}. It works once, for ${unitName(detail.flatNumber)}.`,
+                  })
+                }
+                style={{ paddingVertical: 6 }}
+              >
+                <Text style={{ color: theme.accent, fontWeight: '800' }}>Share code</Text>
+              </Pressable>
+            </View>
+          ) : null}
           <Pressable
             disabled={cancelling}
             onPress={async () => {

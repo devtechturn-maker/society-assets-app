@@ -49,6 +49,12 @@ import type {
   MemberPaymentPage,
   MemberOverview,
   GuestPassInput,
+  GateVehicle,
+  BlacklistEntry,
+  DailyHelper,
+  HelperVisit,
+  HelperMonth,
+  SosAlert,
   FlatTenancy,
   FlatTenancyInput,
   MemberMaintenanceDue,
@@ -2022,6 +2028,99 @@ export async function addGuestPass(input: GuestPassInput): Promise<VisitorSummar
 
 export async function cancelGuestPass(visitorId: string): Promise<VisitorDetail> {
   const { data } = await client.put<ApiResponse<VisitorDetail>>(`/member/visitors/${visitorId}/cancel`);
+  return data.data;
+}
+
+// ---------------- v22 gate ----------------
+
+/** Guard lets a guest in with the 6-digit code the resident shared. */
+export async function checkInByCode(code: string): Promise<VisitorDetail> {
+  const { data } = await client.post<ApiResponse<VisitorDetail>>('/gatekeeper/visitors/check-in-by-code', { code });
+  return data.data;
+}
+
+export const searchGateVehicles = (q: string) =>
+  getData<GateVehicle[]>(`/gatekeeper/vehicles/search?q=${encodeURIComponent(q)}`);
+
+export const checkGateBlacklist = (mobile: string) =>
+  getData<{ blocked: boolean; name?: string | null; reason?: string | null }>(
+    `/gatekeeper/blacklist/check?mobile=${encodeURIComponent(mobile)}`,
+    { skipGlobalLoader: true }
+  );
+
+export const fetchHelperByCode = (code: string) => getData<DailyHelper>(`/gatekeeper/helpers/by-code/${encodeURIComponent(code)}`);
+
+export async function markHelperIn(code: string): Promise<HelperVisit> {
+  const { data } = await client.post<ApiResponse<HelperVisit>>('/gatekeeper/helpers/in', { code });
+  return data.data;
+}
+
+export async function markHelperOut(code: string): Promise<HelperVisit> {
+  const { data } = await client.post<ApiResponse<HelperVisit>>('/gatekeeper/helpers/out', { code });
+  return data.data;
+}
+
+export const fetchHelpersInside = () => getData<HelperVisit[]>('/gatekeeper/helpers/inside', { skipGlobalLoader: true });
+
+/** Open SOS alerts for the guard, or every recent alert for the office. */
+export const fetchSosAlerts = (scope: 'gate' | 'office') =>
+  getData<SosAlert[]>(scope === 'gate' ? '/gatekeeper/sos' : '/society/sos', { skipGlobalLoader: true });
+
+export async function respondSos(scope: 'gate' | 'office', id: string): Promise<SosAlert> {
+  const { data } = await client.post<ApiResponse<SosAlert>>(`/${scope === 'gate' ? 'gatekeeper' : 'society'}/sos/${id}/respond`);
+  return data.data;
+}
+
+export async function closeSos(scope: 'gate' | 'office', id: string): Promise<SosAlert> {
+  const { data } = await client.post<ApiResponse<SosAlert>>(`/${scope === 'gate' ? 'gatekeeper' : 'society'}/sos/${id}/close`);
+  return data.data;
+}
+
+export const fetchBlacklist = () => getData<BlacklistEntry[]>('/society/blacklist');
+
+export async function addBlacklist(input: { mobileNumber?: string; name?: string; reason: string }): Promise<BlacklistEntry> {
+  const { data } = await client.post<ApiResponse<BlacklistEntry>>('/society/blacklist', input);
+  return data.data;
+}
+
+export async function removeBlacklist(id: string): Promise<void> {
+  await client.delete(`/society/blacklist/${id}`);
+}
+
+export const fetchOfficeHelpers = () => getData<DailyHelper[]>('/society/helpers');
+
+export async function createStaffGatePass(staffId: string): Promise<DailyHelper> {
+  const { data } = await client.post<ApiResponse<DailyHelper>>(`/society/helpers/staff/${staffId}`);
+  return data.data;
+}
+
+export async function removeOfficeHelper(id: string): Promise<void> {
+  await client.delete(`/society/helpers/${id}`);
+}
+
+export const fetchMyHelpers = () => getData<DailyHelper[]>('/member/helpers');
+
+export async function addMyHelper(input: { name: string; workType: string; mobileNumber?: string }): Promise<DailyHelper> {
+  const { data } = await client.post<ApiResponse<DailyHelper>>('/member/helpers', input);
+  return data.data;
+}
+
+export async function removeMyHelper(id: string): Promise<void> {
+  await client.delete(`/member/helpers/${id}`);
+}
+
+export const fetchHelperMonth = (id: string, month?: string) =>
+  getData<HelperMonth>(`/member/helpers/${id}/attendance${month ? `?month=${month}` : ''}`);
+
+export async function raiseSos(note?: string): Promise<SosAlert> {
+  const { data } = await client.post<ApiResponse<SosAlert>>('/member/sos', { note });
+  return data.data;
+}
+
+export const fetchMySos = () => getData<SosAlert[]>('/member/sos', { skipGlobalLoader: true });
+
+export async function cancelMySos(id: string): Promise<SosAlert> {
+  const { data } = await client.post<ApiResponse<SosAlert>>(`/member/sos/${id}/cancel`);
   return data.data;
 }
 

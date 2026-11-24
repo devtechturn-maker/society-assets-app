@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Platform, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { addGuestPass } from '../../services/api';
 import { apiErrorMessage } from '../../utils/apiError';
 import { useTheme } from '../../theme/ThemeContext';
@@ -13,6 +13,7 @@ const DAYS = [
   { label: 'Day after', offset: 2 },
 ];
 const HOURS = [2, 4, 8, 12, 24];
+const COMPANIES = ['Amazon', 'Flipkart', 'Swiggy', 'Zomato', 'Blinkit', 'Zepto', 'Courier'];
 
 /** Builds a local start time ("now" when today and no time typed). Returns null for a bad time. */
 function startTime(dayOffset: number, time: string): Date | null {
@@ -47,6 +48,11 @@ export function AddGuestForm({ onAdded, onCancel }: { onAdded: () => void; onCan
   const [time, setTime] = useState('');
   const [hours, setHours] = useState(4);
   const [saving, setSaving] = useState(false);
+  // v22: expected delivery instead of a guest, and the gate code shown after saving.
+  const [kind, setKind] = useState<'GUEST' | 'DELIVERY'>('GUEST');
+  const [company, setCompany] = useState('Amazon');
+  const [otherCompany, setOtherCompany] = useState('');
+  const [saved, setSaved] = useState<{ code: string; who: string } | null>(null);
 
   const from = startTime(day, time);
   const until = from ? new Date(from.getTime() + hours * 3600 * 1000) : null;
@@ -55,22 +61,32 @@ export function AddGuestForm({ onAdded, onCancel }: { onAdded: () => void; onCan
   async function submit() {
     Keyboard.dismiss();
     const digits = mobile.replace(/\D/g, '').slice(-10);
-    if (!name.trim()) return toast('Enter the guest name', 'error');
-    if (digits.length !== 10) return toast('Enter a 10-digit mobile number', 'error');
+    const delivery = kind === 'DELIVERY';
+    const companyName = (company === 'Other' ? otherCompany : company).trim();
+    if (delivery && !companyName) return toast('Enter the delivery company', 'error');
+    if (!delivery && !name.trim()) return toast('Enter the guest name', 'error');
+    if (!(delivery && !digits) && digits.length !== 10) return toast('Enter a 10-digit mobile number', 'error');
     if (!from || !until) return toast('Enter the time as HH:MM, for example 18:30', 'error');
     setSaving(true);
     try {
-      await addGuestPass({
-        guestName: name.trim(),
-        mobileNumber: digits,
-        relationship,
+      const pass = await addGuestPass({
+        kind,
+        deliveryCompany: delivery ? companyName : undefined,
+        guestName: name.trim() || undefined,
+        mobileNumber: digits || undefined,
+        relationship: delivery ? 'Delivery' : relationship,
         purpose: purpose.trim() || undefined,
         visitorCount: Math.max(1, Number(count) || 1),
         validFrom: from.toISOString(),
         validUntil: until.toISOString(),
       });
-      toast(`${name.trim()} can enter between ${formatTime(from)} and ${formatTime(until)}`, 'success');
-      onAdded();
+      const who = delivery ? `${companyName} delivery` : name.trim();
+      if (pass.entryCode) {
+        setSaved({ code: pass.entryCode, who });
+      } else {
+        toast(`${who} can enter between ${formatTime(from)} and ${formatTime(until)}`, 'success');
+        onAdded();
+      }
     } catch (e) {
       toast(apiErrorMessage(e, 'Could not add guest'), 'error');
     } finally {
@@ -84,22 +100,70 @@ export function AddGuestForm({ onAdded, onCancel }: { onAdded: () => void; onCan
   ];
   const chipText = (selected: boolean) => [styles.chipText, { color: selected ? '#fff' : theme.text }];
 
+  if (saved) {
+    return (
+      <SectionCard title="Pass ready" subtitle={`Share this code with ${saved.who}. The guard enters it at the gate.`}>
+        <Text style={[styles.code, { color: theme.accent }]}>{saved.code}</Text>
+        <Text style={[styles.summary, { color: theme.textMuted }]}>
+          Works once{from && until ? `, ${formatTime(from)} to ${formatTime(until)}` : ''}. You will get a notification when they enter.
+        </Text>
+        <Pressable
+          onPress={() => void Share.share({ message: `Show this code at the society gate: ${saved.code}. It works once.` })}
+          style={({ pressed }) => [styles.submit, { backgroundColor: theme.accent, opacity: pressed ? 0.9 : 1 }]}
+        >
+          <Text style={styles.submitText}>Share code</Text>
+        </Pressable>
+        <Pressable onPress={onAdded} style={styles.cancel}>
+          <Text style={{ color: theme.textMuted, fontWeight: '700' }}>Done</Text>
+        </Pressable>
+      </SectionCard>
+    );
+  }
+
   return (
-    <SectionCard title="Add a guest" subtitle="The gate can let them in during the time you choose">
-      <Text style={[styles.label, { color: theme.text }]}>Guest name</Text>
-      <TextInput style={inputStyle} value={name} onChangeText={setName} placeholder="Priya Patel" placeholderTextColor={theme.placeholder} />
-
-      <Text style={[styles.label, { color: theme.text }]}>Mobile number</Text>
-      <TextInput style={inputStyle} value={mobile} onChangeText={setMobile} keyboardType="phone-pad" maxLength={14} placeholder="10-digit mobile" placeholderTextColor={theme.placeholder} />
-
-      <Text style={[styles.label, { color: theme.text }]}>Relationship</Text>
+    <SectionCard title={kind === 'DELIVERY' ? 'Expected delivery' : 'Add a guest'} subtitle="You get a code to share; the gate lets them in during the time you choose">
       <View style={styles.chips}>
-        {RELATIONSHIPS.map((r) => (
-          <Pressable key={r} style={chip(relationship === r)} onPress={() => setRelationship(r)}>
-            <Text style={chipText(relationship === r)}>{r}</Text>
+        {(['GUEST', 'DELIVERY'] as const).map((k) => (
+          <Pressable key={k} style={chip(kind === k)} onPress={() => setKind(k)}>
+            <Text style={chipText(kind === k)}>{k === 'GUEST' ? 'Guest' : 'Delivery'}</Text>
           </Pressable>
         ))}
       </View>
+
+      {kind === 'DELIVERY' ? (
+        <>
+          <Text style={[styles.label, { color: theme.text }]}>Company</Text>
+          <View style={styles.chips}>
+            {[...COMPANIES, 'Other'].map((c) => (
+              <Pressable key={c} style={chip(company === c)} onPress={() => setCompany(c)}>
+                <Text style={chipText(company === c)}>{c}</Text>
+              </Pressable>
+            ))}
+          </View>
+          {company === 'Other' ? (
+            <TextInput style={[inputStyle, { marginTop: 8 }]} value={otherCompany} onChangeText={setOtherCompany} placeholder="Company name" placeholderTextColor={theme.placeholder} />
+          ) : null}
+          <Text style={[styles.label, { color: theme.text }]}>Delivery person mobile (optional)</Text>
+          <TextInput style={inputStyle} value={mobile} onChangeText={setMobile} keyboardType="phone-pad" maxLength={14} placeholder="10-digit mobile" placeholderTextColor={theme.placeholder} />
+        </>
+      ) : (
+        <>
+          <Text style={[styles.label, { color: theme.text }]}>Guest name</Text>
+          <TextInput style={inputStyle} value={name} onChangeText={setName} placeholder="Priya Patel" placeholderTextColor={theme.placeholder} />
+
+          <Text style={[styles.label, { color: theme.text }]}>Mobile number</Text>
+          <TextInput style={inputStyle} value={mobile} onChangeText={setMobile} keyboardType="phone-pad" maxLength={14} placeholder="10-digit mobile" placeholderTextColor={theme.placeholder} />
+
+          <Text style={[styles.label, { color: theme.text }]}>Relationship</Text>
+          <View style={styles.chips}>
+            {RELATIONSHIPS.map((r) => (
+              <Pressable key={r} style={chip(relationship === r)} onPress={() => setRelationship(r)}>
+                <Text style={chipText(relationship === r)}>{r}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
+      )}
 
       <Text style={[styles.label, { color: theme.text }]}>Purpose (optional)</Text>
       <TextInput style={inputStyle} value={purpose} onChangeText={setPurpose} placeholder="Personal visit" placeholderTextColor={theme.placeholder} />
@@ -142,7 +206,7 @@ export function AddGuestForm({ onAdded, onCancel }: { onAdded: () => void; onCan
         disabled={saving}
         style={({ pressed }) => [styles.submit, { backgroundColor: theme.accent, opacity: saving ? 0.65 : pressed ? 0.9 : 1 }]}
       >
-        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Add guest</Text>}
+        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>{kind === 'DELIVERY' ? 'Add delivery' : 'Add guest'}</Text>}
       </Pressable>
       <Pressable onPress={onCancel} style={styles.cancel}>
         <Text style={{ color: theme.textMuted, fontWeight: '700' }}>Cancel</Text>
@@ -166,6 +230,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   rowItem: { flex: 1 },
   summary: { marginTop: 12, fontSize: 13 },
+  code: { fontSize: 40, fontWeight: '900', letterSpacing: 8, textAlign: 'center', marginTop: 8 },
   submit: { marginTop: 14, paddingVertical: 14, borderRadius: 14, alignItems: 'center', minHeight: 50, justifyContent: 'center' },
   submitText: { color: '#fff', fontWeight: '800', fontSize: 16 },
   cancel: { alignItems: 'center', paddingVertical: 12 },
