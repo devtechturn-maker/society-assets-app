@@ -413,7 +413,7 @@ export function CreateSocietyWizard({
                 value={phone}
                 onChangeText={(v) => setPhone(v.replace(/\D/g, '').slice(0, 10))}
                 placeholder="10-digit mobile number"
-                keyboardType="phone-pad"
+                keyboardType="number-pad"
                 maxLength={10}
                 hint="Society contact number. You sign in with your email."
               />

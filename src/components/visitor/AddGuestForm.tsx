@@ -5,6 +5,7 @@ import { apiErrorMessage } from '../../utils/apiError';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { SectionCard } from '../dashboard/SectionCard';
+import { PhoneInput } from '../form/PhoneInput';
 
 const RELATIONSHIPS = ['Friend', 'Family', 'Relative', 'Worker', 'Delivery', 'Other'];
 const DAYS = [
@@ -144,7 +145,7 @@ export function AddGuestForm({ onAdded, onCancel }: { onAdded: () => void; onCan
             <TextInput style={[inputStyle, { marginTop: 8 }]} value={otherCompany} onChangeText={setOtherCompany} placeholder="Company name" placeholderTextColor={theme.placeholder} />
           ) : null}
           <Text style={[styles.label, { color: theme.text }]}>Delivery person mobile (optional)</Text>
-          <TextInput style={inputStyle} value={mobile} onChangeText={setMobile} keyboardType="phone-pad" maxLength={14} placeholder="10-digit mobile" placeholderTextColor={theme.placeholder} />
+          <PhoneInput style={inputStyle} value={mobile} onChangeText={setMobile} placeholder="10-digit mobile" placeholderTextColor={theme.placeholder} />
         </>
       ) : (
         <>
@@ -152,7 +153,7 @@ export function AddGuestForm({ onAdded, onCancel }: { onAdded: () => void; onCan
           <TextInput style={inputStyle} value={name} onChangeText={setName} placeholder="Priya Patel" placeholderTextColor={theme.placeholder} />
 
           <Text style={[styles.label, { color: theme.text }]}>Mobile number</Text>
-          <TextInput style={inputStyle} value={mobile} onChangeText={setMobile} keyboardType="phone-pad" maxLength={14} placeholder="10-digit mobile" placeholderTextColor={theme.placeholder} />
+          <PhoneInput style={inputStyle} value={mobile} onChangeText={setMobile} placeholder="10-digit mobile" placeholderTextColor={theme.placeholder} />
 
           <Text style={[styles.label, { color: theme.text }]}>Relationship</Text>
           <View style={styles.chips}>

@@ -28,6 +28,8 @@ import { SectionCard } from '../../components/dashboard/SectionCard';
 import { ListError } from '../../components/dashboard/ListStates';
 import { VisitorHistoryModule } from './VisitorHistoryModule';
 import { RecentVisitorRow } from '../../components/visitor/RecentVisitorRow';
+import { PasswordInput } from '../../components/form/PasswordInput';
+import { PhoneInput } from '../../components/form/PhoneInput';
 
 type Tab = 'overview' | 'history' | 'deliveries' | 'gatekeepers' | 'help' | 'blacklist' | 'sos';
 
@@ -144,11 +146,10 @@ function GateKeeperCard({
       {resetOpen ? (
         <View style={styles.gkReset}>
           <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>New password (at least 8 characters)</Text>
-          <TextInput
+          <PasswordInput
             value={newPassword}
             onChangeText={setNewPassword}
             placeholder="New password for the guard"
-            secureTextEntry
             autoCapitalize="none"
             autoCorrect={false}
             placeholderTextColor={theme.placeholder}
@@ -335,20 +336,18 @@ export function SocietyVisitorAdminModule({ userRole }: { userRole?: string | nu
           style={[styles.input, { color: theme.inputText, borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}
         />
         <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>Mobile number</Text>
-        <TextInput
+        <PhoneInput
           value={phone}
           onChangeText={setPhone}
           placeholder="10-digit mobile"
-          keyboardType="phone-pad"
           placeholderTextColor={theme.placeholder}
           style={[styles.input, { color: theme.inputText, borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}
         />
         <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>Sign-in password</Text>
-        <TextInput
+        <PasswordInput
           value={password}
           onChangeText={setPassword}
           placeholder="At least 8 characters"
-          secureTextEntry
           autoCapitalize="none"
           autoCorrect={false}
           placeholderTextColor={theme.placeholder}

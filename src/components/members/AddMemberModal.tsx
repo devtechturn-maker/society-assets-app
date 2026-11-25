@@ -15,6 +15,7 @@ import { addMember } from '../../services/api';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { FlatNumberSelect } from '../FlatNumberSelect';
+import { PhoneInput } from '../form/PhoneInput';
 
 type Props = {
   visible: boolean;
@@ -151,13 +152,12 @@ export function AddMemberModal({ visible, onClose, onSaved }: Props) {
             </Field>
 
             <Field label="Phone" theme={theme}>
-              <TextInput
+              <PhoneInput
                 style={inputStyle(theme)}
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="9876543210"
                 placeholderTextColor={theme.placeholder}
-                keyboardType="phone-pad"
               />
             </Field>
 

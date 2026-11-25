@@ -6,6 +6,7 @@ import type { OnlinePaymentsStatus } from '../../types/api';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { apiErrorMessage } from '../../utils/apiError';
+import { PhoneInput } from '../form/PhoneInput';
 
 const PAN = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 const MOBILE = /^[6-9][0-9]{9}$/;
@@ -165,13 +166,12 @@ export function OnlinePaymentsCard({ reloadKey }: { reloadKey?: unknown }) {
           </View>
           <View>
             <Text style={[styles.label, { color: theme.text }]}>Contact mobile number</Text>
-            <TextInput
+            <PhoneInput
               style={[styles.input, { borderColor: theme.cardBorder, color: theme.text }]}
               value={phone}
               onChangeText={setPhone}
               placeholder="10-digit mobile"
               placeholderTextColor={theme.placeholder}
-              keyboardType="phone-pad"
               maxLength={14}
             />
           </View>

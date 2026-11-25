@@ -15,6 +15,7 @@ import { addExpense, type PaymentType } from '../../services/api';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { isValidIsoDate, todayIsoDate } from '../../utils/dates';
+import { DateField } from '../form/DateField';
 
 type Props = {
   visible: boolean;
@@ -125,11 +126,11 @@ export function AddExpenseModal({ visible, onClose, onSaved }: Props) {
             </Field>
 
             <Field label="Expense Date" theme={theme}>
-              <TextInput
+              <DateField
                 style={inputStyle(theme)}
                 value={expenseDate}
                 onChangeText={setExpenseDate}
-                placeholder="YYYY-MM-DD"
+                placeholder="Select date"
                 placeholderTextColor={theme.placeholder}
               />
             </Field>

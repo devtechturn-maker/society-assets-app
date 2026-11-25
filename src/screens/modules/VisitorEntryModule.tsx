@@ -30,6 +30,7 @@ import {
 } from '../../utils/pickPhoto';
 import { unitName } from '../../utils/unitName';
 import { DeliveryForm } from '../../components/delivery/DeliveryForm';
+import { PhoneInput } from '../../components/form/PhoneInput';
 
 const PURPOSE_OPTIONS = [
   'Guest Visit',
@@ -317,12 +318,11 @@ export function VisitorEntryModule() {
           </FormField>
 
           <FormField label="Mobile number *" fieldRef={mobileRef}>
-            <TextInput
+            <PhoneInput
               value={mobileNumber}
               onChangeText={(t) => setMobileNumber(t.replace(/\D/g, '').slice(0, 10))}
               style={inputStyle}
               placeholder="10-digit mobile"
-              keyboardType="phone-pad"
               maxLength={10}
               {...fieldProps(mobileRef, { keyboardType: 'phone-pad' })}
             />

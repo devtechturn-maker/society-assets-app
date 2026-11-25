@@ -30,6 +30,9 @@ import {
 import { useTheme } from '../../theme/ThemeContext';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { apiErrorMessage } from '../../utils/apiError';
+import { PhoneInput } from '../../components/form/PhoneInput';
+import { DateField } from '../../components/form/DateField';
+import { missingMessage } from '../../components/form/required';
 
 type Tab = 'staff' | 'attendance' | 'salary' | 'policy';
 const DESIGNATIONS = ['Security Guard', 'Housekeeping', 'Gardener', 'Maintenance Worker', 'Lift Operator', 'Other'];
@@ -176,6 +179,15 @@ function StaffForm({ staff, onDone }: { staff?: Staff; onDone: () => void }) {
   const input = [styles.input, { backgroundColor: theme.inputBg, color: theme.inputText, borderColor: theme.inputBorder }];
 
   async function save() {
+    const problem = missingMessage(
+      [
+        ['Name', f.name],
+        ['Role', f.designation],
+        ['Pay', f.payRate],
+      ],
+      { phones: [['Mobile', f.phone]] }
+    );
+    if (problem) return toast(problem, 'error');
     setSaving(true);
     try {
       if (staff) await updateStaff(staff.id, f);
@@ -192,9 +204,9 @@ function StaffForm({ staff, onDone }: { staff?: Staff; onDone: () => void }) {
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <SectionCard title={staff ? 'Edit staff' : 'Add staff'} subtitle="Staff do not get an app login">
-        <Text style={[styles.label, { color: theme.text }]}>Name</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Name *</Text>
         <TextInput style={input} value={f.name} onChangeText={set('name')} placeholder="Rajesh Kumar" placeholderTextColor={theme.placeholder} />
-        <Text style={[styles.label, { color: theme.text }]}>Role</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Role *</Text>
         <View style={styles.chips}>
           {DESIGNATIONS.map((d) => (
             <Chip key={d} label={d} selected={f.designation === d} onPress={() => set('designation')(d)} />
@@ -204,10 +216,10 @@ function StaffForm({ staff, onDone }: { staff?: Staff; onDone: () => void }) {
           <TextInput style={input} value={f.designation === 'Other' ? '' : f.designation} onChangeText={set('designation')} placeholder="Type the role" placeholderTextColor={theme.placeholder} />
         ) : null}
         <Text style={[styles.label, { color: theme.text }]}>Mobile (optional)</Text>
-        <TextInput style={input} value={f.phone} onChangeText={set('phone')} keyboardType="phone-pad" placeholder="10-digit mobile" placeholderTextColor={theme.placeholder} />
-        <Text style={[styles.label, { color: theme.text }]}>Joining date (YYYY-MM-DD)</Text>
-        <TextInput style={input} value={f.joiningDate} onChangeText={set('joiningDate')} placeholderTextColor={theme.placeholder} />
-        <Text style={[styles.label, { color: theme.text }]}>Pay</Text>
+        <PhoneInput style={input} value={f.phone} onChangeText={set('phone')} placeholder="10-digit mobile" placeholderTextColor={theme.placeholder} />
+        <Text style={[styles.label, { color: theme.text }]}>Joining date</Text>
+        <DateField style={input} value={f.joiningDate} onChangeText={set('joiningDate')} placeholder="Select date" placeholderTextColor={theme.placeholder} />
+        <Text style={[styles.label, { color: theme.text }]}>Pay *</Text>
         <View style={styles.chips}>
           <Chip label="Monthly salary" selected={f.payType === 'MONTHLY'} onPress={() => setF((x) => ({ ...x, payType: 'MONTHLY' }))} />
           <Chip label="Daily wage" selected={f.payType === 'DAILY'} onPress={() => setF((x) => ({ ...x, payType: 'DAILY' }))} />
@@ -287,12 +299,11 @@ function StaffProfile({ id, onBack, onEdit }: { id: string; onBack: () => void; 
         </View>
         {leaving !== null ? (
           <View style={{ marginTop: 12, gap: 6 }}>
-            <Text style={[styles.meta, { color: theme.text, fontWeight: '700' }]}>Last working day (YYYY-MM-DD)</Text>
-            <TextInput
+            <Text style={[styles.meta, { color: theme.text, fontWeight: '700' }]}>Last working day</Text>
+            <DateField
               value={leaving}
               onChangeText={setLeaving}
-              autoCapitalize="none"
-              placeholder="2026-10-31"
+              placeholder="Select date"
               placeholderTextColor={theme.placeholder}
               style={[styles.input, { borderColor: theme.inputBorder, color: theme.inputText, backgroundColor: theme.inputBg }]}
             />

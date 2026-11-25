@@ -52,6 +52,8 @@ import {
 import { useTheme } from '../../theme/ThemeContext';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { apiErrorMessage } from '../../utils/apiError';
+import { DateField } from '../../components/form/DateField';
+import { missingMessage } from '../../components/form/required';
 
 type Screen =
   | { name: 'list' }
@@ -676,6 +678,11 @@ function TharavForm({ tharav, amend, onDone }: { tharav?: TharavDetail; amend?: 
   }, []);
 
   async function save() {
+    const problem = missingMessage([
+      ['Title', form.title],
+      ['Resolution date', form.resolutionDate],
+    ]);
+    if (problem) return toast(problem, 'error');
     setSaving(true);
     try {
       const body: TharavInput = { ...form, acknowledgeBy: form.acknowledgeBy || null };
@@ -711,11 +718,11 @@ function TharavForm({ tharav, amend, onDone }: { tharav?: TharavDetail; amend?: 
         <View style={styles.two}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.label, { color: theme.text }]}>Resolution date</Text>
-            <TextInput style={input} value={form.resolutionDate} onChangeText={set('resolutionDate')} placeholder="YYYY-MM-DD" placeholderTextColor={theme.placeholder} />
+            <DateField style={input} value={form.resolutionDate} onChangeText={set('resolutionDate')} placeholder="Select date" placeholderTextColor={theme.placeholder} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.label, { color: theme.text }]}>Sign by (optional)</Text>
-            <TextInput style={input} value={form.acknowledgeBy ?? ''} onChangeText={set('acknowledgeBy')} placeholder="YYYY-MM-DD" placeholderTextColor={theme.placeholder} />
+            <DateField style={input} value={form.acknowledgeBy ?? ''} onChangeText={set('acknowledgeBy')} placeholder="Select date" placeholderTextColor={theme.placeholder} />
           </View>
         </View>
         <Text style={[styles.label, { color: theme.text }]}>Category (optional)</Text>

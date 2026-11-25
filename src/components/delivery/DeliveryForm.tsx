@@ -7,6 +7,7 @@ import { useAppAlert } from '../../context/AppAlertContext';
 import { SectionCard } from '../dashboard/SectionCard';
 import { apiErrorMessage } from '../../utils/apiError';
 import { unitName } from '../../utils/unitName';
+import { PhoneInput } from '../form/PhoneInput';
 
 export const DELIVERY_COMPANIES = ['Amazon', 'Flipkart', 'Swiggy', 'Zomato', 'Blinkit', 'Zepto', 'Courier'] as const;
 export const DELIVERY_TYPES = [
@@ -140,13 +141,12 @@ export function DeliveryForm({ onDone }: { onDone?: () => void }) {
       </SectionCard>
 
       <SectionCard title="Delivery person" subtitle="Mobile is required">
-        <TextInput
+        <PhoneInput
           value={mobile}
           onChangeText={(t) => setMobile(t.replace(/\D/g, '').slice(0, 10))}
           style={input}
           placeholder="10-digit mobile *"
           placeholderTextColor={theme.placeholder}
-          keyboardType="phone-pad"
           maxLength={10}
         />
         <TextInput

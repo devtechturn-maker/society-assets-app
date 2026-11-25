@@ -16,6 +16,7 @@ import { useAppAlert } from '../../context/AppAlertContext';
 import { useTheme } from '../../theme/ThemeContext';
 import type { SocietyContractTypeOption } from '../../types/api';
 import { compareIsoDate, isValidIsoDate, todayIsoDate } from '../../utils/dates';
+import { DateField } from '../form/DateField';
 
 type Props = {
   visible: boolean;
@@ -219,21 +220,21 @@ export function AddContractModal({ visible, onClose, onSaved }: Props) {
             </Field>
 
             <Field label="Start Date" theme={theme}>
-              <TextInput
+              <DateField
                 style={inputStyle(theme)}
                 value={startDate}
                 onChangeText={setStartDate}
-                placeholder="YYYY-MM-DD"
+                placeholder="Select date"
                 placeholderTextColor={theme.placeholder}
               />
             </Field>
 
             <Field label="End Date" theme={theme}>
-              <TextInput
+              <DateField
                 style={inputStyle(theme)}
                 value={endDate}
                 onChangeText={setEndDate}
-                placeholder="YYYY-MM-DD"
+                placeholder="Select date"
                 placeholderTextColor={theme.placeholder}
               />
             </Field>

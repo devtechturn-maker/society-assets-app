@@ -8,6 +8,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { apiErrorMessage } from '../../utils/apiError';
 import { EVENT_TYPE_OPTIONS } from '../../utils/eventFormat';
 import { ChipRow, EventSheet, SheetButtons, SheetField, SheetInput } from './EventSheet';
+import { DateField } from '../form/DateField';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -129,12 +130,12 @@ export function CreateEventSheet({
       <View style={styles.row}>
         <View style={{ flex: 1 }}>
           <SheetField label="Starts" hint="optional">
-            <SheetInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" maxLength={10} />
+            <DateField value={startDate} onChangeText={setStartDate} placeholder="Select date" />
           </SheetField>
         </View>
         <View style={{ flex: 1 }}>
           <SheetField label="Ends" hint="optional">
-            <SheetInput value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" maxLength={10} />
+            <DateField value={endDate} onChangeText={setEndDate} placeholder="Select date" />
           </SheetField>
         </View>
       </View>

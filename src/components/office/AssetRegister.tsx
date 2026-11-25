@@ -17,6 +17,8 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { apiErrorMessage } from '../../utils/apiError';
 import { formatInr } from '../../utils/format';
+import { DateField } from '../form/DateField';
+import { missingMessage } from '../form/required';
 
 const CATEGORIES = ['LIFT', 'PUMP', 'GENERATOR', 'CCTV', 'FIRE', 'ELECTRICAL', 'GYM', 'FURNITURE', 'OTHER'];
 const label = (c: string) => c.charAt(0) + c.slice(1).toLowerCase();
@@ -176,7 +178,7 @@ function AssetDetail({ id, onBack, onEdit }: { id: string; onBack: () => void; o
         ))}
         {adding ? (
           <View style={{ marginTop: 8 }}>
-            <TextInput style={input} value={svc.serviceDate} onChangeText={(t) => setSvc({ ...svc, serviceDate: t })} placeholder="Date YYYY-MM-DD (blank = today)" placeholderTextColor={theme.placeholder} />
+            <DateField style={input} value={svc.serviceDate} onChangeText={(t) => setSvc({ ...svc, serviceDate: t })} placeholder="Date (blank = today)" placeholderTextColor={theme.placeholder} />
             <View style={styles.two}>
               <TextInput style={[input, styles.flex]} value={svc.cost} onChangeText={(t) => setSvc({ ...svc, cost: t })} keyboardType="decimal-pad" placeholder="Cost ₹" placeholderTextColor={theme.placeholder} />
               <TextInput style={[input, styles.flex]} value={svc.doneBy} onChangeText={(t) => setSvc({ ...svc, doneBy: t })} placeholder="Done by" placeholderTextColor={theme.placeholder} />
@@ -230,9 +232,13 @@ function AssetForm({ asset, onDone }: { asset?: AssetRow; onDone: (id?: string) 
     notes: asset?.notes ?? '',
   });
   const input = [styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBg, color: theme.inputText }];
+  const DATE_KEYS = ['purchaseDate', 'amcEndDate', 'nextServiceDate'];
   const field = (key: string, title: string, placeholder?: string, numeric?: boolean) => (
     <>
       <Text style={[styles.label, { color: theme.text }]}>{title}</Text>
+      {DATE_KEYS.includes(key) ? (
+        <DateField style={input} value={f[key]} onChangeText={(t) => setF({ ...f, [key]: t })} placeholder="Select date" placeholderTextColor={theme.placeholder} />
+      ) : (
       <TextInput
         style={input}
         value={f[key]}
@@ -241,10 +247,13 @@ function AssetForm({ asset, onDone }: { asset?: AssetRow; onDone: (id?: string) 
         placeholderTextColor={theme.placeholder}
         keyboardType={numeric ? 'decimal-pad' : 'default'}
       />
+      )}
     </>
   );
 
   async function save() {
+    const problem = missingMessage([['Name', f.name]]);
+    if (problem) return toast(problem, 'error');
     setSaving(true);
     try {
       const body = { ...f } as unknown as AssetInput;
@@ -263,8 +272,8 @@ function AssetForm({ asset, onDone }: { asset?: AssetRow; onDone: (id?: string) 
       <Pressable onPress={() => onDone(asset?.id)} style={{ paddingVertical: 8 }}>
         <Text style={{ color: theme.accent, fontWeight: '800' }}>← Back</Text>
       </Pressable>
-      <SectionCard title={asset ? 'Edit asset' : 'Add an asset'} subtitle="Dates as YYYY-MM-DD">
-        {field('name', 'Name', 'Lift – Wing A')}
+      <SectionCard title={asset ? 'Edit asset' : 'Add an asset'} subtitle="Tap a date to pick it from the calendar">
+        {field('name', 'Name *', 'Lift – Wing A')}
         <Text style={[styles.label, { color: theme.text }]}>Type</Text>
         <View style={styles.chips}>
           {CATEGORIES.map((c) => (

@@ -6,6 +6,8 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { apiErrorMessage } from '../../utils/apiError';
 import { SectionCard } from '../dashboard/SectionCard';
+import { PhoneInput } from '../form/PhoneInput';
+import { DateField } from '../form/DateField';
 
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE: 'Living there',
@@ -164,17 +166,17 @@ export function FlatTenantsSection({ members }: { members: SocietyMember[] }) {
           <Text style={[styles.label, { color: theme.text }]}>Tenant name</Text>
           <TextInput style={inputStyle} value={name} onChangeText={setName} placeholder="Amit Shah" placeholderTextColor={theme.placeholder} />
           <Text style={[styles.label, { color: theme.text }]}>Tenant mobile (used to sign in)</Text>
-          <TextInput style={inputStyle} value={phone} onChangeText={setPhone} keyboardType="phone-pad" maxLength={14} placeholder="10-digit mobile" placeholderTextColor={theme.placeholder} />
+          <PhoneInput style={inputStyle} value={phone} onChangeText={setPhone} placeholder="10-digit mobile" placeholderTextColor={theme.placeholder} />
           <Text style={[styles.label, { color: theme.text }]}>Tenant email</Text>
           <TextInput style={inputStyle} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder="tenant@example.com" placeholderTextColor={theme.placeholder} />
           <View style={styles.dates}>
             <View style={styles.dateItem}>
-              <Text style={[styles.label, { color: theme.text }]}>Start (YYYY-MM-DD)</Text>
-              <TextInput style={inputStyle} value={startDate} onChangeText={setStartDate} />
+              <Text style={[styles.label, { color: theme.text }]}>Start</Text>
+              <DateField style={inputStyle} value={startDate} onChangeText={setStartDate} clearable={false} placeholderTextColor={theme.placeholder} />
             </View>
             <View style={styles.dateItem}>
-              <Text style={[styles.label, { color: theme.text }]}>End (YYYY-MM-DD)</Text>
-              <TextInput style={inputStyle} value={endDate} onChangeText={setEndDate} />
+              <Text style={[styles.label, { color: theme.text }]}>End</Text>
+              <DateField style={inputStyle} value={endDate} onChangeText={setEndDate} clearable={false} placeholderTextColor={theme.placeholder} />
             </View>
           </View>
           <Pressable

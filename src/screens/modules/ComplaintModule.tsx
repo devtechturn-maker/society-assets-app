@@ -39,6 +39,7 @@ import {
   type PickedPhoto,
 } from '../../utils/pickPhoto';
 import { unitName } from '../../utils/unitName';
+import { DateField } from '../../components/form/DateField';
 
 type Screen = 'list' | 'create' | 'detail';
 
@@ -670,14 +671,12 @@ export function ComplaintModule({
                 Staff are listed from your Staff page. Committee members get a notification.
               </Text>
               <Text style={[styles.label, { color: theme.textMuted }]}>Due date (optional)</Text>
-              <TextInput
+              <DateField
                 style={[styles.input, { backgroundColor: theme.cardBg, color: theme.text, borderColor: theme.cardBorder }]}
                 value={dueDate}
                 onChangeText={setDueDate}
-                placeholder="YYYY-MM-DD, e.g. 2026-12-31"
+                placeholder="Select date"
                 placeholderTextColor={theme.textMuted}
-                maxLength={10}
-                keyboardType="numbers-and-punctuation"
               />
               <Text style={[styles.label, { color: theme.textMuted }]}>Status</Text>
               <View style={styles.chipRow}>

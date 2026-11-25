@@ -17,6 +17,7 @@ import { useAppAlert } from '../../context/AppAlertContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { isValidIsoDate, todayIsoDate } from '../../utils/dates';
 import { FlatNumberSelect } from '../FlatNumberSelect';
+import { DateField } from '../form/DateField';
 
 type Props = {
   visible: boolean;
@@ -191,11 +192,11 @@ export function AddOtherIncomeModal({ visible, onClose, onSaved }: Props) {
             </Field>
 
             <Field label="Income Date" theme={theme}>
-              <TextInput
+              <DateField
                 style={inputStyle(theme)}
                 value={expenseDate}
                 onChangeText={setExpenseDate}
-                placeholder="YYYY-MM-DD"
+                placeholder="Select date"
                 placeholderTextColor={theme.placeholder}
               />
             </Field>

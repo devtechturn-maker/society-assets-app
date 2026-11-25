@@ -6,6 +6,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { apiErrorMessage } from '../../utils/apiError';
 import { SectionCard } from '../dashboard/SectionCard';
+import { PhoneInput } from '../form/PhoneInput';
 
 const TYPES = ['MAID', 'COOK', 'DRIVER', 'NANNY', 'CLEANER', 'OTHER'];
 const label = (t: string) => t.charAt(0) + t.slice(1).toLowerCase();
@@ -138,7 +139,7 @@ export function DailyHelpSection() {
       {adding ? (
         <View style={{ marginTop: 10, gap: 8 }}>
           <TextInput style={inputStyle} value={name} onChangeText={setName} placeholder="Name" placeholderTextColor={theme.placeholder} maxLength={120} />
-          <TextInput style={inputStyle} value={mobile} onChangeText={setMobile} keyboardType="phone-pad" maxLength={14} placeholder="Mobile (optional)" placeholderTextColor={theme.placeholder} />
+          <PhoneInput style={inputStyle} value={mobile} onChangeText={setMobile} placeholder="Mobile (optional)" placeholderTextColor={theme.placeholder} />
           <View style={styles.row}>
             {TYPES.map((t) => (
               <Pressable

@@ -41,6 +41,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { apiErrorMessage } from '../../utils/apiError';
 import { evidenceErrors, normalizeReference } from '../../utils/paymentEvidence';
 import { pickPhotoFromCamera, pickPhotoFromLibrary, showPhotoSourcePicker, type PickedPhoto } from '../../utils/pickPhoto';
+import { DateField } from '../form/DateField';
 
 export function inr(value: number | undefined | null): string {
   const amount = value ?? 0;
@@ -419,7 +420,7 @@ function SubmitPaymentSheet({
           {tried && referenceError ? <Text style={styles.error}>{referenceError}</Text> : null}
 
           <Text style={[styles.label, { color: theme.text }]}>Payment date *</Text>
-          <TextInput style={input} value={paidOn} onChangeText={setPaidOn} placeholder="YYYY-MM-DD" placeholderTextColor={theme.placeholder} maxLength={10} />
+          <DateField style={input} value={paidOn} onChangeText={setPaidOn} placeholder="Select date" placeholderTextColor={theme.placeholder} />
           {tried && dateError ? <Text style={styles.error}>{dateError}</Text> : null}
 
           <Text style={[styles.label, { color: theme.text }]}>

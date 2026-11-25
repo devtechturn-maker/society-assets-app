@@ -26,6 +26,7 @@ import { UiIcon } from '../../components/UiIcon';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { useHardwareBack } from '../../hooks/useHardwareBack';
 import { unitName } from '../../utils/unitName';
+import { DateField } from '../../components/form/DateField';
 
 type Screen = 'list' | 'create' | 'detail';
 
@@ -204,11 +205,11 @@ export function AmenityBookingModule({
           ))}
         </View>
 
-        <Text style={[styles.label, { color: theme.textMuted }]}>Date (YYYY-MM-DD)</Text>
-        <TextInput
+        <Text style={[styles.label, { color: theme.textMuted }]}>Date</Text>
+        <DateField
           value={bookingDate}
           onChangeText={setBookingDate}
-          placeholder="2026-06-21"
+          placeholder="Select date"
           placeholderTextColor={theme.textMuted}
           style={[styles.input, { color: theme.text, borderColor: theme.cardBorder, backgroundColor: theme.cardBg }]}
         />

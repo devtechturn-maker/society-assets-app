@@ -28,6 +28,7 @@ import {
   isValidYearMonth,
   todayIsoDate,
 } from '../../utils/dates';
+import { DateField } from '../form/DateField';
 
 type Props = {
   visible: boolean;
@@ -237,11 +238,11 @@ export function AddMaintenanceModal({ visible, onClose, onSaved, prefill }: Prop
             </Field>
 
             <Field label="Maintenance Date" theme={theme}>
-              <TextInput
+              <DateField
                 style={inputStyle(theme)}
                 value={expenseDate}
                 onChangeText={setExpenseDate}
-                placeholder="YYYY-MM-DD"
+                placeholder="Select date"
                 placeholderTextColor={theme.placeholder}
               />
             </Field>
@@ -261,24 +262,22 @@ export function AddMaintenanceModal({ visible, onClose, onSaved, prefill }: Prop
             {collectBalance ? null : (
             <>
             <Field label="From Month" theme={theme}>
-              <TextInput
+              <DateField month
                 style={inputStyle(theme)}
                 value={fromMonth}
                 onChangeText={setFromMonth}
-                placeholder="YYYY-MM"
+                placeholder="Select month"
                 placeholderTextColor={theme.placeholder}
-                autoCapitalize="none"
               />
             </Field>
 
             <Field label="To Month (Optional)" theme={theme}>
-              <TextInput
+              <DateField month
                 style={inputStyle(theme)}
                 value={toMonth}
                 onChangeText={setToMonth}
-                placeholder="YYYY-MM"
+                placeholder="Select month"
                 placeholderTextColor={theme.placeholder}
-                autoCapitalize="none"
               />
             </Field>
             </>

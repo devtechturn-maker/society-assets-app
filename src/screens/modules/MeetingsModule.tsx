@@ -37,6 +37,8 @@ import {
 import { useTheme } from '../../theme/ThemeContext';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { apiErrorMessage } from '../../utils/apiError';
+import { DateField } from '../../components/form/DateField';
+import { missingMessage } from '../../components/form/required';
 
 type Screen = { name: 'list' } | { name: 'detail'; id: string } | { name: 'form'; meeting?: MeetingDetail };
 
@@ -333,6 +335,14 @@ function MeetingForm({ meeting, onDone }: { meeting?: MeetingDetail; onDone: (id
   const input = [styles.input, { backgroundColor: theme.inputBg, color: theme.inputText, borderColor: theme.inputBorder }];
 
   async function save() {
+    const problem =
+      missingMessage([
+        ['Title', form.title],
+        ['Date', form.meetingDate],
+        ['Time', form.meetingTime],
+        ['Agenda', form.agenda],
+      ]) ?? (!form.location?.trim() && !form.onlineLink?.trim() ? 'Please fill in: Venue or Online link' : null);
+    if (problem) return toast(problem, 'error');
     setSaving(true);
     try {
       const saved = meeting ? await updateMeeting(meeting.id, form) : await createMeeting(form);
@@ -355,14 +365,17 @@ function MeetingForm({ meeting, onDone }: { meeting?: MeetingDetail; onDone: (id
   return (
     <ScrollView style={{ flex: 1, backgroundColor: theme.pageBg }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <SectionCard title={meeting ? 'Edit meeting' : 'Schedule a meeting'} subtitle="Members are notified when it is scheduled, rescheduled or cancelled">
-        {field('Title', 'title', { placeholder: 'Annual general meeting' })}
+        {field('Title *', 'title', { placeholder: 'Annual general meeting' })}
         <View style={styles.two}>
-          <View style={{ flex: 1 }}>{field('Date (YYYY-MM-DD)', 'meetingDate')}</View>
-          <View style={{ flex: 1 }}>{field('Time (HH:MM, 24h)', 'meetingTime')}</View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.label, { color: theme.text }]}>Date *</Text>
+            <DateField style={input} value={form.meetingDate ?? ''} onChangeText={set('meetingDate')} clearable={false} minimumDate={new Date()} placeholderTextColor={theme.placeholder} />
+          </View>
+          <View style={{ flex: 1 }}>{field('Time * (HH:MM, 24h)', 'meetingTime')}</View>
         </View>
         {field('Venue', 'location', { placeholder: 'Club house' })}
         {field('Online link (optional)', 'onlineLink', { placeholder: 'https://…', autoCapitalize: 'none' })}
-        {field('Agenda', 'agenda', { multiline: true, style: [input, styles.area], placeholder: 'One item per line' })}
+        {field('Agenda *', 'agenda', { multiline: true, style: [input, styles.area], placeholder: 'One item per line' })}
         {field('Description (optional)', 'description', { multiline: true, style: [input, styles.area] })}
         <Pressable disabled={saving} onPress={() => void save()} style={({ pressed }) => [styles.primary, { backgroundColor: theme.accent, opacity: saving ? 0.6 : pressed ? 0.9 : 1 }]}>
           {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{meeting ? 'Save changes' : 'Schedule and notify members'}</Text>}

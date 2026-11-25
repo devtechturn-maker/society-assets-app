@@ -25,6 +25,7 @@ import {
   verifyPasswordResetOtp,
 } from '../services/api';
 import { colors } from '../theme/colors';
+import { PasswordInput } from '../components/form/PasswordInput';
 
 type Props = {
   onBackToLogin: () => void;
@@ -302,11 +303,10 @@ export function ForgotPasswordScreen({ onBackToLogin, onPasswordReset }: Props) 
                       </View>
 
                       <Text style={[styles.label, styles.labelSpaced]}>Confirm password</Text>
-                      <TextInput
+                      <PasswordInput
                         style={styles.input}
                         placeholder="Repeat new password"
                         placeholderTextColor="#94a3b8"
-                        secureTextEntry
                         value={confirmPassword}
                         onChangeText={(v) => {
                           setConfirmPassword(v);

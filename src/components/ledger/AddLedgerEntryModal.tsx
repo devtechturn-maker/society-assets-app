@@ -20,6 +20,7 @@ import { useAppAlert } from '../../context/AppAlertContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { isValidIsoDate, todayIsoDate } from '../../utils/dates';
 import { FlatNumberSelect } from '../FlatNumberSelect';
+import { DateField } from '../form/DateField';
 
 type LedgerEntryType = 'EXPENSE' | 'INCOME';
 
@@ -347,11 +348,11 @@ export function AddLedgerEntryModal({ visible, onClose, onSaved }: Props) {
                 </Field>
 
                 <Field label="Expense Date" theme={theme}>
-                  <TextInput
+                  <DateField
                     style={inputStyle(theme)}
                     value={entryDate}
                     onChangeText={setEntryDate}
-                    placeholder="YYYY-MM-DD"
+                    placeholder="Select date"
                     placeholderTextColor={theme.placeholder}
                   />
                 </Field>
@@ -477,11 +478,11 @@ export function AddLedgerEntryModal({ visible, onClose, onSaved }: Props) {
                 </Field>
 
                 <Field label="Income Date" theme={theme}>
-                  <TextInput
+                  <DateField
                     style={inputStyle(theme)}
                     value={entryDate}
                     onChangeText={setEntryDate}
-                    placeholder="YYYY-MM-DD"
+                    placeholder="Select date"
                     placeholderTextColor={theme.placeholder}
                   />
                 </Field>

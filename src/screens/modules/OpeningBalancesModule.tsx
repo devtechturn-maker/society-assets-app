@@ -29,6 +29,7 @@ import {
 import type { OpeningBalances, OpeningDueRow, OpeningDuesValidation } from '../../types/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { apiErrorMessage } from '../../utils/apiError';
+import { DateField } from '../../components/form/DateField';
 
 function today(): string {
   const d = new Date();
@@ -158,7 +159,7 @@ export function OpeningBalancesModule() {
           subtitle="Enter the cash in hand and bank balance on the day the society started using the app. Money before this date is already inside these balances."
         >
           <Text style={[styles.label, { color: theme.text }]}>Start date</Text>
-          <TextInput style={input} value={asOf} onChangeText={setAsOf} editable={canEdit} placeholder="YYYY-MM-DD" placeholderTextColor={theme.placeholder} maxLength={10} />
+          <DateField style={input} value={asOf} onChangeText={setAsOf} editable={canEdit} placeholder="Select date" placeholderTextColor={theme.placeholder} />
           <View style={styles.two}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.label, { color: theme.text }]}>Cash in hand (₹)</Text>

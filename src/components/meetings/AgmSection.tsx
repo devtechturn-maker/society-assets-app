@@ -22,6 +22,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { apiErrorMessage } from '../../utils/apiError';
 import { unitName } from '../../utils/unitName';
+import { missingMessage } from '../form/required';
 
 const RESULT: Record<AgmResolution['status'], { label: string; color: string }> = {
   DRAFT: { label: 'Not open yet', color: '#64748b' },
@@ -209,14 +210,16 @@ export function AgmSection({ portal, meetingId }: { portal: Portal; meetingId: s
               </View>
               <Pressable
                 disabled={busy}
-                onPress={() =>
+                onPress={() => {
+                  const problem = missingMessage([['Resolution', res.title]]);
+                  if (problem) return toast(problem, 'error');
                   void run(async () => {
                     const v = await addAgmResolution(meetingId, res);
                     setRes({ title: '', details: '', proposedBy: '', secondedBy: '' });
                     setAdding(false);
                     return v;
-                  }, 'Resolution added')
-                }
+                  }, 'Resolution added');
+                }}
                 style={[styles.primary, { backgroundColor: theme.accent }]}
               >
                 <Text style={styles.primaryText}>Add resolution</Text>

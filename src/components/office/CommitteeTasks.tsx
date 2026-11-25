@@ -13,6 +13,8 @@ import {
 import { useTheme } from '../../theme/ThemeContext';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { apiErrorMessage } from '../../utils/apiError';
+import { DateField } from '../form/DateField';
+import { missingMessage } from '../form/required';
 
 const STATUS: Record<CommitteeTask['status'], { label: string; color: string }> = {
   OPEN: { label: 'To do', color: '#475569' },
@@ -104,17 +106,19 @@ export function CommitteeTasks() {
               ))}
             </View>
             <Text style={[styles.label, { color: theme.text }]}>Due date (optional)</Text>
-            <TextInput style={input} value={form.dueDate} onChangeText={(t) => setForm({ ...form, dueDate: t })} placeholder="YYYY-MM-DD" placeholderTextColor={theme.placeholder} />
+            <DateField style={input} value={form.dueDate} onChangeText={(t) => setForm({ ...form, dueDate: t })} placeholder="Select date" placeholderTextColor={theme.placeholder} />
             <Pressable
               disabled={busy}
-              onPress={() =>
+              onPress={() => {
+                const problem = missingMessage([['Task', form.title]]);
+                if (problem) return toast(problem, 'error');
                 void run(async () => {
                   const r = await createTask({ ...form, assigneeUserId: form.assigneeUserId || null, dueDate: form.dueDate || null });
                   setForm({ title: '', details: '', assigneeUserId: '', dueDate: '', priority: 'NORMAL' });
                   setAdding(false);
                   return r;
-                }, 'Task added')
-              }
+                }, 'Task added');
+              }}
               style={[styles.primary, { backgroundColor: theme.accent }]}
             >
               {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>Save task</Text>}

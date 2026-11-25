@@ -17,6 +17,7 @@ import { changeFirstLoginPassword } from '../services/api';
 import { saveSession } from '../services/storage';
 import { colors } from '../theme/colors';
 import type { LoginData } from '../types/api';
+import { PasswordInput } from '../components/form/PasswordInput';
 
 type Props = {
   user: LoginData;
@@ -78,18 +79,16 @@ export function FirstLoginPasswordScreen({ user, onPasswordChanged }: Props) {
 
           <View style={styles.form}>
             <Text style={styles.label}>New password</Text>
-            <TextInput
+            <PasswordInput
               style={styles.input}
-              secureTextEntry
               value={password}
               onChangeText={setPassword}
               placeholder="At least 8 characters"
               placeholderTextColor="#94a3b8"
             />
             <Text style={styles.label}>Confirm password</Text>
-            <TextInput
+            <PasswordInput
               style={styles.input}
-              secureTextEntry
               value={confirm}
               onChangeText={setConfirm}
               placeholder="Repeat password"

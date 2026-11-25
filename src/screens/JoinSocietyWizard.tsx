@@ -230,7 +230,7 @@ export function JoinSocietyWizard({ email, selectionToken, onJoined, onBack }: P
             value={phone}
             onChangeText={(v) => setPhone(v.replace(/\D/g, '').slice(-10))}
             placeholder="10-digit mobile number"
-            keyboardType="phone-pad"
+            keyboardType="number-pad"
             maxLength={10}
             hint="Shared with your society office. You sign in with your email."
           />

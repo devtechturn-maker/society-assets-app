@@ -18,6 +18,7 @@ import {
 } from '../services/api';
 import { performAppLogout } from '../services/authLogout';
 import { useTheme } from '../theme/ThemeContext';
+import { PasswordInput } from './form/PasswordInput';
 
 type Step = 'start' | 'otp' | 'password';
 
@@ -236,11 +237,10 @@ export function ChangePasswordFlow({
             </Pressable>
           </View>
           <Text style={[styles.label, { color: theme.textMuted }]}>Confirm password</Text>
-          <TextInput
+          <PasswordInput
             style={[styles.input, { borderColor: theme.divider, color: theme.text }]}
             placeholder="Repeat new password"
             placeholderTextColor="#94a3b8"
-            secureTextEntry
             value={confirmPassword}
             onChangeText={(v) => {
               setConfirmPassword(v);

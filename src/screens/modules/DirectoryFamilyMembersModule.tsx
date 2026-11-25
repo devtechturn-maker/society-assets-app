@@ -31,6 +31,7 @@ import type { FamilyMemberPayload, FamilyRelationship, MemberFamilyMember } from
 import { useTheme } from '../../theme/ThemeContext';
 import { DirectorySectionShell } from './DirectoryHubModule';
 import { apiErrorMessage } from '../../utils/apiError';
+import { PhoneInput } from '../../components/form/PhoneInput';
 
 const RELATIONSHIPS: { value: FamilyRelationship; label: string }[] = [
   { value: 'SPOUSE', label: 'Spouse' },
@@ -158,10 +159,9 @@ function FamilyMemberFormModal({
               })}
             </View>
             <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>Phone (optional)</Text>
-            <TextInput
+            <PhoneInput
               value={phone}
               onChangeText={setPhone}
-              keyboardType="phone-pad"
               placeholder="Mobile number"
               placeholderTextColor={theme.placeholder}
               style={[styles.input, { color: theme.inputText, borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}

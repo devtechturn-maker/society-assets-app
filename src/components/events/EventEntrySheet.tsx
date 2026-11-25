@@ -17,6 +17,7 @@ import { todayIsoDate } from '../../utils/dates';
 import { PAYMENT_METHODS, compactInr } from '../../utils/eventFormat';
 import { pickPhotoFromCamera, pickPhotoFromLibrary, showPhotoSourcePicker, type PickedPhoto } from '../../utils/pickPhoto';
 import { ChipRow, EventSheet, SheetButtons, SheetField, SheetInput } from './EventSheet';
+import { DateField } from '../form/DateField';
 
 const KINDS: { label: string; value: EventEntryKind }[] = [
   { label: 'Flat contribution', value: 'CONTRIBUTION' },
@@ -315,7 +316,7 @@ export function EventEntrySheet({
       <View style={styles.row2}>
         <View style={{ flex: 1 }}>
           <SheetField label="Date">
-            <SheetInput value={txnDate} onChangeText={setTxnDate} placeholder="YYYY-MM-DD" maxLength={10} />
+            <DateField value={txnDate} onChangeText={setTxnDate} placeholder="Select date" />
           </SheetField>
         </View>
         <View style={{ flex: 1.3 }}>

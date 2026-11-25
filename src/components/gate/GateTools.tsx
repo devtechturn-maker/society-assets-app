@@ -22,6 +22,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useAppAlert } from '../../context/AppAlertContext';
 import { apiErrorMessage } from '../../utils/apiError';
 import { SectionCard } from '../dashboard/SectionCard';
+import { PhoneInput } from '../form/PhoneInput';
 
 const RED = '#dc2626';
 
@@ -335,7 +336,7 @@ export function BlacklistSection({ canRemove }: { canRemove: boolean }) {
   return (
     <View style={{ gap: 12 }}>
       <SectionCard title="Add to blacklist" subtitle="The guard cannot register this mobile number. Residents do not see this list.">
-        <TextInput style={inputStyle} value={mobile} onChangeText={setMobile} keyboardType="phone-pad" maxLength={14} placeholder="Mobile number" placeholderTextColor={theme.placeholder} />
+        <PhoneInput style={inputStyle} value={mobile} onChangeText={setMobile} placeholder="Mobile number" placeholderTextColor={theme.placeholder} />
         <TextInput style={[inputStyle, styles.gap]} value={name} onChangeText={setName} placeholder="Name (optional)" placeholderTextColor={theme.placeholder} />
         <TextInput style={[inputStyle, styles.gap]} value={reason} onChangeText={setReason} placeholder="Reason" placeholderTextColor={theme.placeholder} maxLength={300} />
         <View style={styles.gap}>

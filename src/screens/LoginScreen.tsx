@@ -35,6 +35,8 @@ import { apiErrorMessage } from '../utils/apiError';
 import { CreateSocietyWizard } from './CreateSocietyWizard';
 import { JoinSocietyWizard } from './JoinSocietyWizard';
 import { unitName } from '../utils/unitName';
+import { PasswordInput } from '../components/form/PasswordInput';
+import { PhoneInput } from '../components/form/PhoneInput';
 
 type Props = {
   onLoggedIn: (user: LoginData) => void;
@@ -464,11 +466,10 @@ export function LoginScreen({ onLoggedIn }: Props) {
                         <View style={styles.countryCode}>
                           <Text style={styles.countryCodeText}>+91</Text>
                         </View>
-                        <TextInput
+                        <PhoneInput
                           style={styles.phoneInput}
                           placeholder="9876543210"
                           placeholderTextColor="#94a3b8"
-                          keyboardType="phone-pad"
                           maxLength={10}
                           value={guardPhone}
                           onChangeText={(v) => {
@@ -479,11 +480,10 @@ export function LoginScreen({ onLoggedIn }: Props) {
                       </View>
 
                       <Text style={[styles.label, styles.labelSpaced]}>Password</Text>
-                      <TextInput
+                      <PasswordInput
                         style={styles.input}
                         placeholder="Password"
                         placeholderTextColor="#94a3b8"
-                        secureTextEntry
                         autoCapitalize="none"
                         autoCorrect={false}
                         value={guardPassword}
